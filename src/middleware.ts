@@ -1,12 +1,26 @@
-import { auth } from "@/auth";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export default auth((request) => {
-  if (!request.auth) {
-    const login = new URL("/login", request.nextUrl);
-    login.searchParams.set("callbackUrl", request.nextUrl.pathname);
-    return NextResponse.redirect(login);
+export function middleware(request: NextRequest) {
+  const token =
+    request.cookies.get("authjs.session-token")?.value ||
+    request.cookies.get("__Secure-authjs.session-token")?.value;
+
+  const isAuthPage =
+    request.nextUrl.pathname.startsWith("/login") ||
+    request.nextUrl.pathname.startsWith("/register");
+
+  if (!token && !isAuthPage) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
-});
 
-export const config = { matcher: ["/dashboard/:path*"] };
+  if (token && isAuthPage) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ["/dashboard/:path*", "/workouts/:path*", "/login", "/register"],
+};
