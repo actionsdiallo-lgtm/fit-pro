@@ -1,22 +1,42 @@
 import Link from "next/link";
-import { auth, signOut } from "@/auth";
-import { db } from "@/lib/db";
-import { redirect } from "next/navigation";
 
-export default async function DashboardPage() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-  const [profile, workouts, goals] = await Promise.all([
-    db.athleteProfile.findUnique({ where: { userId: session.user.id } }),
-    db.workout.findMany({ where: { userId: session.user.id }, orderBy: { performedAt: "desc" }, take: 8 }),
-    db.goal.findMany({ where: { userId: session.user.id, completedAt: null }, orderBy: { createdAt: "desc" }, take: 5 })
-  ]);
-  const totalMinutes = workouts.reduce((sum, workout) => sum + workout.durationMinutes, 0);
-  const calories = workouts.reduce((sum, workout) => sum + (workout.calories ?? 0), 0);
-  return <main className="dashboard"><header className="dash-header"><Link className="brand" href="/">FIT<span>PRO</span></Link><form action={async () => { "use server"; await signOut({ redirectTo: "/" }); }}><button className="text-link">Déconnexion</button></form></header>
-    <section className="dash-intro"><p className="eyebrow">ESPACE PERSONNEL</p><h1>Bonjour{session.user.name ? `, ${session.user.name}` : ""}.</h1><p className="muted">Tes indicateurs sont calculés uniquement à partir des séances que tu enregistres.</p></section>
-    <section className="stats-grid"><article className="stat"><span>Séances affichées</span><strong>{workouts.length}</strong><small>8 plus récentes</small></article><article className="stat"><span>Durée enregistrée</span><strong>{totalMinutes}<small> min</small></strong><small>sur les séances affichées</small></article><article className="stat"><span>Calories déclarées</span><strong>{calories}</strong><small>valeurs saisies uniquement</small></article></section>
-    <div className="dash-columns"><section className="panel"><div className="panel-title"><div><p className="eyebrow">HISTORIQUE</p><h2>Entraînements récents</h2></div><Link className="text-link" href="/workouts/new">+ Ajouter</Link></div>{workouts.length ? <ul className="workout-list">{workouts.map((workout) => <li key={workout.id}><div><strong>{workout.title}</strong><span>{workout.category} · {new Date(workout.performedAt).toLocaleDateString("fr-FR")}</span></div><b>{workout.durationMinutes} min</b></li>)}</ul> : <p className="empty">Aucune séance enregistrée. Ajoute ton premier entraînement pour commencer ton historique.</p>}</section>
-    <aside className="panel"><p className="eyebrow">TON PROFIL</p><h2>Profil sportif</h2><p>{profile?.discipline || "Discipline à renseigner"}</p><p className="muted">{profile?.age ? `${profile.age} ans` : "Âge non renseigné"} · {profile?.heightCm ? `${profile.heightCm} cm` : "Taille non renseignée"} · {profile?.weightKg ? `${profile.weightKg} kg` : "Poids non renseigné"}</p><h3>Objectifs en cours</h3>{goals.length ? goals.map((goal) => <p key={goal.id}>{goal.title} — {goal.current}/{goal.target} {goal.metric}</p>) : <p className="empty">Aucun objectif enregistré.</p>}<Link className="text-link" href="/workouts/new">Enregistrer une séance →</Link></aside></div>
-  </main>;
-}
+export default function Dashboard() {
+  return (
+    <main style={{ background: "#080BOA", minHeight: "100vh", color: "#fff", fontFamily: "system-ui", paddingBottom: 90 }}>
+      <nav style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px" }}>
+        <Link href="/" style={{ color: "#00E676", fontWeight: 900, fontSize: 22, textDecoration: "none" }}>FIT PRO</Link>
+        <span style={{ background: "#1A1F2E", padding: "8px 14px", borderRadius: 20, fontSize: 13 }}>🔥 5 jours</span>
+      </nav>
+      <div style={{ padding: "0 20px" }}>
+        <h1 style={{ fontSize: 28, margin: "10px 0 4px" }}>Salut Kindima 👋</h1>
+        <p style={{ color: "#9AA0B0", margin: 0 }}>Prêt pour ton entraînement d&apos;aujourd&apos;hui ?</p>
+        <div style={{ background: "#00E676", color: "#000", borderRadius: 20, padding: 20, marginTop: 20 }}>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 700 }}>ENTRAÎNEMENT DU JOUR</p>
+          <h2 style={{ margin: "8px 0", fontSize: 24 }}>Full Body - 30 min</h2>
+          <p style={{ margin: "0 0 16px", opacity: 0.8, fontSize: 14 }}>12 exercices • 320 kcal • Niveau Débutant</p>
+          <Link href="/workouts/new" style={{ display: "block", background: "#000", color: "#fff", textAlign: "center", padding: "14px", borderRadius: 12, fontWeight: 800, textDecoration: "none" }}>▶ COMMENCER</Link>
+        </div>
+        <h3 style={{ marginTop: 24 }}>Tes stats</h3>
+        <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ flex: 1, background: "#1A1F2E", borderRadius: 16, padding: 16, textAlign: "center" }}>
+            <div style={{ fontSize: 24, fontWeight: 900, color: "#00E676" }}>12</div>
+            <div style={{ fontSize: 12, color: "#9AA0B0" }}>Séances</div>
+          </div>
+          <div style={{ flex: 1, background: "#1A1F2E", borderRadius: 16, padding: 16, textAlign: "center" }}>
+            <div style={{ fontSize: 24, fontWeight: 900, color: "#00E676" }}>4.2h</div>
+            <div style={{ fontSize: 12, color: "#9AA0B0" }}>Temps total</div>
+          </div>
+          <div style={{ flex: 1, background: "#1A1F2E", borderRadius: 16, padding: 16, textAlign: "center" }}>
+            <div style={{ fontSize: 24, fontWeight: 900, color: "#00E676" }}>3 840</div>
+            <div style={{ fontSize: 12, color: "#9AA0B0" }}>Kcal brûlées</div>
+          </div>
+        </div>
+        <h3 style={{ marginTop: 24 }}>Continuer</h3>
+        <div style={{ background: "#1A1F2E", borderRadius: 16, padding: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div><div style={{ fontWeight: 800 }}>🔥 Cardio Brûle-Graisse</div><div style={{ fontSize: 13, color: "#9AA0B0" }}>20 min • Progression 60%</div></div>
+          <span style={{ color: "#00E676", fontWeight: 900 }}>→</span>
+        </div>
+      </div>
+    </main>
+  );
+                         }
