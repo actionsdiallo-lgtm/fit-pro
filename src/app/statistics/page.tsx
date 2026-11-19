@@ -1,6 +1,6 @@
 export default function Statistics() {
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{ padding: 20, color: 'black' }}>
       <h1 style={{ fontSize: 28, fontWeight: 'bold' }}>Statistics</h1>
       <p>Tes progrès en un coup d'oeil.</p>
       <div style={{ marginTop: 20, display: 'flex', gap: 12 }}>
