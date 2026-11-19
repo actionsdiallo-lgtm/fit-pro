@@ -195,13 +195,13 @@ export default function Dashboard() {
 
       <nav className="bottomnav">
   {menu.map((item) => (
-    <button key={item} className={activeTab === item ? "active" : ""} onClick={() => {
+    <Link key={item} href={item === "Dashboard" ? "/dashboard" : "/" + item.toLowerCase()} className={activeTab === item ? "active" : ""} onClick={() => {
       setActiveTab(item);
        }}>
       
       {item === "Dashboard" ? "🏠" : item === "Workouts" ? "💪" : item === "Programs" ? "📋" : item === "Statistics" ? "📊" : "👤"}
       <br />{item}
-    </button>
+    </Link>
   ))}
 </nav>
     </main>
