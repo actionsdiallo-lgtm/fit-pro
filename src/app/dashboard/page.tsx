@@ -36,7 +36,7 @@ export default function Dashboard() {
   const planPct = Math.round((progress + caloriePct + Math.min(100, workoutsDone * 33)) / 3);
 
   return (
-    <div style={{ minHeight: '100vh', backgroundImage: 'linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.9)), url("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200")', backgroundSize: 'cover', backgroundPosition: 'center', color: 'white', padding: '20px' }}>
+    <div style={{ minHeight: '100vh', backgroundImage: 'linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.85)), url("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1200&q=80")', backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed', color: 'white', padding: '20px', paddingBottom: '100px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div><div style={{ fontSize: 12, color: '#aaa' }}>Salut 👋</div><div style={{ fontSize: 22, fontWeight: 'bold' }}>RO-VERT</div></div>
         <Link href="/profil" style={{ background: '#222', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>👤</Link>
