@@ -1,0 +1,17 @@
+export type Lang = 'fr' | 'en' | 'es' | 'pt' | 'ar';
+
+export const languages = [
+  { code: 'fr' as Lang, label: 'Français', flag: '🇫🇷' },
+  { code: 'en' as Lang, label: 'English', flag: '🇬🇧' },
+  { code: 'es' as Lang, label: 'Español', flag: '🇪🇸' },
+  { code: 'pt' as Lang, label: 'Português', flag: '🇵🇹' },
+  { code: 'ar' as Lang, label: 'العربية', flag: '🇸🇦' },
+];
+
+export const translations = {
+  fr: { home: 'Accueil', workouts: 'Entraînements', workoutsShort: 'Entrain.', nutrition: 'Nutrition', stats: 'Stats', profile: 'Profil', welcome: 'Bienvenue', calories: 'Calories', sessions: 'Séances', language: 'Langue' },
+  en: { home: 'Home', workouts: 'Workouts', workoutsShort: 'Workouts', nutrition: 'Nutrition', stats: 'Stats', profile: 'Profile', welcome: 'Welcome', calories: 'Calories', sessions: 'Sessions', language: 'Language' },
+  es: { home: 'Inicio', workouts: 'Entrenamientos', workoutsShort: 'Entren.', nutrition: 'Nutrición', stats: 'Estadísticas', profile: 'Perfil', welcome: 'Bienvenido', calories: 'Calorías', sessions: 'Sesiones', language: 'Idioma' },
+  pt: { home: 'Início', workouts: 'Treinos', workoutsShort: 'Treinos', nutrition: 'Nutrição', stats: 'Estatísticas', profile: 'Perfil', welcome: 'Bem-vindo', calories: 'Calorias', sessions: 'Sessões', language: 'Idioma' },
+  ar: { home: 'الرئيسية', workouts: 'التمارين', workoutsShort: 'تمارين', nutrition: 'التغذية', stats: 'الإحصائيات', profile: 'الملف', welcome: 'مرحباً', calories: 'السعرات', sessions: 'الجلسات', language: 'اللغة' },
+};
