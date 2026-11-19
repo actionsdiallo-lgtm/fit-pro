@@ -1,51 +1,50 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LanguageProvider } from "../lib/LanguageContext";
+import LanguageSwitcher from "../lib/LanguageSwitcher";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PRO-VERT - Coach Fitness",
-  description: "Application de coaching fitness",
+  title: "FIT PRO - Coaching Sportif",
+  description: "Transformez votre corps avec FIT PRO",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="fr">
-      <body style={{ margin: 0, background: '#0a0a0a', color: 'white' }}>
+      <body>
         <LanguageProvider>
-          {/* MENU ORDINATEUR - en haut, compact */}
-          <header className="desktop-nav" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 24px', background: '#111', position: 'sticky', top: 0, zIndex: 50 }}>
-            <Link href="/" style={{ color: '#c8f542', fontWeight: 'bold', fontSize: 20, textDecoration: 'none' }}>PRO-VERT 💪</Link>
-            <nav style={{ display: 'flex', gap: 20 }}>
-              <Link href="/" style={{ color: 'white', textDecoration: 'none' }}>Accueil</Link>
-              <Link href="/entrainements" style={{ color: 'white', textDecoration: 'none' }}>Entrainements</Link>
-              <Link href="/nutrition" style={{ color: 'white', textDecoration: 'none' }}>Nutrition</Link>
-              <Link href="/statistiques" style={{ color: 'white', textDecoration: 'none' }}>Stats</Link>
-              <Link href="/profil" style={{ color: 'white', textDecoration: 'none' }}>Profil</Link>
-            </nav>
-          </header>
+          <div className="min-h-screen bg-black text-white">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur border-b border-white/10">
+              <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                <Link href="/" className="text-xl font-bold">
+                  FIT<span className="text-yellow-400">PRO</span>
+                </Link>
 
-          <main style={{ paddingBottom: 60 }}>{children}</main>
+                <nav className="hidden md:flex items-center gap-6 text-sm">
+                  <Link href="/" className="hover:text-yellow-400">Accueil</Link>
+                  <Link href="/programmes" className="hover:text-yellow-400">Programmes</Link>
+                  <Link href="/tarifs" className="hover:text-yellow-400">Tarifs</Link>
+                  <Link href="/contact" className="hover:text-yellow-400">Contact</Link>
+                </nav>
 
-          {/* MENU TÉLÉPHONE - en bas, compact */}
-          <nav className="mobile-nav" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#1a1a1a', borderTop: '1px solid #333', display: 'flex', justifyContent: 'space-around', padding: '6px 0 8px', zIndex: 100 }}>
-            <Link href="/" style={{ textDecoration: 'none', textAlign: 'center' }}><div style={{ fontSize: 18 }}>🏠</div><div style={{ fontSize: 10, color: '#aaa' }}>Accueil</div></Link>
-            <Link href="/entrainements" style={{ textDecoration: 'none', textAlign: 'center' }}><div style={{ fontSize: 18 }}>💪</div><div style={{ fontSize: 10, color: '#aaa' }}>Entrain.</div></Link>
-            <Link href="/nutrition" style={{ textDecoration: 'none', textAlign: 'center' }}><div style={{ fontSize: 18 }}>🥗</div><div style={{ fontSize: 10, color: '#aaa' }}>Nutrition</div></Link>
-            <Link href="/statistiques" style={{ textDecoration: 'none', textAlign: 'center' }}><div style={{ fontSize: 18 }}>📊</div><div style={{ fontSize: 10, color: '#aaa' }}>Stats</div></Link>
-            <Link href="/profil" style={{ textDecoration: 'none', textAlign: 'center' }}><div style={{ fontSize: 18 }}>👤</div><div style={{ fontSize: 10, color: '#aaa' }}>Profil</div></Link>
-          </nav>
+                <div className="flex items-center gap-3">
+                  <LanguageSwitcher />
+                  <Link href="/tarifs" className="bg-yellow-400 text-black px-4 py-2 rounded-full text-sm font-bold">
+                    Commencer
+                  </Link>
+                </div>
+              </div>
+            </header>
 
-          <style>{`
-            @media (max-width: 768px) {
-              .desktop-nav { display: none !important; }
-            }
-            @media (min-width: 769px) {
-              .mobile-nav { display: none !important; }
-              main { padding-bottom: 0 !important; }
-            }
-          `}</style>
+            <main className="pt-16">{children}</main>
+          </div>
         </LanguageProvider>
       </body>
     </html>
   );
-                                              }
+}
