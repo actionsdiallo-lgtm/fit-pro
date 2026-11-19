@@ -200,6 +200,9 @@ export default function Dashboard() {
       if (item === "Workouts") window.location.href = "/workouts/new";
       if (item === "Dashboard") window.location.href = "/dashboard";
     }}>
+     if(item === "Programs") window.location.href = "/programs";
+if (item === "Statistics") window.location.href = "/statistics";
+if (item === "Profile") window.location.href = "/profile";
       {item === "Dashboard" ? "🏠" : item === "Workouts" ? "💪" : item === "Programs" ? "📋" : item === "Statistics" ? "📊" : "👤"}
       <br />{item}
     </button>
