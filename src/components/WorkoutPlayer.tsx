@@ -1,60 +1,90 @@
 "use client";
 import { useState, useEffect } from "react";
-type Videos = { [key: string]: string };
-type Exo = { nom: { [key: string]: string }; reps: string; consigne: { [key: string]: string }; videos: Videos; };
+
 const TEXTES: any = {
-en: { langue: "Language :", precedent: "Previous", ecouter: "Listen", suivant: "Next", exercice: "Exercise", videoEn: "Video in" },
-fr: { langue: "Langue :", precedent: "Precedent", ecouter: "Ecouter", suivant: "Suivant", exercice: "Exercice", videoEn: "Video en" },
-es: { langue: "Idioma :", precedent: "Anterior", ecouter: "Escuchar", suivant: "Siguiente", exercice: "Ejercicio", videoEn: "Video en" },
-pt: { langue: "Lingua :", precedent: "Anterior", ecouter: "Ouvir", suivant: "Proximo", exercice: "Exercicio", videoEn: "Video em" },
-ar: { langue: "Language :", precedent: "Previous", ecouter: "Listen", suivant: "Next", exercice: "Exercise", videoEn: "Video in" },
-de: { langue: "Sprache :", precedent: "Zuruck", ecouter: "Horen", suivant: "Weiter", exercice: "Ubung", videoEn: "Video in" },
-it: { langue: "Lingua :", precedent: "Precedente", ecouter: "Ascolta", suivant: "Avanti", exercice: "Esercizio", videoEn: "Video in" },
+  en: { langue: "Language :", commencer: "START", precedent: "Previous", ecouter: "Listen", suivant: "Next", terminer: "Finish", termine: "WORKOUT FINISHED 🎉", recommencer: "Start Again", exercice: "Exercise", video: "Video in" },
+  fr: { langue: "Langue :", commencer: "COMMENCER", precedent: "Précédent", ecouter: "Écouter", suivant: "Suivant", terminer: "Terminer", termine: "SÉANCE TERMINÉE 🎉", recommencer: "Recommencer", exercice: "Exercice", video: "Vidéo en" },
+  es: { langue: "Idioma :", commencer: "EMPEZAR", precedent: "Anterior", ecouter: "Escuchar", suivant: "Siguiente", terminer: "Terminar", termine: "SESIÓN TERMINADA 🎉", recommencer: "Empezar de nuevo", exercice: "Ejercicio", video: "Video en" },
+  pt: { langue: "Idioma :", commencer: "COMEÇAR", precedent: "Anterior", ecouter: "Ouvir", suivant: "Próximo", terminer: "Terminar", termine: "SESSÃO CONCLUÍDA 🎉", recommencer: "Começar novamente", exercice: "Exercício", video: "Vídeo em" },
+  ar: { langue: "اللغة :", commencer: "ابدأ", precedent: "السابق", ecouter: "استمع", suivant: "التالي", terminer: "إنهاء", termine: "تمت الحصة 🎉", recommencer: "ابدأ من جديد", exercice: "تمرين", video: "فيديو بـ" },
+  de: { langue: "Sprache :", commencer: "STARTEN", precedent: "Zurück", ecouter: "Anhören", suivant: "Weiter", terminer: "Beenden", termine: "TRAINING BEENDET 🎉", recommencer: "Nochmal starten", exercice: "Übung", video: "Video in" },
+  it: { langue: "Lingua :", commencer: "INIZIA", precedent: "Precedente", ecouter: "Ascolta", suivant: "Avanti", terminer: "Finisci", termine: "ALLENAMENTO FINITO 🎉", recommencer: "Ricomincia", exercice: "Esercizio", video: "Video in" },
 };
-const EXOS: Exo[] = [
-{ nom: { en: "Push-ups", fr: "Pompes", es: "Flexiones", pt: "Flexoes", ar: "Push-ups", de: "Liegestutze", it: "Flessioni" }, reps: "12 reps", consigne: { en: "Come on push-ups! Straight back, go down, push hard!", fr: "Allez les pompes ! Dos droit, descends, pousse !", es: "Vamos flexiones! Espalda recta, baja, empuja!", pt: "Vamos flexoes! Costas retas, desce, empurra!", ar: "Come on push-ups!", de: "Los Liegestutze! Rucken gerade, runter, hoch!", it: "Dai flessioni! Schiena dritta, scendi, spingi!" }, videos: { en: "https://www.youtube.com/embed/IODxDxX7oi0", fr: "https://www.youtube.com/embed/IODxDxX7oi0", es: "https://www.youtube.com/embed/9rTq5W1w6zE", pt: "https://www.youtube.com/embed/IODxDxX7oi0", ar: "https://www.youtube.com/embed/IODxDxX7oi0", de: "https://www.youtube.com/embed/IODxDxX7oi0", it: "https://www.youtube.com/embed/IODxDxX7oi0" } },
-{ nom: { en: "Squats", fr: "Squats", es: "Sentadillas", pt: "Agachamentos", ar: "Squats", de: "Kniebeugen", it: "Squat" }, reps: "15 reps", consigne: { en: "Come on squats! Go down slowly, come up!", fr: "Allez les squats ! Descends doucement, remonte !", es: "Vamos sentadillas! Baja despacio, sube!", pt: "Vamos agachamentos! Desce devagar, sobe!", ar: "Come on squats!", de: "Los Kniebeugen! Langsam runter, hoch!", it: "Dai squat! Scendi piano, sali!" }, videos: { en: "https://www.youtube.com/embed/YaXPRqUwItQ", fr: "https://www.youtube.com/embed/YaXPRqUwItQ", es: "https://www.youtube.com/embed/YaXPRqUwItQ", pt: "https://www.youtube.com/embed/YaXPRqUwItQ", ar: "https://www.youtube.com/embed/YaXPRqUwItQ", de: "https://www.youtube.com/embed/YaXPRqUwItQ", it: "https://www.youtube.com/embed/YaXPRqUwItQ" } },
-{ nom: { en: "Plank", fr: "Gainage", es: "Plancha", pt: "Prancha", ar: "Plank", de: "Plank", it: "Plank" }, reps: "30 sec", consigne: { en: "Plank! Stay strong, don't bend your back!", fr: "Gainage ! Reste fort, ne creuse pas le dos !", es: "Plancha! Mantente fuerte, no dobles la espalda!", pt: "Prancha! Fica forte, nao dobre as costas!", ar: "Plank! Stay strong!", de: "Plank! Bleib stark, Rucken gerade!", it: "Plank! Resta forte, non piegare la schiena!" }, videos: { en: "https://www.youtube.com/embed/pSHjTRCQxIw", fr: "https://www.youtube.com/embed/pSHjTRCQxIw", es: "https://www.youtube.com/embed/pSHjTRCQxIw", pt: "https://www.youtube.com/embed/pSHjTRCQxIw", ar: "https://www.youtube.com/embed/pSHjTRCQxIw", de: "https://www.youtube.com/embed/pSHjTRCQxIw", it: "https://www.youtube.com/embed/pSHjTRCQxIw" } },
-{ nom: { en: "Lunges", fr: "Fentes", es: "Zancadas", pt: "Avancos", ar: "Lunges", de: "Ausfallschritte", it: "Affondi" }, reps: "10 each leg", consigne: { en: "Lunges! Straight chest, go down slowly!", fr: "Les fentes ! Buste droit, descends doucement !", es: "Zancadas! Pecho recto, baja despacio!", pt: "Avancos! Peito reto, desce devagar!", ar: "Lunges!", de: "Ausfallschritte! Brust gerade, langsam runter!", it: "Affondi! Petto dritto, scendi piano!" }, videos: { en: "https://www.youtube.com/embed/Q0VaHwm-Q6U", fr: "https://www.youtube.com/embed/Q0VaHwm-Q6U", es: "https://www.youtube.com/embed/Q0VaHwm-Q6U", pt: "https://www.youtube.com/embed/Q0VaHwm-Q6U", ar: "https://www.youtube.com/embed/Q0VaHwm-Q6U", de: "https://www.youtube.com/embed/Q0VaHwm-Q6U", it: "https://www.youtube.com/embed/Q0VaHwm-Q6U" } },
+
+const EXOS = [
+  { nom: { en: "Push-ups", fr: "Pompes", es: "Flexiones", pt: "Flexões", ar: "تمارين الضغط", de: "Liegestütze", it: "Flessioni" }, reps: "3 x 12", video: "https://www.youtube.com/embed/IODxDxX7oi0", consigne: { en: "Keep your back straight", fr: "Garde le dos droit", es: "Mantén la espalda recta", pt: "Mantenha as costas retas", ar: "حافظ على استقامة ظهرك", de: "Halte den Rücken gerade", it: "Tieni la schiena dritta" } },
+  { nom: { en: "Squats", fr: "Squats", es: "Sentadillas", pt: "Agachamentos", ar: "القرفصاء", de: "Kniebeugen", it: "Squat" }, reps: "3 x 15", video: "https://www.youtube.com/embed/YaXPRqUwItQ", consigne: { en: "Go down slowly", fr: "Descends lentement", es: "Baja lentamente", pt: "Desça devagar", ar: "انزل ببطء", de: "Geh langsam runter", it: "Scendi lentamente" } },
+  { nom: { en: "Plank", fr: "Gainage", es: "Plancha", pt: "Prancha", ar: "بلانك", de: "Plank", it: "Plank" }, reps: "3 x 30 sec", video: "https://www.youtube.com/embed/pSHjTRCQxIw", consigne: { en: "Tighten your abs", fr: "Serre les abdos", es: "Aprieta el abdomen", pt: "Aperte o abdômen", ar: "شد عضلات بطنك", de: "Spanne den Bauch an", it: "Contrai gli addominali" } },
+  { nom: { en: "Lunges", fr: "Fentes", es: "Zancadas", pt: "Avanços", ar: "الاندفاع", de: "Ausfallschritte", it: "Affondi" }, reps: "3 x 10", video: "https://www.youtube.com/embed/QOVaHwm-Q6U", consigne: { en: "Keep your balance", fr: "Garde l'équilibre", es: "Mantén el equilibrio", pt: "Mantenha o equilíbrio", ar: "حافظ على توازنك", de: "Halte das Gleichgewicht", it: "Mantieni l'equilibrio" } },
 ];
-const LANGUES = [
-{ code: "en", nom: "English", voix: "en-US" },
-{ code: "fr", nom: "Francais", voix: "fr-FR" },
-{ code: "es", nom: "Espanol", voix: "es-ES" },
-{ code: "pt", nom: "Portugues", voix: "pt-PT" },
-{ code: "ar", nom: "Arabic", voix: "ar-SA" },
-{ code: "de", nom: "Deutsch", voix: "de-DE" },
-{ code: "it", nom: "Italiano", voix: "it-IT" },
-];
+
 export default function WorkoutPlayer() {
-const [index, setIndex] = useState(0);
-const [langue, setLangue] = useState("en");
-const exo = EXOS[index];
-const t = TEXTES[langue] || TEXTES["en"];
-const langueChoisie = LANGUES.find(l => l.code === langue) || LANGUES[0];
-const videoActuelle = exo.videos[langue] || exo.videos["en"];
-function parler(texte: string) { if ("speechSynthesis" in window) { window.speechSynthesis.cancel(); const v = new SpeechSynthesisUtterance(texte); v.lang = langueChoisie.voix; window.speechSynthesis.speak(v); } }
-useEffect(() => { parler(exo.consigne[langue] || exo.consigne["en"]); }, [index, langue]);
-function suivant() { if (index < EXOS.length - 1) setIndex(index + 1); else { parler(langue === "fr" ? "Seance terminee. Bravo !" : "Workout finished. Great job!"); alert(langue === "fr" ? "Seance terminee !" : "Workout finished!"); } }
-return (
-<div style={{ maxWidth: 600, margin: "0 auto", padding: 16 }}>
-<div style={{ display: "flex", gap: 8, alignItems: "center", background: "#111", color: "#fff", padding: 10, borderRadius: 12 }}>
-<span>{t.langue}</span>
-<select value={langue} onChange={(e) => setLangue(e.target.value)} style={{ flex: 1, padding: 8, borderRadius: 8, border: 0, fontWeight: "bold" }}>
-{LANGUES.map((l) => (<option key={l.code} value={l.code}>{l.nom}</option>))}
-</select>
-</div>
-<h2 style={{ fontSize: 22, margin: "14px 0 4px" }}>{exo.nom[langue] || exo.nom["en"]} - {exo.reps}</h2>
-<p>{t.exercice} {index + 1} / {EXOS.length} - {t.videoEn} {langueChoisie.nom}</p>
-<div style={{ position: "relative", paddingTop: "56.25%", background: "#000", borderRadius: 16, overflow: "hidden" }}>
-<iframe key={langue + index} src={videoActuelle} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: 0 }} allowFullScreen title={exo.nom["en"]} />
-</div>
-<p style={{ marginTop: 10 }}>{exo.consigne[langue] || exo.consigne["en"]}</p>
-<div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-<button onClick={() => index > 0 && setIndex(index - 1)} style={{ flex: 1, background: "#eee", padding: 14, borderRadius: 12, border: 0, fontWeight: "bold" }}>{t.precedent}</button>
-<button onClick={() => parler(exo.consigne[langue] || exo.consigne["en"])} style={{ flex: 1, background: "#22c55e", color: "#fff", padding: 14, borderRadius: 12, border: 0, fontWeight: "bold" }}>{t.ecouter}</button>
-<button onClick={suivant} style={{ flex: 1, background: "#111", color: "#fff", padding: 14, borderRadius: 12, border: 0, fontWeight: "bold" }}>{t.suivant}</button>
-</div>
-</div>
-);
+  const [langue, setLangue] = useState("fr");
+  const [index, setIndex] = useState(0);
+  const [demarre, setDemarre] = useState(false);
+  const [termine, setTermine] = useState(false);
+  const t = TEXTES[langue];
+  const exo = EXOS[index];
+
+  const parler = (texte: string) => {
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(texte);
+      u.lang = langue === "ar" ? "ar-SA" : langue === "en" ? "en-US" : langue + "-" + langue.toUpperCase();
+      window.speechSynthesis.speak(u);
+    }
+  };
+
+  useEffect(() => {
+    if (demarre && !termine) parler(exo.nom[langue] + ". " + exo.consigne[langue]);
+  }, [index, langue, demarre]);
+
+  const suivant = () => {
+    if (index < EXOS.length - 1) setIndex(index + 1);
+    else setTermine(true);
+  };
+
+  // ECRAN 1 : PAS ENCORE COMMENCÉ
+  if (!demarre) {
+    return (
+      <div style={{ padding: 16 }}>
+        <label>{t.langue} </label>
+        <select value={langue} onChange={(e) => setLangue(e.target.value)} style={{ padding: 8, fontSize: 16 }}>
+          <option value="fr">Français</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="ar">العربية</option><option value="de">Deutsch</option><option value="it">Italiano</option>
+        </select>
+        <h2 style={{ marginTop: 20 }}>Entraînement du jour</h2>
+        {EXOS.map((e, i) => (<p key={i}>• {e.nom[langue]} - {e.reps}</p>))}
+        <button onClick={() => { setDemarre(true); setIndex(0); setTermine(false); }} style={{ background: "#16a34a", color: "white", padding: "14px 28px", fontSize: 20, border: "none", borderRadius: 10, width: "100%", marginTop: 16 }}>{t.commencer}</button>
+      </div>
+    );
+  }
+
+  // ECRAN 3 : TERMINÉ
+  if (termine) {
+    return (
+      <div style={{ padding: 16, textAlign: "center" }}>
+        <h2>{t.termine}</h2>
+        <button onClick={() => { setDemarre(false); setTermine(false); setIndex(0); }} style={{ background: "#16a34a", color: "white", padding: "14px 28px", fontSize: 18, border: "none", borderRadius: 10, marginTop: 16 }}>{t.recommencer}</button>
+      </div>
+    );
+  }
+
+  // ECRAN 2 : EN COURS
+  return (
+    <div style={{ padding: 16 }}>
+      <label>{t.langue} </label>
+      <select value={langue} onChange={(e) => setLangue(e.target.value)} style={{ padding: 8, fontSize: 16 }}>
+        <option value="fr">Français</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="ar">العربية</option><option value="de">Deutsch</option><option value="it">Italiano</option>
+      </select>
+      <h2 style={{ marginTop: 12 }}>{t.exercice} {index + 1}/{EXOS.length} : {exo.nom[langue]}</h2>
+      <p>{exo.reps}</p>
+      <iframe width="100%" height="220" src={exo.video} allowFullScreen style={{ border: "none", borderRadius: 10 }}></iframe>
+      <p>{t.video} {langue} : {exo.consigne[langue]}</p>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button onClick={() => index > 0 && setIndex(index - 1)} style={{ flex: 1, padding: 12 }}>{t.precedent}</button>
+        <button onClick={() => parler(exo.consigne[langue])} style={{ flex: 1, padding: 12 }}>🔊 {t.ecouter}</button>
+        <button onClick={suivant} style={{ flex: 1, padding: 12, background: "#16a34a", color: "white", border: "none", borderRadius: 8 }}>{index === EXOS.length - 1 ? t.terminer : t.suivant}</button>
+      </div>
+    </div>
+  );
   }
