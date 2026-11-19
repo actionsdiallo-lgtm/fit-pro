@@ -53,7 +53,7 @@ export default function WorkoutPlayer() {
           <option value="fr">Français</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="ar">العربية</option><option value="de">Deutsch</option><option value="it">Italiano</option>
         </select>
         <h2 style={{ marginTop: 20 }}>Entraînement du jour</h2>
-        {EXOS.map((e, i) => (<p key={i}>• {e.nom[langue]} - {e.reps}</p>))}
+        {EXOS.map((e: any, i: number) => (<p key={i}>• {e.nom[langue]} - {e.reps}</p>))}
         <button onClick={() => { setDemarre(true); setIndex(0); setTermine(false); }} style={{ background: "#16a34a", color: "white", padding: "14px 28px", fontSize: 20, border: "none", borderRadius: 10, width: "100%", marginTop: 16 }}>{t.commencer}</button>
       </div>
     );
