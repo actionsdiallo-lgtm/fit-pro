@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { playClick, playSuccess } from "../../lib/sound";
+import { playClick, playSuccess } from "./src/lib/sound";
 
 export default function Login() {
   const router = useRouter();
