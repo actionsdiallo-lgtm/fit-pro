@@ -1,31 +1,61 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { playClick, playSuccess } from "../../lib/sound";
 
-export default function LoginPage() {
+export default function Login() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const router = useRouter();
-
-  const input = { width: "100%", padding: 14, borderRadius: 12, border: "1px solid #333", backgroundColor: "#1A1A1A", color: "white", marginBottom: 12, fontSize: 15, boxSizing: "border-box" as const };
+  const [show, setShow] = useState(false);
 
   const handleLogin = () => {
-    if (!email) { alert("Mets ton email"); return; }
-    localStorage.setItem("fitpro-email", email);
+    playClick();
+    if (!email || !password) {
+      alert("Mets ton email et ton mot de passe");
+      return;
+    }
+    playSuccess();
     router.push("/dashboard");
   };
 
   return (
-    <div style={{ padding: 20, backgroundColor: "#0A0F0A", minHeight: "100vh", color: "white" }}>
-      <h1 style={{ fontSize: 28 }}>Bon retour 💪</h1>
-      <p style={{ color: "#AAA" }}>Connecte-toi à FitPro</p>
-      <label style={{ display: "block", marginBottom: 6, marginTop: 20 }}>Email</label>
-      <input style={input} placeholder="Ton email" value={email} onChange={e => setEmail(e.target.value)} />
-      <label style={{ display: "block", marginBottom: 6 }}>Mot de passe</label>
-      <input style={input} type="password" placeholder="Mot de passe" value={password} onChange={e => setPassword(e.target.value)} />
-      <button onClick={handleLogin} style={{ width: "100%", padding: 15, borderRadius: 12, border: "none", backgroundColor: "#00FF88", color: "black", fontWeight: "bold", fontSize: 16, marginTop: 10 }}>Se connecter</button>
-      <p style={{ textAlign: "center", marginTop: 16 }}>Pas encore de compte ? <Link href="/register" style={{ color: "#00FF88" }}>S&apos;inscrire</Link></p>
-    </div>
+    <main style={{ background: "#040706", minHeight: "100vh", color: "#fff", fontFamily: "system-ui", padding: 20, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <div style={{ textAlign: "center", marginBottom: 24 }}>
+        <div style={{ width: 64, height: 64, background: "#00FF88", borderRadius: 18, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, color: "#000", fontSize: 32, margin: "0 auto" }}>F</div>
+        <h1 style={{ margin: "12px 0 0", fontSize: 28, fontWeight: 900 }}>FIT <span style={{ color: "#00FF88" }}>PRO</span></h1>
+        <p style={{ margin: "6px 0 0", color: "#8A9A8F", fontSize: 13 }}>Bon retour, connecte-toi</p>
+      </div>
+
+      <div style={{ background: "#101613", borderRadius: 20, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+        <label style={{ fontSize: 13, color: "#8A9A8F" }}>Email</label>
+        <input
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="ton@email.com"
+          style={{ background: "#0A0F0D", border: "1px solid #1E2A24", borderRadius: 12, padding: "14px", color: "#fff", fontSize: 15, width: "100%", boxSizing: "border-box" }}
+        />
+        <label style={{ fontSize: 13, color: "#8A9A8F" }}>Mot de passe</label>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            type={show ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            style={{ background: "#0A0F0D", border: "1px solid #1E2A24", borderRadius: 12, padding: "14px", color: "#fff", fontSize: 15, flex: 1 }}
+          />
+          <button onClick={() => { playClick(); setShow(!show); }} style={{ background: "#1E2A24", color: "#fff", border: "none", borderRadius: 12, padding: "0 14px", fontWeight: 800 }}>{show ? "Cacher" : "Voir"}</button>
+        </div>
+
+        <button onClick={handleLogin} style={{ background: "#00FF88", color: "#000", border: "none", borderRadius: 12, padding: "16px", fontWeight: 900, fontSize: 16, marginTop: 8 }}>SE CONNECTER</button>
+
+        <Link href="/forgot" style={{ textAlign: "center", color: "#00FF88", fontSize: 13, textDecoration: "none" }}>Mot de passe oublié ?</Link>
+      </div>
+
+      <p style={{ textAlign: "center", color: "#8A9A8F", fontSize: 13, marginTop: 18 }}>
+        Pas de compte ? <Link href="/register" style={{ color: "#00FF88", fontWeight: 800, textDecoration: "none" }}>Créer un compte</Link>
+      </p>
+    </main>
   );
-}
+          }
