@@ -18,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <a href="/nutrition" style={{ color: 'white', textDecoration: 'none' }}>Nutrition</a>
           <a href="/statistics" style={{ color: 'white', textDecoration: 'none' }}>Stats</a>
           <a href="/profile" style={{ color: 'white', textDecoration: 'none' }}>Profil</a>
+          <a href="/actualites" style={{ color: 'white', textDecoration: 'none' }}>Actualités</a>
         </nav>
         {children}
       </body>
