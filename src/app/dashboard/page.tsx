@@ -194,13 +194,17 @@ export default function Dashboard() {
       </div>
 
       <nav className="bottomnav">
-        {menu.map((item) => (
-          <button key={item} className={activeTab === item ? "active" : ""} onClick={() => setActiveTab(item)}>
-            {item === "Dashboard" ? "◈" : item === "Workouts" ? "✦" : item === "Programs" ? "▤" : item === "Statistics" ? "▥" : "◎"}
-            <br />{item}
-          </button>
-        ))}
-      </nav>
+  {menu.map((item) => (
+    <button key={item} className={activeTab === item ? "active" : ""} onClick={() => {
+      setActiveTab(item);
+      if (item === "Workouts") window.location.href = "/workouts/new";
+      if (item === "Dashboard") window.location.href = "/dashboard";
+    }}>
+      {item === "Dashboard" ? "🏠" : item === "Workouts" ? "💪" : item === "Programs" ? "📋" : item === "Statistics" ? "📊" : "👤"}
+      <br />{item}
+    </button>
+  ))}
+</nav>
     </main>
   );
                      }
