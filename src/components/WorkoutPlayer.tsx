@@ -11,7 +11,7 @@ const TEXTES: any = {
   it: { langue: "Lingua :", commencer: "INIZIA", precedent: "Precedente", ecouter: "Ascolta", suivant: "Avanti", terminer: "Finisci", termine: "ALLENAMENTO FINITO 🎉", recommencer: "Ricomincia", exercice: "Esercizio", video: "Video in" },
 };
 
-const EXOS = [
+const EXOS: any = [
   { nom: { en: "Push-ups", fr: "Pompes", es: "Flexiones", pt: "Flexões", ar: "تمارين الضغط", de: "Liegestütze", it: "Flessioni" }, reps: "3 x 12", video: "https://www.youtube.com/embed/IODxDxX7oi0", consigne: { en: "Keep your back straight", fr: "Garde le dos droit", es: "Mantén la espalda recta", pt: "Mantenha as costas retas", ar: "حافظ على استقامة ظهرك", de: "Halte den Rücken gerade", it: "Tieni la schiena dritta" } },
   { nom: { en: "Squats", fr: "Squats", es: "Sentadillas", pt: "Agachamentos", ar: "القرفصاء", de: "Kniebeugen", it: "Squat" }, reps: "3 x 15", video: "https://www.youtube.com/embed/YaXPRqUwItQ", consigne: { en: "Go down slowly", fr: "Descends lentement", es: "Baja lentamente", pt: "Desça devagar", ar: "انزل ببطء", de: "Geh langsam runter", it: "Scendi lentamente" } },
   { nom: { en: "Plank", fr: "Gainage", es: "Plancha", pt: "Prancha", ar: "بلانك", de: "Plank", it: "Plank" }, reps: "3 x 30 sec", video: "https://www.youtube.com/embed/pSHjTRCQxIw", consigne: { en: "Tighten your abs", fr: "Serre les abdos", es: "Aprieta el abdomen", pt: "Aperte o abdômen", ar: "شد عضلات بطنك", de: "Spanne den Bauch an", it: "Contrai gli addominali" } },
