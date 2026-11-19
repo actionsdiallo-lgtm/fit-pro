@@ -197,12 +197,8 @@ export default function Dashboard() {
   {menu.map((item) => (
     <button key={item} className={activeTab === item ? "active" : ""} onClick={() => {
       setActiveTab(item);
-      if (item === "Workouts") window.location.href = "/workouts/new";
-      if (item === "Dashboard") window.location.href = "/dashboard";
-    }}>
-     if(item === "Programs") window.location.href = "/programs";
-if (item === "Statistics") window.location.href = "/statistics";
-if (item === "Profile") window.location.href = "/profile";
+       }}>
+      
       {item === "Dashboard" ? "🏠" : item === "Workouts" ? "💪" : item === "Programs" ? "📋" : item === "Statistics" ? "📊" : "👤"}
       <br />{item}
     </button>
