@@ -7,5 +7,15 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="fr"><body>{children}</body></html>;
+  return (
+    <html lang="fr">
+      <body>
+        <nav>
+          <a href="/dashboard">Dashboard</a>
+          <a href="/workouts">Entrainements</a>
+        </nav>
+        {children}
+      </body>
+    </html>
+  );
 }
