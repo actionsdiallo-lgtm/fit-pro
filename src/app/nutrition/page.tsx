@@ -1,43 +1,74 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+const TEXTS: any = {
+  fr: { back: "← Retour Dashboard", title: "Nutrition", subtitle: "Mange bien, progresse vite", all: "Tout", breakfast: "Petit-déj", lunch: "Déjeuner", dinner: "Dîner", snack: "Snack", eaten: "Mangés", kcal: "kcal", ate: "J'ai mangé ✅", eat: "Je mange" },
+  en: { back: "← Back to Dashboard", title: "Nutrition", subtitle: "Eat well, progress fast", all: "All", breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack", eaten: "Eaten", kcal: "kcal", ate: "I ate ✅", eat: "I eat" },
+};
+
+const MEALS = [
+  { cat: "breakfast", titleFr: "Petit-déj Protéiné", titleEn: "Protein Breakfast", descFr: "Oeufs + Avoine + Banane", descEn: "Eggs + Oats + Banana", kcal: "420", img: "https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=800&q=80" },
+  { cat: "lunch", titleFr: "Déjeuner Fit", titleEn: "Fit Lunch", descFr: "Poulet + Riz + Légumes", descEn: "Chicken + Rice + Veggies", kcal: "650", img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80" },
+  { cat: "dinner", titleFr: "Dîner Léger", titleEn: "Light Dinner", descFr: "Saumon + Salade", descEn: "Salmon + Salad", kcal: "480", img: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&q=80" },
+  { cat: "snack", titleFr: "Snack Santé", titleEn: "Healthy Snack", descFr: "Smoothie + Fruits", descEn: "Smoothie + Fruits", kcal: "220", img: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&q=80" },
+];
 
 export default function NutritionPage() {
-  const [filter, setFilter] = useState("Tout");
+  const [lang, setLang] = useState("fr");
+  const [filter, setFilter] = useState("all");
   const [eaten, setEaten] = useState<number[]>([]);
-  const meals = [
-    { title: "Petit-déj Protéiné", desc: "Omelette + avoine + banane", cal: "450 kcal", type: "Petit-déj", emoji: "🍳" },
-    { title: "Déjeuner Fit", desc: "Poulet + riz + légumes", cal: "650 kcal", type: "Déjeuner", emoji: "🍗" },
-    { title: "Dîner Léger", desc: "Saumon + salade", cal: "400 kcal", type: "Dîner", emoji: "🥗" },
-    { title: "Snack Santé", desc: "Smoothie fruits + protéines", cal: "250 kcal", type: "Snack", emoji: "🥤" },
-  ];
-  const filtered = filter === "Tout" ? meals : meals.filter(m => m.type === filter);
-  const totalCal = eaten.reduce((sum, i) => sum + parseInt(meals[i].cal), 0);
-  return (
-    <div style={{ padding: 16, backgroundColor: "#0A0F0A", minHeight: "100vh", color: "white" }}>
-      <Link href="/dashboard" style={{ color: "#00FF88", textDecoration: "none" }}>← Retour Dashboard</Link>
-      <h1 style={{ marginTop: 12 }}>Nutrition 🥗</h1>
-      <p style={{ color: "#AAA" }}>Calories mangées aujourd'hui : <b style={{ color: "#00FF88" }}>{totalCal} kcal</b></p>
+  const t = TEXTS[lang];
 
-      <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-        {["Tout", "Petit-déj", "Déjeuner", "Dîner", "Snack"].map(f => (
-          <button key={f} onClick={() => setFilter(f)} style={{ padding: "8px 14px", borderRadius: 20, border: "none", backgroundColor: filter === f ? "#00FF88" : "#222", color: filter === f ? "black" : "white", fontWeight: "bold" }}>{f}</button>
+  useEffect(() => {
+    setLang(localStorage.getItem("fitpro-lang") || "fr");
+    const saved = localStorage.getItem("fitpro-eaten");
+    if (saved) setEaten(JSON.parse(saved));
+  }, []);
+
+  const toggle = (i: number) => {
+    const next = eaten.includes(i) ? eaten.filter(x => x !== i) : [...eaten, i];
+    setEaten(next);
+    localStorage.setItem("fitpro-eaten", JSON.stringify(next));
+  };
+
+  const filtered = filter === "all" ? MEALS : MEALS.filter(m => m.cat === filter);
+  const filters = ["all", "breakfast", "lunch", "dinner", "snack"];
+
+  return (
+    <div style={{ padding: 20, backgroundColor: "#0A0F0A", minHeight: "100vh", color: "white" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Link href="/dashboard" style={{ color: "#00FF88", textDecoration: "none" }}>{t.back}</Link>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button onClick={() => { setLang("fr"); localStorage.setItem("fitpro-lang", "fr"); }} style={{ padding: "6px 10px", borderRadius: 20, border: "none", backgroundColor: lang === "fr" ? "#00FF88" : "#333", color: lang === "fr" ? "black" : "white", fontWeight: "bold" }}>🇫🇷 FR</button>
+          <button onClick={() => { setLang("en"); localStorage.setItem("fitpro-lang", "en"); }} style={{ padding: "6px 10px", borderRadius: 20, border: "none", backgroundColor: lang === "en" ? "#00FF88" : "#333", color: lang === "en" ? "black" : "white", fontWeight: "bold" }}>🇬🇧 EN</button>
+        </div>
+      </div>
+
+      <h1 style={{ fontSize: 30, margin: "16px 0 4px" }}>🥗 {t.title}</h1>
+      <p style={{ color: "#AAA", margin: 0 }}>{t.subtitle} • {eaten.length} {t.eaten}</p>
+
+      <div style={{ display: "flex", gap: 8, marginTop: 16, overflowX: "auto" }}>
+        {filters.map(f => (
+          <button key={f} onClick={() => setFilter(f)} style={{ padding: "8px 14px", borderRadius: 20, border: "none", whiteSpace: "nowrap", backgroundColor: filter === f ? "#00FF88" : "#1A1A1A", color: filter === f ? "black" : "white", fontWeight: "bold" }}>{t[f === "all" ? "all" : f]}</button>
         ))}
       </div>
 
-      {filtered.map((m, i) => {
-        const isEaten = eaten.includes(i);
-        return (
-          <div key={i} style={{ marginTop: 14, padding: 16, backgroundColor: isEaten ? "#0F3D24" : "#1A1A1A", borderRadius: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <h3 style={{ margin: 0 }}>{m.emoji} {m.title} {isEaten ? "✅" : ""}</h3>
-              <p style={{ color: "#A7F3D0", margin: "5px 0" }}>{m.desc}</p>
-              <b>{m.cal} • {m.type}</b>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 16 }}>
+        {filtered.map((m) => {
+          const realIndex = MEALS.indexOf(m);
+          return (
+            <div key={realIndex} style={{ backgroundColor: "#1A1A1A", borderRadius: 18, overflow: "hidden" }}>
+              <img src={m.img} style={{ width: "100%", height: 150, objectFit: "cover", display: "block" }} />
+              <div style={{ padding: 16 }}>
+                <h3 style={{ margin: 0 }}>{lang === "fr" ? m.titleFr : m.titleEn}</h3>
+                <p style={{ color: "#AAA", margin: "6px 0" }}>{lang === "fr" ? m.descFr : m.descEn} • 🔥 {m.kcal} {t.kcal}</p>
+                <button onClick={() => toggle(realIndex)} style={{ width: "100%", padding: 12, borderRadius: 12, border: "none", backgroundColor: eaten.includes(realIndex) ? "#00FF88" : "#333", color: eaten.includes(realIndex) ? "black" : "white", fontWeight: "bold" }}>{eaten.includes(realIndex) ? t.ate : t.eat}</button>
+              </div>
             </div>
-            <button onClick={() => setEaten(isEaten ? eaten.filter(e => e !== i) : [...eaten, i])} style={{ backgroundColor: isEaten ? "#888" : "#00FF88", color: isEaten ? "white" : "black", padding: "10px 14px", borderRadius: 20, fontWeight: "bold", border: "none" }}>{isEaten ? "Annuler" : "Mangée"}</button>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
-            }
+                                                                   }
