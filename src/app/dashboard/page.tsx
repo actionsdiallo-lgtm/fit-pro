@@ -1,76 +1,87 @@
 "use client";
-import Link from "next/link";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
-const TEXTS: any = {
-  fr: { hello: "Salut", goal: "OBJECTIF DU JOUR", start: "▶ Commencer l'entraînement", workouts: "Séances", programs: "Programmes", nutrition: "Nutrition", statistics: "Statistiques", news: "Actualités", profile: "Mon Profil", progress: "Progression semaine", today: "Aujourd'hui : Full Body - 45 min", kcal: "Kcal brûlées", streak: "Jours consécutifs" },
-  en: { hello: "Hi", goal: "TODAY'S GOAL", start: "▶ Start workout", workouts: "Workouts", programs: "Programs", nutrition: "Nutrition", statistics: "Statistics", news: "News", profile: "My Profile", progress: "Week progress", today: "Today: Full Body - 45 min", kcal: "Kcal burned", streak: "Day streak" },
-};
-
-export default function DashboardPage() {
-  const [lang, setLang] = useState("fr");
-  const [name, setName] = useState("Diallo");
-  const [photo, setPhoto] = useState("");
-  const [goal, setGoal] = useState("Prise de masse");
-  const t = TEXTS[lang];
+export default function Dashboard() {
+  const [weight, setWeight] = useState(82);
+  const [goalWeight, setGoalWeight] = useState(75);
+  const [startWeight, setStartWeight] = useState(88);
+  const [calories, setCalories] = useState(0);
+  const [workoutsDone, setWorkoutsDone] = useState(0);
+  const [water, setWater] = useState(0);
 
   useEffect(() => {
-    const load = () => {
-      setLang(localStorage.getItem("fitpro-lang") || "fr");
-      setName(localStorage.getItem("fitpro-name") || "Diallo");
-      setPhoto(localStorage.getItem("fitpro-photo") || "");
-      setGoal(localStorage.getItem("fitpro-goal") || "Prise de masse");
-    };
-    load();
-    window.addEventListener("focus", load);
-    return () => window.removeEventListener("focus", load);
+    const w = localStorage.getItem("fit-pro-weight");
+    const gw = localStorage.getItem("fit-pro-goal-weight");
+    const sw = localStorage.getItem("fit-pro-start-weight");
+    const c = localStorage.getItem("fit-pro-calories-today");
+    const wo = localStorage.getItem("fit-pro-workouts");
+    const wat = localStorage.getItem("fit-pro-water");
+    if (w) setWeight(Number(w));
+    if (gw) setGoalWeight(Number(gw));
+    if (sw) setStartWeight(Number(sw));
+    if (c) setCalories(Number(c));
+    if (wo) { try { setWorkoutsDone(JSON.parse(wo).length); } catch {} }
+    if (wat) setWater(Number(wat));
   }, []);
 
-  const menu = [
-    { href: "/workouts", icon: "🏋️", label: t.workouts, color: "#00FF88" },
-    { href: "/programs", icon: "📋", label: t.programs, color: "#FFAA00" },
-    { href: "/nutrition", icon: "🥗", label: t.nutrition, color: "#00CCFF" },
-    { href: "/statistics", icon: "📊", label: t.statistics, color: "#FF3366" },
-    { href: "/actualites", icon: "📰", label: t.news, color: "#AA66FF" },
-    { href: "/profile", icon: "👤", label: t.profile, color: "#FFFFFF" },
-  ];
+  const save = (k: string, v: number, fn: any) => { localStorage.setItem(k, String(v)); fn(v); };
+
+  // Progression réelle : de poids de départ vers objectif
+  const totalToLose = Math.abs(startWeight - goalWeight) || 1;
+  const lost = Math.abs(startWeight - weight);
+  const progress = Math.min(100, Math.round((lost / totalToLose) * 100));
+  const calorieGoal = 2500;
+  const caloriePct = Math.min(100, Math.round((calories / calorieGoal) * 100));
+  const planPct = Math.round((progress + caloriePct + Math.min(100, workoutsDone * 33)) / 3);
 
   return (
-    <div style={{ padding: 20, backgroundColor: "#0A0F0A", minHeight: "100vh", color: "white" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: "#333", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
-            {photo ? <img src={photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "👤"}
-          </div>
-          <div><b style={{ fontSize: 18 }}>{t.hello} {name} 💪</b><br /><span style={{ color: "#00FF88", fontSize: 13 }}>{goal}</span></div>
+    <div style={{ background: '#0f0f0f', minHeight: '100vh', color: 'white', padding: 16, fontFamily: 'sans-serif' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div><div style={{ fontSize: 12, color: '#aaa' }}>Salut 👋</div><div style={{ fontSize: 22, fontWeight: 'bold' }}>RO-VERT</div></div>
+        <Link href="/profil" style={{ background: '#222', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>👤</Link>
+      </div>
+
+      {/* CARTE VIOLETTE - comme photo 1 */}
+      <div style={{ background: 'linear-gradient(135deg,#7b2ff7,#b44dff)', borderRadius: 20, padding: 20, marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontSize: 12, opacity: 0.8 }}>MY PLAN FOR TODAY</div>
+          <div style={{ fontSize: 20, fontWeight: 'bold', marginTop: 6 }}>Ton plan du jour<br />est prêt 💪</div>
+          <Link href="/entrainement" style={{ background: 'white', color: 'black', padding: '8px 14px', borderRadius: 20, fontSize: 13, fontWeight: 'bold', textDecoration: 'none', display: 'inline-block', marginTop: 12 }}>▶ Commencer</Link>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={() => { setLang("fr"); localStorage.setItem("fitpro-lang", "fr"); }} style={{ padding: "6px 10px", borderRadius: 20, border: "none", backgroundColor: lang === "fr" ? "#00FF88" : "#333", color: lang === "fr" ? "black" : "white", fontWeight: "bold" }}>🇫🇷 FR</button>
-          <button onClick={() => { setLang("en"); localStorage.setItem("fitpro-lang", "en"); }} style={{ padding: "6px 10px", borderRadius: 20, border: "none", backgroundColor: lang === "en" ? "#00FF88" : "#333", color: lang === "en" ? "black" : "white", fontWeight: "bold" }}>🇬🇧 EN</button>
+        <div style={{ width: 78, height: 78, borderRadius: '50%', background: 'conic-gradient(#c8f542 ' + planPct * 3.6 + 'deg, rgba(255,255,255,0.3) 0deg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: 60, height: 60, background: '#7b2ff7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{planPct}%</div>
         </div>
       </div>
 
-      <div style={{ backgroundColor: "#1A1A1A", padding: 18, borderRadius: 18, marginTop: 18 }}>
-        <span style={{ color: "#00FF88", fontSize: 12, fontWeight: "bold" }}>{t.goal}</span>
-        <h2 style={{ margin: "6px 0" }}>{t.today}</h2>
-        <p style={{ color: "#AAA", margin: "0 0 12px" }}>{t.progress} : 5/7 • 🔥 7 {t.streak}</p>
-        <div style={{ height: 10, backgroundColor: "#333", borderRadius: 5, overflow: "hidden" }}><div style={{ width: "71%", height: "100%", backgroundColor: "#00FF88" }} /></div>
-        <Link href="/workouts" style={{ display: "block", textAlign: "center", marginTop: 14, padding: 14, borderRadius: 12, backgroundColor: "#00FF88", color: "black", fontWeight: "bold", textDecoration: "none" }}>{t.start}</Link>
+      {/* DAILY PLAN - comme photo 2 */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 22 }}><b>Daily Plan</b><span style={{ color: '#aaa', fontSize: 13 }}>Aujourd'hui ▾</span></div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+        <div style={{ background: '#1c1c1c', borderRadius: 16, padding: 14 }}><div>🔥 Calories</div><b style={{ fontSize: 20 }}>{calories} <span style={{ fontSize: 12, color: '#aaa' }}>/ {calorieGoal}</span></b><div style={{ height: 6, background: '#333', borderRadius: 10, marginTop: 8 }}><div style={{ width: caloriePct + '%', height: 6, background: '#c8f542', borderRadius: 10 }} /></div></div>
+        <div style={{ background: '#1c1c1c', borderRadius: 16, padding: 14 }}><div>💪 Entraînements</div><b style={{ fontSize: 20 }}>{workoutsDone}</b><div style={{ fontSize: 12, color: '#aaa' }}>séances enregistrées</div></div>
+        <div style={{ background: '#1c1c1c', borderRadius: 16, padding: 14 }}><div>⚖️ Poids actuel</div><b style={{ fontSize: 20 }}>{weight} kg</b><div style={{ fontSize: 12, color: '#aaa' }}>Objectif : {goalWeight} kg</div></div>
+        <div style={{ background: '#1c1c1c', borderRadius: 16, padding: 14 }}><div>💧 Eau</div><b style={{ fontSize: 20 }}>{water} / 8 verres</b><button onClick={() => save("fit-pro-water", water + 1, setWater)} style={{ background: '#c8f542', border: 'none', padding: '6px 10px', borderRadius: 10, marginTop: 6, fontWeight: 'bold' }}>+ 1 verre</button></div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-        <div style={{ flex: 1, backgroundColor: "#1A1A1A", padding: 14, borderRadius: 14, textAlign: "center" }}><b style={{ fontSize: 20 }}>🔥 420</b><br /><span style={{ color: "#AAA", fontSize: 12 }}>{t.kcal}</span></div>
-        <div style={{ flex: 1, backgroundColor: "#1A1A1A", padding: 14, borderRadius: 14, textAlign: "center" }}><b style={{ fontSize: 20 }}>24</b><br /><span style={{ color: "#AAA", fontSize: 12 }}>{t.workouts}</span></div>
-        <div style={{ flex: 1, backgroundColor: "#1A1A1A", padding: 14, borderRadius: 14, textAlign: "center" }}><b style={{ fontSize: 20 }}>⭐ Pro</b><br /><span style={{ color: "#AAA", fontSize: 12 }}>Level</span></div>
+      {/* GOAL IN PROGRESS - comme photo 2 */}
+      <div style={{ background: '#1c1c1c', borderRadius: 16, padding: 16, marginTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><b>Goal in progress</b><span style={{ color: '#c8f542', fontWeight: 'bold' }}>{progress}%</span></div>
+        <div style={{ fontSize: 13, color: '#aaa', marginTop: 6 }}>Départ : {startWeight} kg → Objectif : {goalWeight} kg • Actuel : {weight} kg</div>
+        <div style={{ height: 10, background: '#333', borderRadius: 10, marginTop: 10 }}><div style={{ width: progress + '%', height: 10, background: 'linear-gradient(90deg,#7b2ff7,#c8f542)', borderRadius: 10 }} /></div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+          <label style={{ fontSize: 12 }}>Poids actuel : <input type="number" value={weight} onChange={e => save("fit-pro-weight", Number(e.target.value), setWeight)} style={{ width: 60, background: '#222', color: 'white', border: '1px solid #444', borderRadius: 8, padding: 6 }} /> kg</label>
+          <label style={{ fontSize: 12 }}>Objectif : <input type="number" value={goalWeight} onChange={e => save("fit-pro-goal-weight", Number(e.target.value), setGoalWeight)} style={{ width: 60, background: '#222', color: 'white', border: '1px solid #444', borderRadius: 8, padding: 6 }} /> kg</label>
+          <label style={{ fontSize: 12 }}>Départ : <input type="number" value={startWeight} onChange={e => save("fit-pro-start-weight", Number(e.target.value), setStartWeight)} style={{ width: 60, background: '#222', color: 'white', border: '1px solid #444', borderRadius: 8, padding: 6 }} /> kg</label>
+        </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
-        {menu.map(m => (
-          <Link key={m.href} href={m.href} style={{ backgroundColor: "#1A1A1A", padding: 18, borderRadius: 16, textDecoration: "none", color: "white", textAlign: "center" }}>
-            <div style={{ fontSize: 28 }}>{m.icon}</div><b style={{ color: m.color }}>{m.label}</b>
-          </Link>
-        ))}
+      {/* CALORIES DETAILS - comme photo 3 */}
+      <div style={{ background: '#1c1c1c', borderRadius: 16, padding: 16, marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div><b>Calories Details</b><div style={{ fontSize: 13, color: '#aaa', marginTop: 8 }}>🍗 Protéines : {Math.round(calories * 0.3)} kcal</div><div style={{ fontSize: 13, color: '#aaa' }}>🍞 Glucides : {Math.round(calories * 0.45)} kcal</div><div style={{ fontSize: 13, color: '#aaa' }}>🧈 Lipides : {Math.round(calories * 0.25)} kcal</div></div>
+        <div style={{ width: 90, height: 90, borderRadius: '50%', background: 'conic-gradient(#7b2ff7 ' + caloriePct * 3.6 + 'deg, #333 0deg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ width: 68, height: 68, background: '#1c1c1c', borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}><b>{calories}</b><span style={{ fontSize: 10, color: '#aaa' }}>kcal</span></div></div>
       </div>
+
+      <div style={{ textAlign: 'center', color: '#aaa', fontSize: 12, marginTop: 20, paddingBottom: 20 }}>Si les chiffres sont à 0, c'est que tu n'as pas encore enregistré d'entraînement ou de repas aujourd'hui. Dès que tu enregistres, ça monte tout seul ici.</div>
     </div>
   );
-    }
+}
