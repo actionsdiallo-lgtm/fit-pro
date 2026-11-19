@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "FIT PRO - Entraîne-toi avec méthode",
@@ -9,19 +10,41 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <body style={{ margin: 0, fontFamily: 'sans-serif', backgroundColor: '#0A0F0A' }}>
-        <nav style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '14px 16px', backgroundColor: '#111111', position: 'sticky', top: 0, zIndex: 50 }}>
-          <a href="/" style={{ color: '#22C55E', fontWeight: 'bold', textDecoration: 'none' }}>🏋️ FIT PRO</a>
-          <a href="/dashboard" style={{ color: 'white', textDecoration: 'none' }}>Dashboard</a>
-          <a href="/workouts" style={{ color: 'white', textDecoration: 'none' }}>Entraînements</a>
-          <a href="/programs" style={{ color: 'white', textDecoration: 'none' }}>Programs</a>
-          <a href="/nutrition" style={{ color: 'white', textDecoration: 'none' }}>Nutrition</a>
-          <a href="/statistics" style={{ color: 'white', textDecoration: 'none' }}>Stats</a>
-          <a href="/profile" style={{ color: 'white', textDecoration: 'none' }}>Profil</a>
-          <a href="/actualites" style={{ color: 'white', textDecoration: 'none' }}>Actualités</a>
+      <body style={{ margin: 0, background: '#0a0a0a', color: 'white' }}>
+        
+        {/* MENU ORDINATEUR - en haut, compact */}
+        <header className="desktop-nav" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 24px', background: '#111', position: 'sticky', top: 0, zIndex: 50 }}>
+          <Link href="/" style={{ color: '#c8f542', fontWeight: 'bold', fontSize: 20, textDecoration: 'none' }}>RO-VERT 💪</Link>
+          <nav style={{ display: 'flex', gap: 20 }}>
+            <Link href="/" style={{ color: 'white', textDecoration: 'none' }}>Accueil</Link>
+            <Link href="/entrainements" style={{ color: 'white', textDecoration: 'none' }}>Entraînements</Link>
+            <Link href="/nutrition" style={{ color: 'white', textDecoration: 'none' }}>Nutrition</Link>
+            <Link href="/statistiques" style={{ color: 'white', textDecoration: 'none' }}>Stats</Link>
+            <Link href="/profil" style={{ color: 'white', textDecoration: 'none' }}>Profil</Link>
+          </nav>
+        </header>
+
+        <main style={{ paddingBottom: 80 }}>{children}</main>
+
+        {/* MENU TÉLÉPHONE - en bas, fixe, comme ta photo */}
+        <nav className="mobile-nav" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#1a1a1a', borderTop: '1px solid #333', display: 'flex', justifyContent: 'space-around', padding: '10px 0 14px', zIndex: 100 }}>
+          <Link href="/" style={{ textDecoration: 'none', textAlign: 'center' }}><div style={{ fontSize: 24 }}>🏠</div><div style={{ fontSize: 11, color: '#aaa' }}>Accueil</div></Link>
+          <Link href="/entrainements" style={{ textDecoration: 'none', textAlign: 'center' }}><div style={{ fontSize: 24 }}>💪</div><div style={{ fontSize: 11, color: '#aaa' }}>Entraîn.</div></Link>
+          <Link href="/nutrition" style={{ textDecoration: 'none', textAlign: 'center' }}><div style={{ fontSize: 24 }}>🥗</div><div style={{ fontSize: 11, color: '#aaa' }}>Nutrition</div></Link>
+          <Link href="/statistiques" style={{ textDecoration: 'none', textAlign: 'center' }}><div style={{ fontSize: 24 }}>📊</div><div style={{ fontSize: 11, color: '#aaa' }}>Stats</div></Link>
+          <Link href="/profil" style={{ textDecoration: 'none', textAlign: 'center' }}><div style={{ fontSize: 24 }}>👤</div><div style={{ fontSize: 11, color: '#aaa' }}>Profil</div></Link>
         </nav>
-        {children}
+
+        <style>{`
+          @media (max-width: 768px) {
+            .desktop-nav { display: none !important; }
+          }
+          @media (min-width: 769px) {
+            .mobile-nav { display: none !important; }
+            main { padding-bottom: 0 !important; }
+          }
+        `}</style>
       </body>
     </html>
   );
-}
+          }
