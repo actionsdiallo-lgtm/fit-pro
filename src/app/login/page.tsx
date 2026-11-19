@@ -1,6 +1,16 @@
+"use client";
 import Link from "next/link";
-import { LoginForm, SocialButtons } from "@/components/auth-forms";
+import { useState } from "react";
 
 export default function LoginPage() {
-  return <main className="auth-shell"><Link className="brand" href="/">FIT<span>PRO</span></Link><section className="auth-card"><p className="eyebrow">BON RETOUR</p><h1>Connexion</h1><p className="muted">Retrouve tes séances et ta progression enregistrée.</p><SocialButtons /><LoginForm /><p className="muted small">Pas encore de compte ? <Link href="/register">Créer un compte</Link></p></section></main>;
-}
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
+  const input = { width: "100%", padding: 14, borderRadius: 12, border: "1px solid #333", backgroundColor: "#1A1A1A", color: "white", marginTop: 8, boxSizing: "border-box" as const };
+  return (
+    <div style={{ padding: 20, backgroundColor: "#0A0F0A", minHeight: "100vh", color: "white", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <h1 style={{ fontSize: 32, margin: 0 }}>Bon retour 👋</h1>
+      <p style={{ color: "#AAA" }}>Connecte-toi pour reprendre ton entraînement</p>
+      <label style={{ marginTop: 20 }}>Email</label>
+      <input style={input} placeholder="diallo@gmail.com" value={email} onChange={e => setEmail(e.target.value)} />
+      <label style
