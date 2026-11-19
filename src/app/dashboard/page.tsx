@@ -1,38 +1,72 @@
 "use client";
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
-export default function Dashboard() {
+const TEXTS: any = {
+  fr: { hello: "Salut", goal: "OBJECTIF DU JOUR", workout: "Séance Full Body - 30 min", start: "▶ Commencer", calories: "Calories", sessions: "Séances", weight: "Poids", time: "Temps", quick: "Accès rapide", workouts: "Entraînements", nutrition: "Nutrition", programs: "Programmes", stats: "Statistiques", news: "Actualités", profile: "Profil" },
+  en: { hello: "Hi", goal: "TODAY'S GOAL", workout: "Full Body Workout - 30 min", start: "▶ Start", calories: "Calories", sessions: "Workouts", weight: "Weight", time: "Time", quick: "Quick access", workouts: "Workouts", nutrition: "Nutrition", programs: "Programs", stats: "Statistics", news: "News", profile: "Profile" },
+};
+
+export default function DashboardPage() {
+  const [lang, setLang] = useState("fr");
+  const [name, setName] = useState("Diallo");
+  const [photo, setPhoto] = useState("");
+  const t = TEXTS[lang];
+
+  useEffect(() => {
+    setLang(localStorage.getItem("fitpro-lang") || "fr");
+    setName(localStorage.getItem("fitpro-name") || "Diallo");
+    setPhoto(localStorage.getItem("fitpro-photo") || "");
+  }, []);
+
+  const card = { backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16, textDecoration: "none", color: "white", display: "block" } as const;
+
   return (
-    <div style={{ padding: 16, backgroundColor: "#0A0F0A", minHeight: "100vh", color: "white" }}>
+    <div style={{ padding: 20, backgroundColor: "#0A0F0A", minHeight: "100vh", color: "white" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <h1 style={{ margin: 0 }}>Salut Diallo 👋</h1>
-          <p style={{ color: "#AAA", margin: "4px 0" }}>Prêt à transpirer aujourd'hui ?</p>
+        <h1 style={{ color: "#00FF88", fontSize: 28, margin: 0 }}>FIT PRO</h1>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button onClick={() => { setLang("fr"); localStorage.setItem("fitpro-lang", "fr"); }} style={{ padding: "6px 10px", borderRadius: 20, border: "none", backgroundColor: lang === "fr" ? "#00FF88" : "#333", color: lang === "fr" ? "black" : "white", fontWeight: "bold" }}>🇫🇷 FR</button>
+          <button onClick={() => { setLang("en"); localStorage.setItem("fitpro-lang", "en"); }} style={{ padding: "6px 10px", borderRadius: 20, border: "none", backgroundColor: lang === "en" ? "#00FF88" : "#333", color: lang === "en" ? "black" : "white", fontWeight: "bold" }}>🇬🇧 EN</button>
         </div>
-        <Link href="/profile" style={{ backgroundColor: "#222", color: "white", width: 44, height: 44, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, textDecoration: "none" }}>👤</Link>
       </div>
 
-      <div style={{ marginTop: 16, padding: 20, backgroundColor: "#00FF88", borderRadius: 20, color: "black" }}>
-        <p style={{ margin: 0, fontWeight: "bold" }}>🔥 OBJECTIF DU JOUR</p>
-        <h2 style={{ margin: "8px 0" }}>Séance Full Body - 30 min</h2>
-        <Link href="/workouts" style={{ backgroundColor: "black", color: "white", padding: "10px 18px", borderRadius: 20, textDecoration: "none", fontWeight: "bold", display: "inline-block" }}>Commencer →</Link>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 18 }}>
+        <Link href="/profile">
+          <div style={{ width: 60, height: 60, borderRadius: "50%", overflow: "hidden", backgroundColor: "#222", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid #00FF88" }}>
+            {photo ? <img src={photo} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 28 }}>👤</span>}
+          </div>
+        </Link>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 24 }}>{t.hello} {name} 👋</h2>
+          <p style={{ color: "#AAA", margin: 0 }}>Prêt à t'entraîner ?</p>
+        </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
-        <div style={{ backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16 }}><p style={{ margin: 0 }}>🔥 Calories</p><h2 style={{ margin: "4px 0", color: "#00FF88" }}>1,240</h2><p style={{ color: "#AAA", margin: 0, fontSize: 13 }}>Objectif 2,500</p></div>
-        <div style={{ backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16 }}><p style={{ margin: 0 }}>🏋️ Séances</p><h2 style={{ margin: "4px 0", color: "#00FF88" }}>5 / 7</h2><p style={{ color: "#AAA", margin: 0, fontSize: 13 }}>Cette semaine</p></div>
-        <div style={{ backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16 }}><p style={{ margin: 0 }}>⚖️ Poids</p><h2 style={{ margin: "4px 0", color: "#00FF88" }}>78 kg</h2><p style={{ color: "#AAA", margin: 0, fontSize: 13 }}>+3 kg 💪</p></div>
-        <div style={{ backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16 }}><p style={{ margin: 0 }}>⏱ Temps</p><h2 style={{ margin: "4px 0", color: "#00FF88" }}>4h 10</h2><p style={{ color: "#AAA", margin: 0, fontSize: 13 }}>Cette semaine</p></div>
+      <div style={{ marginTop: 18, borderRadius: 18, overflow: "hidden", backgroundColor: "#1A1A1A" }}>
+        <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80" style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }} />
+        <div style={{ padding: 16 }}>
+          <p style={{ color: "#00FF88", margin: 0, fontSize: 13, fontWeight: "bold" }}>{t.goal}</p>
+          <h3 style={{ margin: "6px 0" }}>{t.workout}</h3>
+          <div style={{ backgroundColor: "#00FF88", color: "black", padding: 12, borderRadius: 12, textAlign: "center", fontWeight: "bold", marginTop: 10 }}>{t.start}</div>
+        </div>
       </div>
 
-      <h3 style={{ marginTop: 20 }}>Accès rapide</h3>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 14 }}>
+        <div style={card}><div style={{ color: "#00FF88", fontSize: 22, fontWeight: "bold" }}>1,240</div><div style={{ color: "#AAA" }}>{t.calories}</div></div>
+        <div style={card}><div style={{ color: "#00FF88", fontSize: 22, fontWeight: "bold" }}>5/7</div><div style={{ color: "#AAA" }}>{t.sessions}</div></div>
+        <div style={card}><div style={{ color: "#00FF88", fontSize: 22, fontWeight: "bold" }}>78 kg</div><div style={{ color: "#AAA" }}>{t.weight}</div></div>
+        <div style={card}><div style={{ color: "#00FF88", fontSize: 22, fontWeight: "bold" }}>4h 10</div><div style={{ color: "#AAA" }}>{t.time}</div></div>
+      </div>
+
+      <h3 style={{ marginTop: 20 }}>{t.quick}</h3>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <Link href="/workouts" style={{ backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16, color: "white", textDecoration: "none" }}>🏋️<br /><b>Entraînements</b></Link>
-        <Link href="/nutrition" style={{ backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16, color: "white", textDecoration: "none" }}>🥗<br /><b>Nutrition</b></Link>
-        <Link href="/programs" style={{ backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16, color: "white", textDecoration: "none" }}>📋<br /><b>Programmes</b></Link>
-        <Link href="/statistics" style={{ backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16, color: "white", textDecoration: "none" }}>📊<br /><b>Statistiques</b></Link>
-        <Link href="/actualites" style={{ backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16, color: "white", textDecoration: "none" }}>📰<br /><b>Actualités</b></Link>
-        <Link href="/profile" style={{ backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16, color: "white", textDecoration: "none" }}>👤<br /><b>Profil</b></Link>
+        <Link href="/workouts" style={card}>💪 {t.workouts}</Link>
+        <Link href="/nutrition" style={card}>🥗 {t.nutrition}</Link>
+        <Link href="/programs" style={card}>📋 {t.programs}</Link>
+        <Link href="/statistics" style={card}>📊 {t.stats}</Link>
+        <Link href="/actualites" style={card}>📰 {t.news}</Link>
+        <Link href="/profile" style={card}>👤 {t.profile}</Link>
       </div>
     </div>
   );
