@@ -1,42 +1,61 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+const TEXTS: any = {
+  fr: { back: "← Retour Dashboard", title: "Statistiques", subtitle: "Tes progrès en direct", week: "Cette semaine", month: "Ce mois", workouts: "Séances", calories: "Calories brûlées", weight: "Poids", time: "Temps d'entraînement", goal: "Objectif semaine", progress: "Progression" },
+  en: { back: "← Back to Dashboard", title: "Statistics", subtitle: "Your progress live", week: "This week", month: "This month", workouts: "Workouts", calories: "Calories burned", weight: "Weight", time: "Training time", goal: "Week goal", progress: "Progress" },
+};
 
 export default function StatisticsPage() {
-  const [week, setWeek] = useState("Cette semaine");
-  const stats = week === "Cette semaine"
-    ? [{ label: "Séances", value: 5, max: 7 }, { label: "Calories", value: 3200, max: 5000 }, { label: "Minutes", value: 240, max: 400 }]
-    : [{ label: "Séances", value: 18, max: 30 }, { label: "Calories", value: 12500, max: 20000 }, { label: "Minutes", value: 980, max: 1600 }];
+  const [lang, setLang] = useState("fr");
+  const [period, setPeriod] = useState("week");
+  const t = TEXTS[lang];
+
+  useEffect(() => {
+    setLang(localStorage.getItem("fitpro-lang") || "fr");
+  }, []);
+
+  const stats = period === "week"
+    ? [{ label: t.workouts, value: 5, max: 7, unit: "/7", color: "#00FF88" }, { label: t.calories, value: 1240, max: 2000, unit: " kcal", color: "#FFAA00" }, { label: t.weight, value: 78, max: 100, unit: " kg", color: "#00AAFF" }, { label: t.time, value: 4.1, max: 7, unit: "h", color: "#FF55AA" }]
+    : [{ label: t.workouts, value: 18, max: 25, unit: "/25", color: "#00FF88" }, { label: t.calories, value: 5200, max: 8000, unit: " kcal", color: "#FFAA00" }, { label: t.weight, value: 78, max: 100, unit: " kg", color: "#00AAFF" }, { label: t.time, value: 16.5, max: 28, unit: "h", color: "#FF55AA" }];
 
   return (
-    <div style={{ padding: 16, backgroundColor: "#0A0F0A", minHeight: "100vh", color: "white" }}>
-      <Link href="/dashboard" style={{ color: "#00FF88", textDecoration: "none" }}>← Retour Dashboard</Link>
-      <h1 style={{ marginTop: 12 }}>Statistiques 📊</h1>
-      <p style={{ color: "#AAA" }}>Tes progrès en un coup d'oeil</p>
+    <div style={{ padding: 20, backgroundColor: "#0A0F0A", minHeight: "100vh", color: "white" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Link href="/dashboard" style={{ color: "#00FF88", textDecoration: "none" }}>{t.back}</Link>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button onClick={() => { setLang("fr"); localStorage.setItem("fitpro-lang", "fr"); }} style={{ padding: "6px 10px", borderRadius: 20, border: "none", backgroundColor: lang === "fr" ? "#00FF88" : "#333", color: lang === "fr" ? "black" : "white", fontWeight: "bold" }}>🇫🇷 FR</button>
+          <button onClick={() => { setLang("en"); localStorage.setItem("fitpro-lang", "en"); }} style={{ padding: "6px 10px", borderRadius: 20, border: "none", backgroundColor: lang === "en" ? "#00FF88" : "#333", color: lang === "en" ? "black" : "white", fontWeight: "bold" }}>🇬🇧 EN</button>
+        </div>
+      </div>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-        {["Cette semaine", "Ce mois"].map(w => (
-          <button key={w} onClick={() => setWeek(w)} style={{ padding: "8px 14px", borderRadius: 20, border: "none", backgroundColor: week === w ? "#00FF88" : "#222", color: week === w ? "black" : "white", fontWeight: "bold" }}>{w}</button>
+      <h1 style={{ fontSize: 30, margin: "16px 0 4px" }}>📊 {t.title}</h1>
+      <p style={{ color: "#AAA", margin: 0 }}>{t.subtitle}</p>
+
+      <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+        <button onClick={() => setPeriod("week")} style={{ padding: "10px 18px", borderRadius: 20, border: "none", backgroundColor: period === "week" ? "#00FF88" : "#1A1A1A", color: period === "week" ? "black" : "white", fontWeight: "bold" }}>{t.week}</button>
+        <button onClick={() => setPeriod("month")} style={{ padding: "10px 18px", borderRadius: 20, border: "none", backgroundColor: period === "month" ? "#00FF88" : "#1A1A1A", color: period === "month" ? "black" : "white", fontWeight: "bold" }}>{t.month}</button>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 18 }}>
+        {stats.map((s, i) => (
+          <div key={i} style={{ backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>{s.label}</span>
+              <b style={{ color: s.color }}>{s.value}{s.unit}</b>
+            </div>
+            <div style={{ backgroundColor: "#333", height: 10, borderRadius: 10, marginTop: 10, overflow: "hidden" }}>
+              <div style={{ width: `${Math.min(100, (s.value / s.max) * 100)}%`, height: "100%", backgroundColor: s.color, borderRadius: 10 }} />
+            </div>
+            <p style={{ color: "#AAA", fontSize: 13, margin: "8px 0 0" }}>{Math.round((s.value / s.max) * 100)}% {t.progress}</p>
+          </div>
         ))}
       </div>
 
-      <div style={{ marginTop: 16, backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16 }}>
-        <h3 style={{ marginTop: 0 }}>Poids : 75 kg → 78 kg 💪</h3>
-        <p style={{ color: "#00FF88" }}>+3 kg de masse en 12 semaines</p>
-        <div style={{ backgroundColor: "#333", height: 12, borderRadius: 10, overflow: "hidden" }}>
-          <div style={{ backgroundColor: "#00FF88", height: "100%", width: "70%" }} />
-        </div>
-        <p style={{ color: "#AAA", fontSize: 13 }}>Objectif : 80 kg - 70% atteint</p>
+      <div style={{ backgroundColor: "#00FF88", color: "black", padding: 16, borderRadius: 16, marginTop: 16, textAlign: "center", fontWeight: "bold" }}>
+        🎯 {t.goal}: {period === "week" ? "5/7" : "18/25"} {t.workouts.toLowerCase()} 💪
       </div>
-
-      {stats.map((s, i) => (
-        <div key={i} style={{ marginTop: 12, backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}><b>{s.label}</b><b style={{ color: "#00FF88" }}>{s.value} / {s.max}</b></div>
-          <div style={{ backgroundColor: "#333", height: 10, borderRadius: 10, overflow: "hidden", marginTop: 8 }}>
-            <div style={{ backgroundColor: "#00FF88", height: "100%", width: `${Math.round((s.value / s.max) * 100)}%` }} />
-          </div>
-        </div>
-      ))}
     </div>
   );
-}
+                                                                               }
