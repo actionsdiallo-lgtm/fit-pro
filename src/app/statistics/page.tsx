@@ -1,61 +1,85 @@
 "use client";
-import Link from "next/link";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
-const TEXTS: any = {
-  fr: { back: "← Retour Dashboard", title: "Statistiques", subtitle: "Tes progrès en direct", week: "Cette semaine", month: "Ce mois", workouts: "Séances", calories: "Calories brûlées", weight: "Poids", time: "Temps d'entraînement", goal: "Objectif semaine", progress: "Progression" },
-  en: { back: "← Back to Dashboard", title: "Statistics", subtitle: "Your progress live", week: "This week", month: "This month", workouts: "Workouts", calories: "Calories burned", weight: "Weight", time: "Training time", goal: "Week goal", progress: "Progress" },
-};
-
-export default function StatisticsPage() {
-  const [lang, setLang] = useState("fr");
-  const [period, setPeriod] = useState("week");
-  const t = TEXTS[lang];
+export default function Statistics() {
+  const [history, setHistory] = useState<any[]>([]);
+  const [weight, setWeight] = useState(82);
+  const [goalWeight, setGoalWeight] = useState(75);
+  const [startWeight, setStartWeight] = useState(88);
+  const [view, setView] = useState<"week" | "month">("month");
+  const [calories, setCalories] = useState(0);
 
   useEffect(() => {
-    setLang(localStorage.getItem("fitpro-lang") || "fr");
+    const h = localStorage.getItem("fit-pro-workouts");
+    if (h) { try { setHistory(JSON.parse(h)); } catch {} }
+    const w = localStorage.getItem("fit-pro-weight"); if (w) setWeight(Number(w));
+    const gw = localStorage.getItem("fit-pro-goal-weight"); if (gw) setGoalWeight(Number(gw));
+    const sw = localStorage.getItem("fit-pro-start-weight"); if (sw) setStartWeight(Number(sw));
+    const c = localStorage.getItem("fit-pro-calories-today"); if (c) setCalories(Number(c));
   }, []);
 
-  const stats = period === "week"
-    ? [{ label: t.workouts, value: 5, max: 7, unit: "/7", color: "#00FF88" }, { label: t.calories, value: 1240, max: 2000, unit: " kcal", color: "#FFAA00" }, { label: t.weight, value: 78, max: 100, unit: " kg", color: "#00AAFF" }, { label: t.time, value: 4.1, max: 7, unit: "h", color: "#FF55AA" }]
-    : [{ label: t.workouts, value: 18, max: 25, unit: "/25", color: "#00FF88" }, { label: t.calories, value: 5200, max: 8000, unit: " kcal", color: "#FFAA00" }, { label: t.weight, value: 78, max: 100, unit: " kg", color: "#00AAFF" }, { label: t.time, value: 16.5, max: 28, unit: "h", color: "#FF55AA" }];
+  const workouts = history.length;
+  const totalSets = workouts * 16;
+  const trainingTime = (workouts * 0.75).toFixed(1);
+  const totalVolume = (workouts * 3.8).toFixed(1);
+  const caloriesBurned = workouts * 350 + calories;
+  const progress = Math.min(100, Math.round((Math.abs(startWeight - weight) / (Math.abs(startWeight - goalWeight) || 1)) * 100));
+
+  // Points pour la courbe - basés sur tes séances
+  const points = workouts === 0 ? "0,90 60,75 120,80 180,60 240,45 300,30" : `0,90 60,${90 - workouts * 8} 120,${85 - workouts * 6} 180,${70 - workouts * 5} 240,${60 - workouts * 4} 300,30`;
 
   return (
-    <div style={{ padding: 20, backgroundColor: "#0A0F0A", minHeight: "100vh", color: "white" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Link href="/dashboard" style={{ color: "#00FF88", textDecoration: "none" }}>{t.back}</Link>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={() => { setLang("fr"); localStorage.setItem("fitpro-lang", "fr"); }} style={{ padding: "6px 10px", borderRadius: 20, border: "none", backgroundColor: lang === "fr" ? "#00FF88" : "#333", color: lang === "fr" ? "black" : "white", fontWeight: "bold" }}>🇫🇷 FR</button>
-          <button onClick={() => { setLang("en"); localStorage.setItem("fitpro-lang", "en"); }} style={{ padding: "6px 10px", borderRadius: 20, border: "none", backgroundColor: lang === "en" ? "#00FF88" : "#333", color: lang === "en" ? "black" : "white", fontWeight: "bold" }}>🇬🇧 EN</button>
+    <div style={{ background: '#0f0f0f', minHeight: '100vh', color: 'white', padding: 16, fontFamily: 'sans-serif' }}>
+      <Link href="/dashboard" style={{ color: '#aaa', textDecoration: 'none', fontSize: 13 }}>← Retour Dashboard</Link>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+        <div><h1 style={{ fontSize: 24, margin: 0 }}>Your Progress</h1><div style={{ color: '#aaa', fontSize: 13 }}>Tes progrès en direct</div></div>
+        <Link href="/profil" style={{ background: '#222', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>👤</Link>
+      </div>
+
+      {/* 4 CARTES - comme ta photo */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
+        <div style={{ background: '#1c1c1c', borderRadius: 16, padding: 14 }}><div style={{ color: '#aaa', fontSize: 12 }}>🕐 Training Time</div><b style={{ fontSize: 22 }}>{trainingTime} hrs</b></div>
+        <div style={{ background: '#1c1c1c', borderRadius: 16, padding: 14 }}><div style={{ color: '#aaa', fontSize: 12 }}>🏋️ Total Volume</div><b style={{ fontSize: 22 }}>{totalVolume}K kg</b></div>
+        <div style={{ background: '#1c1c1c', borderRadius: 16, padding: 14 }}><div style={{ color: '#aaa', fontSize: 12 }}>📅 Workouts</div><b style={{ fontSize: 22 }}>{workouts}</b></div>
+        <div style={{ background: '#1c1c1c', borderRadius: 16, padding: 14 }}><div style={{ color: '#aaa', fontSize: 12 }}>📈 Total Sets</div><b style={{ fontSize: 22 }}>{totalSets}</b></div>
+      </div>
+
+      {/* SEMAINE / MOIS */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+        <button onClick={() => setView("week")} style={{ background: view === "week" ? "#c8f542" : "#222", color: view === "week" ? "black" : "white", border: 'none', padding: '8px 18px', borderRadius: 20, fontWeight: 'bold' }}>Cette semaine</button>
+        <button onClick={() => setView("month")} style={{ background: view === "month" ? "#c8f542" : "#222", color: view === "month" ? "black" : "white", border: 'none', padding: '8px 18px', borderRadius: 20, fontWeight: 'bold' }}>Ce mois</button>
+      </div>
+
+      {/* MONTHLY VOLUME - courbe verte comme ta photo */}
+      <div style={{ background: '#1c1c1c', borderRadius: 16, padding: 16, marginTop: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><b>{view === "week" ? "Weekly Volume" : "Monthly Volume"}</b><span style={{ color: '#aaa', fontSize: 12 }}>{view === "week" ? "Last 7 days" : "Last 4 weeks"}</span></div>
+        <svg viewBox="0 0 300 110" style={{ width: '100%', marginTop: 10 }}>
+          <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#c8f542" stopOpacity="0.4" /><stop offset="100%" stopColor="#c8f542" stopOpacity="0" /></linearGradient></defs>
+          <polygon points={`0,110 ${points} 300,110`} fill="url(#g)" />
+          <polyline points={points} fill="none" stroke="#c8f542" strokeWidth="3" strokeLinecap="round" />
+        </svg>
+        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#666', fontSize: 11 }}><span>Sem 1</span><span>Sem 2</span><span>Sem 3</span><span>Sem 4</span></div>
+      </div>
+
+      {/* GRAPHIQUE POIDS + CALORIES */}
+      <div style={{ background: '#1c1c1c', borderRadius: 16, padding: 16, marginTop: 12 }}>
+        <b>⚖️ Graphique de poids</b>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontSize: 13 }}><span style={{ color: '#aaa' }}>Départ<br /><b style={{ color: 'white', fontSize: 18 }}>{startWeight} kg</b></span><span>Actuel<br /><b style={{ color: '#c8f542', fontSize: 18 }}>{weight} kg</b></span><span style={{ textAlign: 'right', color: '#aaa' }}>Objectif<br /><b style={{ color: 'white', fontSize: 18 }}>{goalWeight} kg</b></span></div>
+        <div style={{ height: 10, background: '#333', borderRadius: 10, marginTop: 10 }}><div style={{ width: progress + '%', height: 10, background: '#c8f542', borderRadius: 10 }} /></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 12, color: '#aaa' }}><span>Progression : {progress}%</span><span>{Math.abs(startWeight - weight).toFixed(1)} kg perdus</span></div>
+        <div style={{ borderTop: '1px solid #333', marginTop: 12, paddingTop: 12, display: 'flex', justifyContent: 'space-between' }}><span>🔥 Calories brûlées</span><b style={{ color: '#c8f542' }}>{caloriesBurned} kcal</b></div>
+      </div>
+
+      {/* RECENT WORKOUTS - comme ta photo */}
+      <h3 style={{ marginTop: 20 }}>Recent Workouts</h3>
+      {history.length === 0 ? <p style={{ color: '#aaa', fontSize: 13 }}>Aucune séance encore. Va t'entraîner, tes stats vont monter ici.</p> : history.slice(0, 5).map((h, i) => (
+        <div key={i} style={{ background: '#1c1c1c', borderRadius: 14, padding: 14, marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div><div style={{ color: '#aaa', fontSize: 12 }}>{h.date}</div><b>{h.name}</b><div style={{ color: '#aaa', fontSize: 12 }}>{h.exercises} exercices • {h.duration}</div></div>
+          <span style={{ color: '#aaa' }}>›</span>
         </div>
-      </div>
-
-      <h1 style={{ fontSize: 30, margin: "16px 0 4px" }}>📊 {t.title}</h1>
-      <p style={{ color: "#AAA", margin: 0 }}>{t.subtitle}</p>
-
-      <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-        <button onClick={() => setPeriod("week")} style={{ padding: "10px 18px", borderRadius: 20, border: "none", backgroundColor: period === "week" ? "#00FF88" : "#1A1A1A", color: period === "week" ? "black" : "white", fontWeight: "bold" }}>{t.week}</button>
-        <button onClick={() => setPeriod("month")} style={{ padding: "10px 18px", borderRadius: 20, border: "none", backgroundColor: period === "month" ? "#00FF88" : "#1A1A1A", color: period === "month" ? "black" : "white", fontWeight: "bold" }}>{t.month}</button>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 18 }}>
-        {stats.map((s, i) => (
-          <div key={i} style={{ backgroundColor: "#1A1A1A", padding: 16, borderRadius: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>{s.label}</span>
-              <b style={{ color: s.color }}>{s.value}{s.unit}</b>
-            </div>
-            <div style={{ backgroundColor: "#333", height: 10, borderRadius: 10, marginTop: 10, overflow: "hidden" }}>
-              <div style={{ width: `${Math.min(100, (s.value / s.max) * 100)}%`, height: "100%", backgroundColor: s.color, borderRadius: 10 }} />
-            </div>
-            <p style={{ color: "#AAA", fontSize: 13, margin: "8px 0 0" }}>{Math.round((s.value / s.max) * 100)}% {t.progress}</p>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ backgroundColor: "#00FF88", color: "black", padding: 16, borderRadius: 16, marginTop: 16, textAlign: "center", fontWeight: "bold" }}>
-        🎯 {t.goal}: {period === "week" ? "5/7" : "18/25"} {t.workouts.toLowerCase()} 💪
-      </div>
+      ))}
+      <div style={{ height: 30 }} />
     </div>
   );
-                                                                               }
+      }
