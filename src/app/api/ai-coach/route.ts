@@ -1,22 +1,30 @@
-import { NextRequest, NextResponse } from "next/server";
-export async function POST(req: NextRequest) {
+import { NextResponse } from "next/server";
+export async function POST(req: Request) {
   try {
-    const { message } = await req.json();
-    if (!message) return NextResponse.json({ error: "Message vide" }, { status: 400 });
+    const { message, lang } = await req.json();
     const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) return NextResponse.json({ reply: "Salut champion ! Dis-moi ton objectif : perdre du poids, prendre du muscle ou rester en forme ?" });
+    if (!apiKey) return NextResponse.json({ reply: "ERREUR: GROQ_API_KEY manquante dans Vercel." });
+    const isEnglish = lang === "en";
+    const systemPrompt = isEnglish
+      ? "You are FIT PRO AI, a smart assistant like ChatGPT. You speak in clear American English (USA). You answer ALL questions: fitness, nutrition, health, business, school, culture, technology, daily life. You give concrete examples and action plans. You are motivating, direct, friendly."
+      : "Tu es FIT PRO AI, un assistant intelligent comme ChatGPT. Tu parles en francais simple, clair, motivant. Tu reponds a TOUTES les questions: sport, nutrition, sante, business, ecole, culture, technologie, vie quotidienne. Tu donnes des exemples concrets et des plans d'action.";
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [{ role: "system", content: "Tu es FIT PRO AI COACH, coach sportif. Tu parles francais simple et motivant." }, { role: "user", content: message }]
-      })
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message },
+        ],
+        temperature: 0.7,
+        max_tokens: 800,
+      }),
     });
     const data = await res.json();
-    const reply = data.choices?.[0]?.message?.content || "Reformule ton objectif.";
+    const reply = data.choices?.[0]?.message?.content || "ERREUR GROQ";
     return NextResponse.json({ reply });
-  } catch (e) {
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  } catch (e: any) {
+    return NextResponse.json({ reply: "ERREUR SERVEUR: " + e.message });
   }
 }
