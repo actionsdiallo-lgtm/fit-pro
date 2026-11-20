@@ -1,80 +1,76 @@
 "use client";
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import Link from "next/link";
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-
-export default function MonProfil() {
-  const [user, setUser] = useState<any>(null);
-  const [form, setForm] = useState({ full_name: "", phone: "", age: "", poids: "", taille: "", objectif: "Prise de masse" });
-  const [loading, setLoading] = useState(true);
-  const [msg, setMsg] = useState("");
+export default function Profil() {
+  const [name, setName] = useState("Champion");
+  const [goal, setGoal] = useState("Prise de masse");
+  const [level, setLevel] = useState("Intermédiaire");
+  const [editing, setEditing] = useState(false);
+  const [workoutsDone, setWorkoutsDone] = useState(0);
 
   useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoading(false); return; }
-      setUser(user);
-      const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-      if (data) setForm({
-        full_name: data.full_name || "",
-        phone: data.phone || "",
-        age: data.age?.toString() || "",
-        poids: data.poids?.toString() || "",
-        taille: data.taille?.toString() || "",
-        objectif: data.objectif || "Prise de masse",
-      });
-      setLoading(false);
+    const saved = localStorage.getItem("fitpro_profile");
+    if (saved) {
+      const p = JSON.parse(saved);
+      setName(p.name); setGoal(p.goal); setLevel(p.level);
     }
-    load();
+    const d = localStorage.getItem("done_workouts");
+    if (d) setWorkoutsDone(JSON.parse(d).length);
   }, []);
 
-  async function save() {
-    if (!user) return alert("Connecte-toi d'abord");
-    setMsg("Enregistrement...");
-    const { error } = await supabase.from("profiles").upsert({
-      id: user.id,
-      full_name: form.full_name,
-      phone: form.phone,
-      age: Number(form.age) || null,
-      poids: Number(form.poids) || null,
-      taille: Number(form.taille) || null,
-      objectif: form.objectif,
-    });
-    setMsg(error ? "Erreur: " + error.message : "✅ Enregistré ! C'est tes données.");
-  }
-
-  if (loading) return <div style={{ background: "black", color: "white", minHeight: "100vh", padding: 20 }}>Chargement de ton profil...</div>;
-  if (!user) return <div style={{ background: "black", color: "white", minHeight: "100vh", padding: 20 }}>Connecte-toi pour voir TON profil. <a href="/login" style={{ color: "#22c55e" }}>Se connecter</a></div>;
-
-  const inputStyle: any = { width: "100%", background: "#1a1a1a", border: "1px solid #333", color: "white", borderRadius: 10, padding: "12px", marginTop: 4, boxSizing: "border-box" as any };
+  const save = () => {
+    localStorage.setItem("fitpro_profile", JSON.stringify({ name, goal, level }));
+    setEditing(false);
+  };
 
   return (
-    <div style={{ background: "black", minHeight: "100vh", color: "white", padding: 20, paddingBottom: 110 }}>
-      <h1 style={{ textAlign: "center", fontSize: 26, fontWeight: 800 }}>Mon profil</h1>
-      <div style={{ textAlign: "center", marginTop: 10 }}>
-        <div style={{ width: 90, height: 90, borderRadius: 45, background: "#22c55e", margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>👤</div>
-        <div style={{ fontSize: 22, fontWeight: 800, marginTop: 10 }}>{form.full_name || "Champion"} ✅</div>
-        <div style={{ color: "#22c55e" }}>Sport Passionné</div>
-        <div style={{ display: "inline-block", background: "#332200", color: "#facc15", padding: "6px 14px", borderRadius: 20, marginTop: 8, fontWeight: 700 }}>👑 Premium</div>
-      </div>
+    <div className="min-h-screen bg-[#0A0A0A] text-white pb-24">
+      <div className="max-w-3xl mx-auto px-4 pt-8">
+        <Link href="/" className="text-gray-400 text-sm">← Retour</Link>
 
-      <div style={{ background: "#111", border: "1px solid #22c55e", borderRadius: 16, padding: 16, marginTop: 20 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700 }}>👤 Informations personnelles</h2>
-        <p style={{ fontSize: 13, color: "#888" }}>Nom et prénom</p><input style={inputStyle} value={form.full_name} onChange={e => setForm({ ...form, full_name: e.target.value })} placeholder="Ton nom" />
-        <p style={{ fontSize: 13, color: "#888", marginTop: 12 }}>E-mail</p><input style={{ ...inputStyle, opacity: 0.6 }} value={user.email} disabled />
-        <p style={{ fontSize: 13, color: "#888", marginTop: 12 }}>Téléphone</p><input style={inputStyle} value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder="+221 77 ..." />
-        <p style={{ fontSize: 13, color: "#888", marginTop: 12 }}>Âge</p><input style={inputStyle} value={form.age} onChange={e => setForm({ ...form, age: e.target.value })} placeholder="25" />
-        <p style={{ fontSize: 13, color: "#888", marginTop: 12 }}>Poids (kg)</p><input style={inputStyle} value={form.poids} onChange={e => setForm({ ...form, poids: e.target.value })} placeholder="75" />
-        <p style={{ fontSize: 13, color: "#888", marginTop: 12 }}>Taille (cm)</p><input style={inputStyle} value={form.taille} onChange={e => setForm({ ...form, taille: e.target.value })} placeholder="178" />
-        <p style={{ fontSize: 13, color: "#888", marginTop: 12 }}>Objectif sportif</p>
-        <select style={inputStyle} value={form.objectif} onChange={e => setForm({ ...form, objectif: e.target.value })}>
-          <option>Prise de masse</option><option>Perte de poids</option><option>Endurance</option><option>Maintien</option>
-        </select>
-      </div>
+        <div className="bg-gradient-to-br from-lime-400 to-emerald-500 text-black rounded-3xl p-6 mt-4 text-center">
+          <div className="w-20 h-20 bg-black text-lime-400 rounded-full mx-auto flex items-center justify-center text-3xl font-black">
+            {name.charAt(0).toUpperCase()}
+          </div>
+          <h1 className="text-2xl font-black mt-3">{name}</h1>
+          <p className="text-sm font-medium opacity-80">{goal} • {level}</p>
+          <div className="flex justify-center gap-6 mt-4">
+            <div><p className="font-black text-xl">{workoutsDone}</p><p className="text-xs">Séances</p></div>
+            <div><p className="font-black text-xl">{workoutsDone * 320}</p><p className="text-xs">Kcal</p></div>
+            <div><p className="font-black text-xl">Niv. {1 + workoutsDone}</p><p className="text-xs">Niveau</p></div>
+          </div>
+        </div>
 
-      <button onClick={save} style={{ width: "100%", background: "#22c55e", color: "black", fontWeight: 800, fontSize: 17, padding: 16, borderRadius: 14, border: "none", marginTop: 20 }}>💾 Enregistrer les modifications</button>
-      {msg && <p style={{ textAlign: "center", marginTop: 10, color: "#22c55e" }}>{msg}</p>}
+        <div className="bg-[#1A1A1A] rounded-3xl p-5 border border-white/10 mt-4">
+          <div className="flex justify-between items-center">
+            <h2 className="font-black text-lg">⚙️ Mon Profil</h2>
+            {!editing && <button onClick={() => setEditing(true)} className="bg-white/10 px-4 py-2 rounded-full text-sm font-bold">Modifier</button>}
+          </div>
+
+          {editing ? (
+            <div className="space-y-3 mt-4">
+              <div><label className="text-xs text-gray-400">Ton prénom</label><input value={name} onChange={(e) => setName(e.target.value)} className="w-full bg-white/10 rounded-full px-4 py-3 mt-1 outline-none" /></div>
+              <div><label className="text-xs text-gray-400">Ton objectif</label><select value={goal} onChange={(e) => setGoal(e.target.value)} className="w-full bg-[#2A2A2A] rounded-full px-4 py-3 mt-1 outline-none"><option>Prise de masse</option><option>Perte de poids</option><option>Maintien / Santé</option></select></div>
+              <div><label className="text-xs text-gray-400">Ton niveau</label><select value={level} onChange={(e) => setLevel(e.target.value)} className="w-full bg-[#2A2A2A] rounded-full px-4 py-3 mt-1 outline-none"><option>Débutant</option><option>Intermédiaire</option><option>Avancé</option></select></div>
+              <button onClick={save} className="w-full bg-lime-400 text-black py-3 rounded-full font-black text-sm">✅ ENREGISTRER</button>
+            </div>
+          ) : (
+            <div className="space-y-2 mt-4 text-sm">
+              <div className="flex justify-between bg-white/5 px-4 py-3 rounded-2xl"><span className="text-gray-400">Prénom</span><b>{name}</b></div>
+              <div className="flex justify-between bg-white/5 px-4 py-3 rounded-2xl"><span className="text-gray-400">Objectif</span><b>{goal}</b></div>
+              <div className="flex justify-between bg-white/5 px-4 py-3 rounded-2xl"><span className="text-gray-400">Niveau</span><b>{level}</b></div>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <Link href="/entrainement" className="bg-[#1A1A1A] border border-white/10 rounded-3xl p-5 text-center"><p className="text-2xl">💪</p><p className="font-bold text-sm mt-1">Entraînement</p></Link>
+          <Link href="/nutrition" className="bg-[#1A1A1A] border border-white/10 rounded-3xl p-5 text-center"><p className="text-2xl">🥗</p><p className="font-bold text-sm mt-1">Nutrition</p></Link>
+        </div>
+
+        <p className="text-center text-gray-500 text-xs mt-6">FitPro v1.0 • Fait pour progresser 💪</p>
+      </div>
     </div>
   );
-                                          }
+                                                                                }
