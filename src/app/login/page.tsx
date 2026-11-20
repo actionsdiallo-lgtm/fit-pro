@@ -46,7 +46,7 @@ export default function Login() {
           <button onClick={() => { playClick(); setShow(!show); }} style={{ background: "#1E2A24", color: "#fff", border: "none", borderRadius: 12, padding: "0 14px", fontWeight: 800 }}>{show ? "Cacher" : "Voir"}</button>
         </div>
         <button onClick={handleLogin} style={{ background: "#00FF88", color: "#000", border: "none", borderRadius: 12, padding: "16px", fontWeight: 900, fontSize: 16, marginTop: 8 }}>SE CONNECTER</button>
-        <Link href="/forgot" style={{ textAlign: "center", color: "#00FF88", fontSize: 13, textDecoration: "none" }}>Mot de passe oublié ?</Link>
+  <Link href="/mot-de-passe-oublie" style={{ textAlign: "right", display: "block", marginTop: "10px", color: "#00E5FF", fontSize: 13 }}>Mot de passe oublié ?</Link>
       </div>
       <p style={{ textAlign: "center", color: "#8A9A8F", fontSize: 13, marginTop: 18 }}>
         Pas de compte ? <Link href="/register" style={{ color: "#00FF88", fontWeight: 800, textDecoration: "none" }}>Créer un compte</Link>
