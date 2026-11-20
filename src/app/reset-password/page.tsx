@@ -1,45 +1,27 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const router = useRouter();
-
-  async function handleUpdate(e: React.FormEvent) {
-    e.preventDefault();
+  const [msg, setMsg] = useState("");
+  useEffect(() => {
+    supabase.auth.getSession();
+  }, []);
+  async function change() {
+    if (password.length < 6) return setMsg("Le mot de passe doit faire 6 caractères minimum");
+    setMsg("Changement en cours...");
     const { error } = await supabase.auth.updateUser({ password });
-    if (error) setMessage("Erreur : " + error.message);
-    else {
-      setMessage("✅ Mot de passe changé !");
-      setTimeout(() => router.push("/login"), 1500);
-    }
+    if (error) setMsg("Erreur: " + error.message);
+    else { setMsg("✅ Mot de passe changé !"); setTimeout(() => { window.location.href = "/login"; }, 1500); }
   }
-
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
-      <form onSubmit={handleUpdate} className="w-full max-w-md bg-white/5 border border-white/10 rounded-2xl p-6">
-        <h1 className="text-2xl font-bold mb-6">Nouveau mot de passe</h1>
-        <input
-          type="password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Nouveau mot de passe"
-          className="w-full bg-black border border-white/20 rounded-xl px-4 py-3 mb-4 outline-none"
-        />
-        <button className="w-full bg-yellow-400 text-black font-bold py-3 rounded-xl">
-          Changer le mot de passe
-        </button>
-        {message && <p className="mt-4 text-sm text-center">{message}</p>}
-      </form>
+    <div style={{ background: "black", minHeight: "100vh", color: "white", padding: 20, paddingTop: 60 }}>
+      <h1 style={{ fontSize: 28, fontWeight: 800, textAlign: "center" }}>Nouveau mot de passe</h1>
+      <p style={{ color: "#aaa", textAlign: "center", marginTop: 10 }}>Choisis ton nouveau mot de passe.</p>
+      <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Nouveau mot de passe" style={{ width: "100%", background: "#222", border: "1px solid #333", color: "white", borderRadius: 12, padding: 14, marginTop: 25, boxSizing: "border-box" }} />
+      <button onClick={change} style={{ width: "100%", background: "#22c55e", color: "black", fontWeight: 800, padding: 15, borderRadius: 12, border: "none", marginTop: 15, fontSize: 16 }}>CHANGER MON MOT DE PASSE</button>
+      {msg && <p style={{ textAlign: "center", marginTop: 15, color: "#22c55e" }}>{msg}</p>}
     </div>
   );
-          }
+}
