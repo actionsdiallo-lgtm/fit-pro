@@ -20,18 +20,18 @@ export default function AiCoachPage() {
     setLoading(false);
   }
   return (
-    <div style={{ maxWidth: 600, margin: "0 auto", padding: 20 }}>
-      <h1>FIT PRO AI COACH</h1>
+    <div style={{ maxWidth: 600, margin: "0 auto", padding: 20, color: "#111" }}>
+      <h1 style={{ color: "white" }}>FIT PRO AI COACH</h1>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
         {messages.map((m, i) => (
-          <div key={i} style={{ background: m.role === "user" ? "#dcfce7" : "#f1f5f9", padding: 12, borderRadius: 12 }}>{m.content}</div>
+          <div key={i} style={{ background: m.role === "user" ? "#bbf7d0" : "white", color: "#111", padding: 12, borderRadius: 12 }}>{m.content}</div>
         ))}
-        {loading && <div>Le coach ecrit...</div>}
+        {loading && <div style={{ color: "white" }}>Le coach ecrit...</div>}
       </div>
       <div style={{ display: "flex", gap: 10 }}>
-        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Ton objectif..." style={{ flex: 1, padding: 12, borderRadius: 12, border: "1px solid #ccc" }} />
+        <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Ton objectif..." style={{ flex: 1, padding: 12, borderRadius: 12, border: "1px solid #ccc", background: "white", color: "#111" }} />
         <button onClick={send} style={{ padding: "12px 20px", borderRadius: 12, background: "#16a34a", color: "white", border: "none" }}>Envoyer</button>
       </div>
     </div>
   );
-}
+                   }
