@@ -41,7 +41,7 @@ export default function Dashboard() {
         <div><div style={{ fontSize: 12, color: '#aaa' }}>Salut 👋</div><div style={{ fontSize: 22, fontWeight: 'bold' }}>RO-VERT</div></div>
         <Link href="/profil" style={{ background: '#222', width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>👤</Link>
       </div>
-
+<Link href="/ai-coach" style={{ display: 'block', background: '#000', color: '#fff', padding: 16, borderRadius: 16, textAlign: 'center', fontWeight: 'bold', marginTop: 12, textDecoration: 'none' }}>🤖 PARLER À MON AI COACH</Link>
       {/* CARTE VIOLETTE - comme photo 1 */}
       <div style={{ background: 'linear-gradient(135deg,#7b2ff7,#b44dff)', borderRadius: 20, padding: 20, marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
