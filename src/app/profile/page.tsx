@@ -32,11 +32,11 @@ export default function Settings() {
     setTimeout(() => setSaved(""), 3000);
   };
 
-  const Row = ({ icon, title, desc, onClick }: any) => (
-    <button onClick={onClick} className="w-full flex items-center gap-3 bg-white/10 rounded-2xl p-4 text-left">
-      <span className="text-2xl">{icon}</span>
-      <span className="flex-1"><span className="block font-bold">{title}</span><span className="block text-sm text-white/60">{desc}</span></span>
-      <span>›</span>
+    const Row = ({ icon, title, desc, onClick }: any) => (
+    <button onClick={onClick} className="w-full flex items-center gap-3 bg-[#222222] border border-white/10 rounded-2xl p-4 text-left">
+      <span className="w-10 h-10 bg-[#00ff88] rounded-full flex items-center justify-center text-black font-bold shrink-0">{icon}</span>
+      <span className="flex-1 min-w-0"><span className="block font-bold text-white leading-tight">{title}</span><span className="block text-sm text-white/60 leading-tight mt-1">{desc}</span></span>
+      <span className="text-white/60 shrink-0">›</span>
     </button>
   );
   const Back = () => (<button onClick={() => { save("Preferences sauvegardees"); setScreen("menu"); }} className="mb-4 text-[#00ff88] font-bold">Retour Parametres</button>);
