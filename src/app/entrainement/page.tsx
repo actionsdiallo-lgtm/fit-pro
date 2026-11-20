@@ -1,98 +1,110 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-const EXERCISES = [
-  { name: "Bench Press", img: "🏋️", muscle: "Pectoraux", sets: 4, reps: 10, weight: 29 },
-  { name: "Squat", img: "🦵", muscle: "Jambes", sets: 4, reps: 12, weight: 40 },
-  { name: "Deadlift", img: "💪", muscle: "Dos", sets: 4, reps: 8, weight: 50 },
-  { name: "Pompes", img: "🔥", muscle: "Pectoraux", sets: 3, reps: 15, weight: 0 },
+const exercices = [
+  {
+    name: "Pompes",
+    muscle: "Pectoraux",
+    sets: 4,
+    reps: 12,
+    level: "Débutant",
+    // Vidéo commerciale Pexels - tu changes le lien par ta vidéo Pexels
+    video: "https://videos.pexels.com/video-files/4763824/4763824-hd_1920_1080_25fps.mp4",
+    poster: "https://images.pexels.com/photos/416778/pexels-photo-416778.jpeg",
+    desc: "Mains à plat, dos droit, descends lentement, pousse fort.",
+  },
+  {
+    name: "Squat",
+    muscle: "Jambes",
+    sets: 4,
+    reps: 12,
+    level: "Débutant",
+    video: "https://videos.pexels.com/video-files/4763800/4763800-hd_1920_1080_25fps.mp4",
+    poster: "https://images.pexels.com/photos/1552242/pexels-photo-1552242.jpeg",
+    desc: "Dos droit, genoux alignés, descends à 90°, remonte.",
+  },
+  {
+    name: "Bench Press",
+    muscle: "Pectoraux",
+    sets: 4,
+    reps: 10,
+    level: "Intermédiaire",
+    video: "https://videos.pexels.com/video-files/6458065/6458065-hd_1920_1080_25fps.mp4",
+    poster: "https://images.pexels.com/photos/1229356/pexels-photo-1229356.jpeg",
+    desc: "Barre au milieu de la poitrine, contrôle la descente.",
+  },
+  {
+    name: "Tractions",
+    muscle: "Dos",
+    sets: 3,
+    reps: 8,
+    level: "Avancé",
+    video: "https://videos.pexels.com/video-files/6458053/6458053-hd_1920_1080_25fps.mp4",
+    poster: "https://images.pexels.com/photos/416778/pexels-photo-416778.jpeg",
+    desc: "Tire avec le dos, menton au-dessus de la barre.",
+  },
 ];
 
-export default function Page() {
-  const [idx, setIdx] = useState(0);
-  const [doneSets, setDoneSets] = useState<number[]>([]);
-  const [rest, setRest] = useState(75);
-  const [running, setRunning] = useState(false);
-  const [history, setHistory] = useState<any[]>([]);
-  const ex = EXERCISES[idx];
-
-  useEffect(() => {
-    const h = localStorage.getItem("fit-pro-workouts");
-    if (h) { try { setHistory(JSON.parse(h)); } catch {} }
-  }, []);
-
-  useEffect(() => {
-    if (!running) return;
-    if (rest <= 0) { setRunning(false); setRest(75); return; }
-    const t = setTimeout(() => setRest(r => r - 1), 1000);
-    return () => clearTimeout(t);
-  }, [running, rest]);
-
-  const fmt = (s: number) => `0${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-
-  const nextEx = () => {
-    if (idx < EXERCISES.length - 1) { setIdx(idx + 1); setDoneSets([]); setRest(75); }
-    else finishWorkout();
-  };
-
-  const finishWorkout = () => {
-    const newEntry = { date: new Date().toLocaleDateString("fr-FR"), name: "Séance Full Body", exercises: EXERCISES.length, duration: "45 min" };
-    const updated = [newEntry, ...history];
-    localStorage.setItem("fit-pro-workouts", JSON.stringify(updated));
-    setHistory(updated);
-    alert("🎉 Séance terminée ! Elle est enregistrée dans ton historique et ton tableau de bord.");
-    setIdx(0); setDoneSets([]);
-  };
+export default function Entrainement() {
+  const [selected, setSelected] = useState(exercices[0]);
 
   return (
-    <div style={{ background: '#0f0f0f', minHeight: '100vh', color: 'white', padding: 16, fontFamily: 'sans-serif' }}>
-      <h1 style={{ textAlign: 'center', fontSize: 22 }}>💪 Entraînement du jour</h1>
-      <p style={{ textAlign: 'center', color: '#aaa', fontSize: 13 }}>Exercice {idx + 1} / {EXERCISES.length}</p>
+    <div style={{ padding: 16, background: "#000", color: "#fff", minHeight: "100vh" }}>
+      <h1 style={{ fontSize: 26, fontWeight: "bold" }}>Entraînement PRO</h1>
+      <p style={{ opacity: 0.7, fontSize: 13 }}>Vidéos HD - Qualité Commerciale</p>
 
-      {/* EXERCICE - avec image */}
-      <div style={{ background: '#1c1c1c', borderRadius: 20, padding: 16, marginTop: 12, textAlign: 'center' }}>
-        <div style={{ fontSize: 60 }}>{ex.img}</div>
-        <b style={{ fontSize: 20 }}>{ex.name}</b>
-        <div style={{ color: '#aaa', fontSize: 13 }}>{ex.muscle} • {ex.sets} séries x {ex.reps} reps</div>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 12 }}>
-          <button onClick={() => setIdx(Math.max(0, idx - 1))} style={{ background: '#333', color: 'white', border: 'none', padding: '8px 14px', borderRadius: 20 }}>← Précédent</button>
-          <button onClick={nextEx} style={{ background: '#333', color: 'white', border: 'none', padding: '8px 14px', borderRadius: 20 }}>Suivant →</button>
-        </div>
-      </div>
-
-      {/* SETS - comme ta photo */}
-      <div style={{ background: '#1c1c1c', borderRadius: 20, padding: 16, marginTop: 12 }}>
-        <b>Sets</b>
-        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#aaa', fontSize: 13, marginTop: 12, padding: '0 10px' }}><span></span><span>Reps</span><span>Weight (kg)</span></div>
-        {[1, 2, 3, 4].map(n => (
-          <div key={n} onClick={() => setDoneSets(prev => prev.includes(n) ? prev.filter(x => x !== n) : [...prev, n])} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', cursor: 'pointer' }}>
-            <span style={{ width: 32, height: 32, borderRadius: '50%', background: doneSets.includes(n) ? '#c8f542' : '#333', color: doneSets.includes(n) ? 'black' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{doneSets.includes(n) ? '✓' : n}</span>
-            <span style={{ fontSize: 18 }}>{ex.reps}</span>
-            <span style={{ fontSize: 18 }}>{ex.weight}</span>
+      {/* LECTEUR VIDÉO PRO */}
+      <div style={{ marginTop: 16, borderRadius: 18, overflow: "hidden", background: "#111", border: "1px solid #222" }}>
+        <video
+          key={selected.video}
+          src={selected.video}
+          poster={selected.poster}
+          controls
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{ width: "100%", height: 230, objectFit: "cover", display: "block" }}
+        />
+        <div style={{ padding: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <h2 style={{ fontSize: 20, fontWeight: "bold" }}>{selected.name}</h2>
+            <span style={{ background: "#a855f7", padding: "4px 10px", borderRadius: 20, fontSize: 12 }}>{selected.level}</span>
           </div>
-        ))}
-        <div style={{ fontSize: 12, color: '#aaa', textAlign: 'center', marginTop: 6 }}>Appuie sur un rond pour cocher la série terminée</div>
-
-        {/* REST + CHRONO */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, borderTop: '1px solid #333', paddingTop: 12 }}>
-          <span style={{ color: '#aaa' }}>Rest</span>
-          <b style={{ fontSize: 22 }}>{fmt(rest)}</b>
-          <button onClick={() => { if (rest === 0) setRest(75); setRunning(!running); }} style={{ background: 'transparent', color: '#c8f542', border: '1px solid #c8f542', width: 48, height: 48, borderRadius: '50%', fontWeight: 'bold' }}>{running ? 'Stop' : 'Start'}</button>
+          <p style={{ opacity: 0.8, marginTop: 6, fontSize: 14 }}>{selected.desc}</p>
+          <p style={{ marginTop: 10, fontWeight: "bold" }}>💪 {selected.sets} séries x {selected.reps} reps • {selected.muscle}</p>
+          <button style={{ marginTop: 12, width: "100%", padding: 14, borderRadius: 12, background: "#a855f7", color: "#fff", border: "none", fontWeight: "bold" }}>
+            ▶ Commencer l'exercice
+          </button>
         </div>
-
-        <button onClick={nextEx} style={{ background: '#2f7bff', color: 'white', border: 'none', width: '100%', padding: 14, borderRadius: 30, fontWeight: 'bold', fontSize: 16, marginTop: 14 }}>Next Exercise</button>
-        <button onClick={finishWorkout} style={{ background: '#c8f542', color: 'black', border: 'none', width: '100%', padding: 14, borderRadius: 30, fontWeight: 'bold', fontSize: 16, marginTop: 10 }}>✅ Terminer la séance</button>
       </div>
 
-      {/* HISTORIQUE */}
-      <h3 style={{ marginTop: 20 }}>� history - Historique des séances</h3>
-      {history.length === 0 ? <p style={{ color: '#aaa', fontSize: 13 }}>Aucune séance encore. Termine ta première séance, elle apparaîtra ici.</p> : history.map((h, i) => (
-        <div key={i} style={{ background: '#1c1c1c', borderRadius: 14, padding: 12, marginTop: 8, display: 'flex', justifyContent: 'space-between' }}>
-          <div><b>{h.name}</b><div style={{ fontSize: 12, color: '#aaa' }}>{h.date} • {h.exercises} exercices</div></div>
-          <span style={{ color: '#c8f542', fontWeight: 'bold' }}>✓</span>
-        </div>
-      ))}
-      <div style={{ height: 30 }} />
+      {/* LISTE VIDÉOS */}
+      <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+        {exercices.map((ex) => (
+          <button
+            key={ex.name}
+            onClick={() => setSelected(ex)}
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              padding: 10,
+              borderRadius: 14,
+              background: selected.name === ex.name ? "#2a0a3a" : "#111",
+              border: selected.name === ex.name ? "1px solid #a855f7" : "1px solid #222",
+              color: "#fff",
+              textAlign: "left",
+            }}
+          >
+            <video src={ex.video} poster={ex.poster} muted playsInline style={{ width: 90, height: 60, borderRadius: 10, objectFit: "cover" }} />
+            <div>
+              <div style={{ fontWeight: "bold" }}>▶️ {ex.name}</div>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>{ex.muscle} • {ex.sets} x {ex.reps} • {ex.level}</div>
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
-        }
+          }
