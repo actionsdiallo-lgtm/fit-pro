@@ -114,16 +114,16 @@ export default function Settings() {
     <Row icon="H" title="Historique sportif" desc="Effacer historique" onClick={() => { if (confirm("Effacer historique ?")) { localStorage.removeItem("fitpro_history"); alert("Historique efface"); } }} />
     <Row icon="S" title="Supprimer mes donnees" desc="Effacer locales" onClick={() => { if (confirm("Supprimer donnees locales ?")) { localStorage.removeItem("fitpro_settings"); alert("Donnees supprimees"); } }} />
   </div></Box>);
-
   if (screen === "aide") return (<Box title="10. Centre Aide"><div className="space-y-3">
-    <Row icon="F" title="Questions frequentes" desc="Reponses rapides" onClick={() => alert("FAQ: Programme dans Entrainement. Premium dans Abonnement. Langue dans Parametres")} />
-    <Row icon="S" title="Contacter le support" desc="support@fitpro.com" onClick={() => { const m = prompt("Ton message:"); if (m) { setDemandes([...demandes, m]); alert("Message envoye"); } }} />
-    <Row icon="M" title="Envoyer un message" desc="Ecrire au support" onClick={() => { const m = prompt("Ton message:"); if (m) alert("Message envoye"); } }} />
-    <Row icon="B" title="Signaler un probleme" desc="Bug" onClick={() => { const m = prompt("Decris le bug:"); if (m) alert("Bug signale"); } }} />
-    <Row icon="P" title="Probleme de paiement" desc="Paiement Premium" onClick={() => { const m = prompt("Probleme paiement:"); if (m) alert("Demande envoyee"); } }} />
-    <Row icon="T" title="Probleme technique" desc="App, videos" onClick={() => { const m = prompt("Probleme technique:"); if (m) alert("Probleme signale"); } }} />
-    <Row icon="D" title="Demandes precedentes" desc={demandes.length + " demande(s)"} onClick={() => alert(demandes.length === 0 ? "Aucune demande" : demandes.join("\n"))} />
+    <Row icon="F" title="FAQ" desc="Questions" onClick={() => alert("FAQ")} />
+    <Row icon="S" title="Support" desc="support@fitpro.com" onClick={() => alert("Support")} />
+    <Row icon="M" title="Message" desc="Ecrire" onClick={() => alert("Message envoye")} />
+    <Row icon="B" title="Signaler bug" desc="Bug" onClick={() => alert("Bug signale")} />
+    <Row icon="P" title="Paiement" desc="Premium" onClick={() => alert("Paiement")} />
+    <Row icon="T" title="Technique" desc="App" onClick={() => alert("Technique")} />
+    <Row icon="D" title="Demandes" desc="Voir" onClick={() => alert("Aucune demande")} />
   </div></Box>);
+  
 
   if (screen === "compte") return (<Box title="11. Gestion du Compte"><div className="space-y-3">
     <button onClick={async () => { if (confirm("Se deconnecter ?")) { await supabase.auth.signOut(); alert("Deconnecte"); } }} className="w-full bg-white/10 p-4 rounded-2xl font-bold text-left">Se deconnecter</button>
