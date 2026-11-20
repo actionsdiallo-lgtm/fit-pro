@@ -27,6 +27,8 @@ model User {
   emailVerified  DateTime?
   image          String?
   passwordHash   String?
+  resetPasswordToken   String?   @unique
+  resetPasswordExpires DateTime?
   role           UserRole      @default(USER)
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
