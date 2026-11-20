@@ -12,9 +12,19 @@ export default function AICoach() {
     if (!voiceOn) return;
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang === "en" ? "en-US" : "fr-FR";
-    window.speechSynthesis.speak(u);
+    const doSpeak = () => {
+      const u = new SpeechSynthesisUtterance(text);
+      const voices = window.speechSynthesis.getVoices();
+      const target = lang === "en" ? "en-US" : "fr-FR";
+      const v = voices.find((x) => x.lang === target) || voices.find((x) => x.lang.startsWith(lang));
+      if (v) u.voice = v;
+      u.lang = target; u.rate = 1; u.pitch = 1;
+      window.speechSynthesis.speak(u);
+    };
+    if (window.speechSynthesis.getVoices().length === 0) {
+      window.speechSynthesis.onvoiceschanged = doSpeak;
+      setTimeout(doSpeak, 300);
+    } else doSpeak();
   };
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -37,8 +47,7 @@ export default function AICoach() {
         <button onClick={() => setLang("fr")} style={{ flex: 1, padding: 10, borderRadius: 20, border: "none", background: lang === "fr" ? "#000" : "#eee", color: lang === "fr" ? "#fff" : "#000", fontWeight: 700 }}>🇫🇷 Français</button>
         <button onClick={() => setLang("en")} style={{ flex: 1, padding: 10, borderRadius: 20, border: "none", background: lang === "en" ? "#000" : "#eee", color: lang === "en" ? "#fff" : "#000", fontWeight: 700 }}>🇺🇸 English USA</button>
       </div>
-      <button onClick={() => setVoiceOn(!voiceOn)} style={{ width: "100%", marginTop: 8, padding: 10, borderRadius: 20, border: "1px solid #ddd", background: voiceOn ? "#000" : "#fff", color: voiceOn ? "#fff" : "#000", fontWeight: 700 }}>{voiceOn ? "🔊 Voix : ON - Appuie pour couper" : "🔇 Voix : OFF - Appuie pour activer"}</button>
-      <p style={{ color: "#666", fontSize: 13, marginTop: 8 }}>{lang === "en" ? "I answer everything, in American English" : "Je réponds à tout, en français"}</p>
+      <button onClick={() => setVoiceOn(!voiceOn)} style={{ width: "100%", marginTop: 8, padding: 10, borderRadius: 20, border: "1px solid #ddd", background: voiceOn ? "#000" : "#fff", color: voiceOn ? "#fff" : "#000", fontWeight: 700 }}>{voiceOn ? "🔊 Voix : ON" : "🔇 Voix : OFF"}</button>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16 }}>
         {messages.map((m, i) => (
           <div key={i} onClick={() => m.role === "ai" && speak(m.text)} style={{ alignSelf: m.role === "user" ? "flex-end" : "flex-start", background: m.role === "user" ? "#000" : "#f1f1f1", color: m.role === "user" ? "#fff" : "#000", padding: 12, borderRadius: 14, maxWidth: "85%", fontSize: 15, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{m.text}{m.role === "ai" ? " 🔊" : ""}</div>
