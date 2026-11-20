@@ -1,74 +1,80 @@
 "use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
 
-const TEXTS: any = {
-  fr: { back: "← Retour Dashboard", title: "Programmes", subtitle: "Choisis ton programme", all: "Tout", muscle: "Masse", fatloss: "Perte", strength: "Force", beginner: "Débutant", active: "Actif ✅", activate: "Activer ce programme", weeks: "semaines" },
-  en: { back: "← Back to Dashboard", title: "Programs", subtitle: "Choose your program", all: "All", muscle: "Muscle", fatloss: "Fat Loss", strength: "Strength", beginner: "Beginner", active: "Active ✅", activate: "Activate this program", weeks: "weeks" },
-};
-
-const PROGRAMS = [
-  { cat: "muscle", titleFr: "Prise de Masse", titleEn: "Muscle Gain", descFr: "8 semaines • 5 séances / semaine", descEn: "8 weeks • 5 sessions / week", img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80" },
-  { cat: "fatloss", titleFr: "Perte de Poids", titleEn: "Weight Loss", descFr: "6 semaines • 4 séances / semaine", descEn: "6 weeks • 4 sessions / week", img: "https://images.unsplash.com/photo-1549060279-7e168fcee0c2?w=800&q=80" },
-  { cat: "strength", titleFr: "Force & Performance", titleEn: "Strength & Performance", descFr: "10 semaines • 4 séances / semaine", descEn: "10 weeks • 4 sessions / week", img: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80" },
-  { cat: "beginner", titleFr: "Débutant Total", titleEn: "Total Beginner", descFr: "4 semaines • 3 séances / semaine", descEn: "4 weeks • 3 sessions / week", img: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80" },
-];
-
-export default function ProgramsPage() {
-  const [lang, setLang] = useState("fr");
-  const [filter, setFilter] = useState("all");
-  const [active, setActive] = useState<number | null>(null);
-  const t = TEXTS[lang];
+export default function Progres() {
+  const [weight, setWeight] = useState("");
+  const [history, setHistory] = useState<{ date: string; weight: number }[]>([]);
+  const [workoutsDone, setWorkoutsDone] = useState(0);
+  const [streak, setStreak] = useState(7);
 
   useEffect(() => {
-    setLang(localStorage.getItem("fitpro-lang") || "fr");
-    const saved = localStorage.getItem("fitpro-program");
-    if (saved) setActive(Number(saved));
+    const h = localStorage.getItem("weight_history");
+    if (h) setHistory(JSON.parse(h));
+    const d = localStorage.getItem("done_workouts");
+    if (d) setWorkoutsDone(JSON.parse(d).length);
   }, []);
 
-  const activate = (i: number) => {
-    setActive(i);
-    localStorage.setItem("fitpro-program", String(i));
+  const addWeight = () => {
+    if (!weight) return;
+    const newEntry = { date: new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "short" }), weight: parseFloat(weight) };
+    const newHistory = [...history, newEntry].slice(-7);
+    setHistory(newHistory);
+    localStorage.setItem("weight_history", JSON.stringify(newHistory));
+    setWeight("");
   };
 
-  const filtered = filter === "all" ? PROGRAMS : PROGRAMS.filter(p => p.cat === filter);
-  const filters = ["all", "muscle", "fatloss", "strength", "beginner"];
+  const totalKcal = workoutsDone * 320;
 
   return (
-    <div style={{ padding: 20, backgroundColor: "#0A0F0A", minHeight: "100vh", color: "white" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <Link href="/dashboard" style={{ color: "#00FF88", textDecoration: "none" }}>{t.back}</Link>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={() => { setLang("fr"); localStorage.setItem("fitpro-lang", "fr"); }} style={{ padding: "6px 10px", borderRadius: 20, border: "none", backgroundColor: lang === "fr" ? "#00FF88" : "#333", color: lang === "fr" ? "black" : "white", fontWeight: "bold" }}>🇫🇷 FR</button>
-          <button onClick={() => { setLang("en"); localStorage.setItem("fitpro-lang", "en"); }} style={{ padding: "6px 10px", borderRadius: 20, border: "none", backgroundColor: lang === "en" ? "#00FF88" : "#333", color: lang === "en" ? "black" : "white", fontWeight: "bold" }}>🇬🇧 EN</button>
+    <div className="min-h-screen bg-[#0A0A0A] text-white pb-24">
+      <div className="max-w-6xl mx-auto px-4 pt-8">
+        <Link href="/" className="text-gray-400 text-sm">← Retour</Link>
+        <h1 className="text-3xl md:text-5xl font-black mt-4">MES PROGRÈS</h1>
+        <p className="text-gray-400 mt-2">Tes efforts, en chiffres. Ne lâche rien.</p>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+          <div className="bg-[#1A1A1A] rounded-3xl p-5 border border-white/10 text-center">
+            <p className="text-3xl">🔥</p><p className="text-2xl font-black mt-1">{streak} jours</p><p className="text-gray-400 text-xs">Série actuelle</p>
+          </div>
+          <div className="bg-[#1A1A1A] rounded-3xl p-5 border border-white/10 text-center">
+            <p className="text-3xl">💪</p><p className="text-2xl font-black mt-1">{workoutsDone}</p><p className="text-gray-400 text-xs">Séances faites</p>
+          </div>
+          <div className="bg-[#1A1A1A] rounded-3xl p-5 border border-white/10 text-center">
+            <p className="text-3xl">⚡</p><p className="text-2xl font-black mt-1">{totalKcal}</p><p className="text-gray-400 text-xs">Kcal brûlées</p>
+          </div>
+          <div className="bg-[#1A1A1A] rounded-3xl p-5 border border-white/10 text-center">
+            <p className="text-3xl">🏆</p><p className="text-2xl font-black mt-1">Niv. {Math.min(10, 1 + workoutsDone)}</p><p className="text-gray-400 text-xs">Ton niveau</p>
+          </div>
         </div>
-      </div>
 
-      <h1 style={{ fontSize: 30, margin: "16px 0 4px" }}>📋 {t.title}</h1>
-      <p style={{ color: "#AAA", margin: 0 }}>{t.subtitle}</p>
-
-      <div style={{ display: "flex", gap: 8, marginTop: 16, overflowX: "auto" }}>
-        {filters.map(f => (
-          <button key={f} onClick={() => setFilter(f)} style={{ padding: "8px 14px", borderRadius: 20, border: "none", whiteSpace: "nowrap", backgroundColor: filter === f ? "#00FF88" : "#1A1A1A", color: filter === f ? "black" : "white", fontWeight: "bold" }}>{t[f]}</button>
-        ))}
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 16 }}>
-        {filtered.map((p) => {
-          const realIndex = PROGRAMS.indexOf(p);
-          const isActive = active === realIndex;
-          return (
-            <div key={realIndex} style={{ backgroundColor: "#1A1A1A", borderRadius: 18, overflow: "hidden", border: isActive ? "2px solid #00FF88" : "none" }}>
-              <img src={p.img} style={{ width: "100%", height: 150, objectFit: "cover", display: "block" }} />
-              <div style={{ padding: 16 }}>
-                <h3 style={{ margin: 0 }}>{lang === "fr" ? p.titleFr : p.titleEn} {isActive ? "⭐" : ""}</h3>
-                <p style={{ color: "#AAA", margin: "6px 0" }}>{lang === "fr" ? p.descFr : p.descEn}</p>
-                <button onClick={() => activate(realIndex)} style={{ width: "100%", padding: 12, borderRadius: 12, border: "none", backgroundColor: isActive ? "#00FF88" : "#333", color: isActive ? "black" : "white", fontWeight: "bold" }}>{isActive ? t.active : t.activate}</button>
-              </div>
+        <div className="bg-[#1A1A1A] rounded-3xl p-5 border border-white/10 mt-4">
+          <h2 className="font-black text-lg">⚖️ Suivi de poids</h2>
+          <div className="flex gap-2 mt-4">
+            <input value={weight} onChange={(e) => setWeight(e.target.value)} type="number" placeholder="Ex: 72.5" className="flex-1 bg-white/10 rounded-full px-4 py-3 outline-none text-white placeholder:text-gray-500" />
+            <button onClick={addWeight} className="bg-lime-400 text-black px-6 rounded-full font-black text-sm">+ AJOUTER</button>
+          </div>
+          {history.length > 0 ? (
+            <div className="mt-5 space-y-2">
+              {[...history].reverse().map((h, i) => (
+                <div key={i} className="flex justify-between bg-white/5 px-4 py-3 rounded-2xl">
+                  <span className="text-gray-300 text-sm">{h.date}</span>
+                  <span className="font-black">{h.weight} kg</span>
+                </div>
+              ))}
             </div>
-          );
-        })}
+          ) : (
+            <p className="text-gray-500 text-sm mt-4">Pas encore de pesée. Ajoute ton premier poids 👆</p>
+          )}
+        </div>
+
+        <div className="bg-gradient-to-r from-lime-400 to-emerald-400 text-black rounded-3xl p-6 mt-4">
+          <h2 className="font-black text-xl">🎯 Objectif de la semaine</h2>
+          <p className="text-sm mt-1 font-medium">Faire 4 séances cette semaine. Tu en as fait {workoutsDone}.</p>
+          <div className="h-3 bg-black/20 rounded-full mt-3 overflow-hidden"><div className="h-full bg-black" style={{ width: `${Math.min(100, (workoutsDone / 4) * 100)}%` }} /></div>
+          <p className="text-xs font-bold mt-2">{Math.min(100, Math.round((workoutsDone / 4) * 100))}% complété</p>
+        </div>
       </div>
     </div>
   );
-}
+      }
