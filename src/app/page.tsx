@@ -85,7 +85,6 @@ const meals: MealCard[] = [
   },
 ];
 
-// Renseigner uniquement avec une URL vidéo réelle et autorisée lorsque disponible
 const HERO_VIDEO_URL: string | null = null;
 const HERO_VIDEO_POSTER =
   "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1600";
@@ -101,7 +100,6 @@ export default function HomePage() {
   );
   const [isSlowConnection, setIsSlowConnection] = useState(false);
 
-  // Données réelles de l'utilisateur connecté
   const [isLogged, setIsLogged] = useState(false);
   const [firstName, setFirstName] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -109,7 +107,6 @@ export default function HomePage() {
   const [weightKg, setWeightKg] = useState<number | null>(null);
   const [isPremium, setIsPremium] = useState(false);
 
-  // Statistiques calculées uniquement depuis les activités enregistrées (0 par défaut)
   const [weekWorkouts, setWeekWorkouts] = useState(0);
   const [totalWorkouts, setTotalWorkouts] = useState(0);
   const [totalCalories, setTotalCalories] = useState(0);
@@ -117,12 +114,10 @@ export default function HomePage() {
   const [recentLogs, setRecentLogs] = useState<WorkoutLogRow[]>([]);
   const [notifications, setNotifications] = useState<NotificationRow[]>([]);
 
-  // Bannière vidéo (uniquement si HERO_VIDEO_URL est défini et connexion adaptée)
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
   const [heroMuted, setHeroMuted] = useState(true);
   const [heroPlaying, setHeroPlaying] = useState(true);
 
-  // Coach IA (appel serveur sécurisé vers /api/coach-ia)
   const [coachOpen, setCoachOpen] = useState(false);
   const [coachQuestion, setCoachQuestion] = useState("");
   const [coachAnswer, setCoachAnswer] = useState<string | null>(null);
@@ -200,7 +195,6 @@ export default function HomePage() {
 
       setIsLogged(true);
 
-      // Profil privé de l'utilisateur connecté uniquement
       const { data: profileData } = await supabase
         .from("profiles")
         .select("*")
@@ -233,7 +227,6 @@ export default function HomePage() {
         Boolean(profileData?.is_premium) && (!expiresAt || expiresAt > new Date());
       setIsPremium(activePremium);
 
-      // Séances réelles de l'utilisateur connecté (filtrage strict par user_id)
       const { data: allWorkouts, error: workoutsError } = await supabase
         .from("workouts")
         .select("id, title, duration_minutes, calories_burned, created_at")
@@ -266,7 +259,6 @@ export default function HomePage() {
       setTotalMinutes(minutesSum);
       setRecentLogs(logs.slice(0, 5));
 
-      // Notifications privées de l'utilisateur connecté
       const { data: notifRows } = await supabase
         .from("notifications")
         .select("id, title, message, read, created_at")
@@ -593,15 +585,4 @@ export default function HomePage() {
                   <p className="text-3xl font-black text-lime-400">
                     {totalWorkouts}
                   </p>
-                  <p className="text-sm text-gray-400">Séances</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-black text-lime-400">
-                    {totalCalories}
-                  </p>
-                  <p className="text-sm text-gray-400">Calories (kcal)</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-black text-lime-400">
-                    {totalMinutes}
-                  <
+  
