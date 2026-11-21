@@ -3,12 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "../../lib/supabase/client";
-import { playClick, playSuccess } from "../../../lib/sound";
+import { supabase } from "../../lib/supabase";
+import { playClick, playSuccess } from "../../lib/sound";
 
 export default function Login() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,7 +16,7 @@ export default function Login() {
 
   const handleLogin = async () => {
     playClick();
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       alert("Mets ton email et ton mot de passe");
       return;
     }
