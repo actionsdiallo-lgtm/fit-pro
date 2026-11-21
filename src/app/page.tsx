@@ -605,7 +605,8 @@ export default function HomePage() {
                 <div>
                   <p className="text-3xl font-black text-lime-400">
                                         {weightKg !== null ? `${weightKg} kg` : "—"}
-                  </p>
+                                    <p className="text-sm text-gray-400">Poids</p>
+                    
                   <p className="text-sm text-gray-400">Poids</p>
                 </div>
               </div>
