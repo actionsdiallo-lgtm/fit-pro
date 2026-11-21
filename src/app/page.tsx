@@ -20,7 +20,6 @@ interface WorkoutCard {
 
 interface MealCard {
   name: string;
-  calories?: number;
   image: string;
 }
 
@@ -31,7 +30,6 @@ interface UserProfileRow {
   avatar_url?: string | null;
   goal?: string | null;
   weight_kg?: number | null;
-  daily_workout_minutes?: number | null;
   is_premium?: boolean | null;
   subscription_expires_at?: string | null;
 }
@@ -87,9 +85,10 @@ const meals: MealCard[] = [
   },
 ];
 
-// À renseigner uniquement avec une URL vidéo réelle et autorisée lorsque disponible
+// Renseigner uniquement avec une URL vidéo réelle et autorisée lorsque disponible
 const HERO_VIDEO_URL: string | null = null;
-const HERO_VIDEO_POSTER = "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1600";
+const HERO_VIDEO_POSTER =
+  "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1600";
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -110,7 +109,7 @@ export default function HomePage() {
   const [weightKg, setWeightKg] = useState<number | null>(null);
   const [isPremium, setIsPremium] = useState(false);
 
-  // Statistiques calculées uniquement depuis les activités enregistrées
+  // Statistiques calculées uniquement depuis les activités enregistrées (0 par défaut)
   const [weekWorkouts, setWeekWorkouts] = useState(0);
   const [totalWorkouts, setTotalWorkouts] = useState(0);
   const [totalCalories, setTotalCalories] = useState(0);
@@ -123,7 +122,7 @@ export default function HomePage() {
   const [heroMuted, setHeroMuted] = useState(true);
   const [heroPlaying, setHeroPlaying] = useState(true);
 
-  // Coach IA (Premium uniquement, appel serveur /api/coach-ia)
+  // Coach IA (appel serveur sécurisé vers /api/coach-ia)
   const [coachOpen, setCoachOpen] = useState(false);
   const [coachQuestion, setCoachQuestion] = useState("");
   const [coachAnswer, setCoachAnswer] = useState<string | null>(null);
@@ -164,7 +163,9 @@ export default function HomePage() {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
       setIsOffline(true);
       setLoading(false);
-      setErrorMsg("Connexion Internet perdue. Reconnexion automatique dès le retour du réseau.");
+      setErrorMsg(
+        "Connexion Internet interrompue. Reconnexion automatique dès le retour du réseau."
+      );
       return;
     }
 
@@ -265,7 +266,7 @@ export default function HomePage() {
       setTotalMinutes(minutesSum);
       setRecentLogs(logs.slice(0, 5));
 
-      // Notifications privées de l'utilisateur connecté (si table présente)
+      // Notifications privées de l'utilisateur connecté
       const { data: notifRows } = await supabase
         .from("notifications")
         .select("id, title, message, read, created_at")
@@ -416,7 +417,10 @@ export default function HomePage() {
             </button>
 
             {isLogged ? (
-              <Link href="/progres" className="flex items-center gap-2 text-sm font-bold">
+              <Link
+                href="/progres"
+                className="flex items-center gap-2 text-sm font-bold"
+              >
                 {avatarUrl && (
                   <Image
                     src={avatarUrl}
@@ -586,15 +590,18 @@ export default function HomePage() {
             ) : isLogged ? (
               <div className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-6">
                 <div>
-                  <p className="text-3xl font-black text-lime-400">{totalWorkouts}</p>
+                  <p className="text-3xl font-black text-lime-400">
+                    {totalWorkouts}
+                  </p>
                   <p className="text-sm text-gray-400">Séances</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-black text-lime-400">{totalCalories}</p>
+                  <p className="text-3xl font-black text-lime-400">
+                    {totalCalories}
+                  </p>
                   <p className="text-sm text-gray-400">Calories (kcal)</p>
                 </div>
                 <div>
-                  <p className="text-3xl font-black text-lime-400">{totalMinutes}</p>
-                  <p className="text-sm text-gray-400">Minutes</p>
-                </div>
-                <div>
+                  <p className="text-3xl font-black text-lime-400">
+                    {totalMinutes}
+                  <
