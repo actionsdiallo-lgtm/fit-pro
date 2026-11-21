@@ -604,7 +604,7 @@ export default function HomePage() {
                 </div>
                 <div>
                   <p className="text-3xl font-black text-lime-400">
-                    {weightKg !== null ? `${weightKg} kg` : "—"}
+                                        {weightKg !== null ? `${weightKg} kg` : "—"}
                   </p>
                   <p className="text-sm text-gray-400">Poids</p>
                 </div>
@@ -615,6 +615,8 @@ export default function HomePage() {
                 activité tant qu&apos;aucune séance n&apos;est enregistrée).
               </p>
             )}
+            
+            
           </div>
         </div>
       </section>
