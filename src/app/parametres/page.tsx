@@ -609,7 +609,9 @@ export default function ParametresPage() {
         video_data_saver: settings.video_data_saver,
         video_subtitles: settings.video_subtitles,
         video_muted: settings.video_muted,
-        voice_id: set        narration_lang: settings.narration_lang,
+                voice_id: settings.voice_id,
+        narration_lang: settings.narration_lang,
+        
         narration_enabled: settings.narration_enabled,
         voice_volume: settings.voice_volume,
         narration_rate: settings.narration_rate,
