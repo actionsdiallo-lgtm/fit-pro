@@ -13,6 +13,9 @@ export default function Login() {
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
   const [resetMessage, setResetMessage] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
 
@@ -37,17 +40,26 @@ export default function Login() {
     router.push("/dashboard");
   };
 
-  const handleForgotPassword = async () => {
+  const openForgotPassword = () => {
+    setError("");
+    setResetMessage("");
+    setResetEmail((prev) => prev || email.trim());
+    setForgotOpen((prev) => !prev);
+  };
+
+  const handleSendResetLink = async (e: FormEvent) => {
+    e.preventDefault();
     setError("");
     setResetMessage("");
 
-    if (!email.trim()) {
-      setError("Entre d'abord ton adresse e-mail ci-dessus pour recevoir le lien.");
+    const targetEmail = resetEmail.trim();
+    if (!targetEmail) {
+      setError("Entre l'adresse e-mail du compte pour recevoir le lien de réinitialisation.");
       return;
     }
 
     setResetLoading(true);
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setResetLoading(false);
@@ -57,7 +69,9 @@ export default function Login() {
       return;
     }
 
-    setResetMessage("Lien de réinitialisation envoyé dans ta boîte Gmail !");
+    setResetMessage(
+      "Si un compte existe avec cette adresse, un lien de réinitialisation a été envoyé dans ta boîte Gmail (pense à vérifier les Spams)."
+    );
   };
 
   return (
@@ -129,16 +143,40 @@ export default function Login() {
             </Link>
             <button
               type="button"
-              onClick={handleForgotPassword}
-              disabled={resetLoading}
-              className="text-sky-400 hover:underline disabled:opacity-50"
+              onClick={openForgotPassword}
+              className="text-sky-400 hover:underline"
             >
-              {resetLoading ? "Envoi..." : "Mot de passe oublié ?"}
+              Mot de passe oublié ?
             </button>
           </div>
         </form>
+
+        {forgotOpen && (
+          <form
+            onSubmit={handleSendResetLink}
+            className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3"
+          >
+            <p className="text-xs text-zinc-300 font-medium">
+              Réinitialisation du mot de passe (sans mot de passe requis)
+            </p>
+            <input
+              type="email"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              placeholder="Entre ton adresse Gmail"
+              className="w-full rounded-xl px-3 py-2 bg-zinc-800 border border-zinc-700 text-sm text-white"
+            />
+            <button
+              type="submit"
+              disabled={resetLoading}
+              className="w-full py-2.5 rounded-xl font-bold bg-sky-500 text-black text-sm disabled:opacity-50"
+            >
+              {resetLoading ? "Envoi..." : "Envoyer le lien dans Gmail"}
+            </button>
+          </form>
+        )}
       </div>
     </main>
   );
-                    }
-              
+      }
+          
