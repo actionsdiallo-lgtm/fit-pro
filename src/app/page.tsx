@@ -602,13 +602,14 @@ export default function HomePage() {
                 </div>
                 
                 </div>
-                                  <div>
+                                                    <div>
                     <p className="text-3xl font-bold text-white">
                       {weightKg !== null ? `${weightKg} kg` : "—"}
                     </p>
                     <p className="text-sm text-gray-400">Poids</p>
                   </div>
                 </div>
+            
       
             ) : (
               <p className="mt-10 text-sm text-gray-400">
