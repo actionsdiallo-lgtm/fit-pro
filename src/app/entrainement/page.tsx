@@ -1,16 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import SmartVideoPlayer, {
   type SynchronizedVideoStep,
 } from "@/components/SmartVideoPlayer";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+const supabase: SupabaseClient | null =
+  supabaseUrl && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : null;
 
 interface WorkoutItem {
   id: number;
@@ -224,6 +227,7 @@ const WORKOUTS: WorkoutItem[] = [
 ];
 
 export default function Entrainement() {
+  const playerSectionRef = useRef<HTMLElement | null>(null);
   const [filter, setFilter] = useState<string>("Tous");
   const [userId, setUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -237,6 +241,13 @@ export default function Entrainement() {
   const loadUserWorkouts = useCallback(async () => {
     setLoading(true);
     setStatusMsg(null);
+    if (!supabase) {
+      setUserId(null);
+      setCompletedTitles([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       const {
         data: { user },
@@ -281,8 +292,17 @@ export default function Entrainement() {
     loadUserWorkouts();
   }, [loadUserWorkouts]);
 
+  useEffect(() => {
+    if (selectedWorkout && playerSectionRef.current) {
+      playerSectionRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [selectedWorkout]);
+
   const handleLogWorkout = async (workout: WorkoutItem) => {
-    if (!userId) {
+    if (!supabase || !userId) {
       setStatusMsg(
         "Connectez-vous à votre compte FIT PRO pour enregistrer vos séances."
       );
@@ -360,7 +380,10 @@ export default function Entrainement() {
         )}
 
         {selectedWorkout && (
-          <section className="mt-6 rounded-3xl border border-lime-400/30 bg-[#141414] p-5">
+          <section
+            ref={playerSectionRef}
+            className="mt-6 rounded-3xl border border-lime-400/30 bg-[#141414] p-5"
+          >
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-bold text-lime-400 uppercase">
@@ -475,5 +498,5 @@ export default function Entrainement() {
       </div>
     </div>
   );
-    }
-    
+      }
+      
