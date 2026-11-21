@@ -5,18 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabase";
 
-async function triggerSound(name: "playClick" | "playSuccess") {
-  try {
-    const mod = await import("../../lib/sounds");
-    const fn = (mod as Record<string, unknown>)[name];
-    if (typeof fn === "function") {
-      (fn as () => void)();
-    }
-  } catch {
-    // Ignore si le fichier sounds est absent ou nommé autrement
-  }
-}
-
 export default function Login() {
   const router = useRouter();
 
@@ -30,7 +18,6 @@ export default function Login() {
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
-    await triggerSound("playClick");
     setError("");
     setResetMessage("");
     setLoading(true);
@@ -47,12 +34,10 @@ export default function Login() {
       return;
     }
 
-    await triggerSound("playSuccess");
     router.push("/dashboard");
   };
 
   const handleForgotPassword = async () => {
-    await triggerSound("playClick");
     setError("");
     setResetMessage("");
 
@@ -72,7 +57,6 @@ export default function Login() {
       return;
     }
 
-    await triggerSound("playSuccess");
     setResetMessage("Lien de réinitialisation envoyé dans ta boîte Gmail !");
   };
 
@@ -156,5 +140,5 @@ export default function Login() {
       </div>
     </main>
   );
-    }
-          
+                    }
+              
