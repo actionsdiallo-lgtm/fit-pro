@@ -1693,9 +1693,9 @@ export default function ParametresPage() {
                   placeholder="Décrivez précisément votre demande ou problème..."
                   value={ticketMessage}
                   onChange={(e) => setTicketMessage(e.target.value)}
-                  className="rounde                />
-
-                <button
+                                    className="w-full rounded-xl bg-black/40 border border-white/15 px-3 py-2.5"
+                />
+    
                   type="button"
                   disabled={sendingTicket}
                   onClick={handleCreateTicket}
