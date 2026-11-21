@@ -49,6 +49,12 @@ export default function ResetPassword() {
     setMsg("");
     setIsError(false);
 
+    if (!ready) {
+      setIsError(true);
+      setMsg("Ouvre cette page depuis le lien reçu par e-mail pour activer la réinitialisation.");
+      return;
+    }
+
     if (password.length < 6) {
       setIsError(true);
       setMsg("Le mot de passe doit contenir au moins 6 caractères.");
@@ -215,5 +221,5 @@ export default function ResetPassword() {
       </form>
     </main>
   );
-  }
-                    
+             }
+        
