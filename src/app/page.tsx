@@ -579,12 +579,13 @@ export default function HomePage() {
               <p className="mt-10 text-sm text-gray-400">
                 Chargement de vos statistiques...
               </p>
+            
             ) : isLogged ? (
               <div className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-6">
                 <div>
                   <p className="text-3xl font-black text-lime-400">
                     {totalWorkouts}
-                  </p>                  </p>
+                  </p>
                   <p className="text-sm text-gray-400">Séances</p>
                 </div>
                 <div>
@@ -598,6 +599,8 @@ export default function HomePage() {
                     {totalMinutes}
                   </p>
                   <p className="text-sm text-gray-400">Minutes</p>
+                </div>
+                
                 </div>
                 <div>
                   <p className="text-3xl font-black text-lime-400">
