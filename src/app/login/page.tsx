@@ -13,29 +13,43 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     playClick();
-    if (!email.trim() || !password) {
-      alert("Mets ton email et ton mot de passe");
+    setErrorMsg(null);
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !password) {
+      setErrorMsg("Merci de renseigner ton adresse e-mail et ton mot de passe.");
       return;
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-    setLoading(false);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
+      });
 
-    if (error) {
-      alert(error.message || "Email ou mot de passe incorrect");
-      return;
+      if (error) {
+        if (error.message.toLowerCase().includes("invalid login credentials")) {
+          setErrorMsg("E-mail ou mot de passe incorrect. Vérifie tes identifiants ou crée un compte.");
+        } else {
+          setErrorMsg(error.message);
+        }
+        return;
+      }
+
+      playSuccess();
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setErrorMsg("Impossible de contacter le serveur d'authentification. Réessaie.");
+    } finally {
+      setLoading(false);
     }
-
-    playSuccess();
-    router.push("/dashboard");
-    router.refresh();
   };
 
   return (
@@ -77,7 +91,8 @@ export default function Login() {
         </p>
       </div>
 
-      <div
+      <form
+        onSubmit={handleLogin}
         style={{
           background: "#101613",
           borderRadius: 20,
@@ -87,9 +102,25 @@ export default function Login() {
           gap: 12,
         }}
       >
+        {errorMsg && (
+          <div
+            style={{
+              background: "rgba(255, 77, 79, 0.14)",
+              border: "1px solid #ff4d4f",
+              color: "#ff9ea0",
+              borderRadius: 12,
+              padding: "10px 12px",
+              fontSize: 13,
+            }}
+          >
+            {errorMsg}
+          </div>
+        )}
+
         <label style={{ fontSize: 13, color: "#8A9A8F" }}>Email</label>
         <input
           type="email"
+          autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="ton@email.com"
@@ -109,6 +140,7 @@ export default function Login() {
         <div style={{ display: "flex", gap: 8 }}>
           <input
             type={show ? "text" : "password"}
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
@@ -142,9 +174,8 @@ export default function Login() {
         </div>
 
         <button
-          type="button"
+          type="submit"
           disabled={loading}
-          onClick={handleLogin}
           style={{
             background: "#00FF88",
             color: "#000",
@@ -165,14 +196,14 @@ export default function Login() {
           style={{
             textAlign: "right",
             display: "block",
-            marginTop: "10px",
+            marginTop: "6px",
             color: "#00E5FF",
             fontSize: 13,
           }}
         >
           Mot de passe oublié ?
         </Link>
-      </div>
+      </form>
 
       <p
         style={{
@@ -196,5 +227,5 @@ export default function Login() {
       </p>
     </main>
   );
-            }
-              
+        }
+                                                                 
