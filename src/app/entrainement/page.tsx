@@ -2,30 +2,41 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { useSession } from "next-auth/react";
 import SmartVideoPlayer, {
   type SynchronizedVideoStep,
 } from "@/components/SmartVideoPlayer";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+type TrainingFocus =
+  | "Tous"
+  | "Poitrine"
+  | "Avant-bras"
+  | "Bras"
+  | "Abdos"
+  | "Jambes"
+  | "Brûlez les graisses"
+  | "Rester en forme";
 
-const supabase: SupabaseClient | null =
-  supabaseUrl && supabaseAnonKey
-    ? createClient(supabaseUrl, supabaseAnonKey)
-    : null;
+interface ExercisePreview {
+  name: string;
+  target: string;
+  poseSvg: "jacks" | "squat" | "press" | "plank" | "stretch";
+}
 
 interface WorkoutItem {
   id: number;
   title: string;
   cat: "Musculation" | "Cardio" | "Yoga";
-  level: string;
+  focus: Exclude<TrainingFocus, "Tous">;
+  level: "Débutant" | "Intermédiaire" | "Avancé";
   durationMinutes: number;
   caloriesBurned: number;
+  exerciseCount: number;
   img: string;
-  videoUrl: string | null;
   desc: string;
+  videoUrl: string | null;
   steps: SynchronizedVideoStep[];
+  exercises: ExercisePreview[];
 }
 
 interface UserWorkoutRow {
@@ -154,83 +165,228 @@ const DEFAULT_STEPS: SynchronizedVideoStep[] = [
 const WORKOUTS: WorkoutItem[] = [
   {
     id: 1,
-    title: "Full Body Débutant",
+    title: "Poitrine Débutant",
     cat: "Musculation",
+    focus: "Poitrine",
     level: "Débutant",
-    durationMinutes: 30,
-    caloriesBurned: 280,
-    img: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80",
+    durationMinutes: 11,
+    caloriesBurned: 140,
+    exerciseCount: 11,
+    img: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&q=80",
+    desc: "Pompes mains surélevées et pompes sur les genoux pour débuter.",
     videoUrl: null,
-    desc: "Tout le corps, sans matériel. Parfait pour commencer.",
     steps: DEFAULT_STEPS,
+    exercises: [
+      { name: "Jumping jacks", target: "00:30", poseSvg: "jacks" },
+      { name: "Pompes mains surélevées", target: "x16", poseSvg: "press" },
+      { name: "Pompes sur les genoux", target: "x12", poseSvg: "plank" },
+    ],
   },
   {
     id: 2,
-    title: "HIIT Brûle-Graisse",
-    cat: "Cardio",
+    title: "Poitrine Intermédiaire & Avancé",
+    cat: "Musculation",
+    focus: "Poitrine",
     level: "Intermédiaire",
-    durationMinutes: 25,
-    caloriesBurned: 350,
-    img: "https://images.unsplash.com/photo-1549060279-7e168fcee0c2?w=800&q=80",
+    durationMinutes: 19,
+    caloriesBurned: 260,
+    exerciseCount: 16,
+    img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80",
+    desc: "Travail complet des pectoraux avec amplitude contrôlée.",
     videoUrl: null,
-    desc: "Intervalles intenses pour brûler un maximum.",
     steps: DEFAULT_STEPS,
+    exercises: [
+      { name: "Jumping jacks", target: "00:30", poseSvg: "jacks" },
+      { name: "Pompes classiques", target: "x14", poseSvg: "press" },
+      { name: "Pompes piquées", target: "x14", poseSvg: "press" },
+    ],
   },
   {
     id: 3,
-    title: "Push - Pecs / Épaules",
+    title: "Avant-bras Débutant à Avancé",
     cat: "Musculation",
-    level: "Avancé",
-    durationMinutes: 45,
-    caloriesBurned: 420,
-    img: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&q=80",
+    focus: "Avant-bras",
+    level: "Intermédiaire",
+    durationMinutes: 20,
+    caloriesBurned: 190,
+    exerciseCount: 24,
+    img: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=800&q=80",
+    desc: "Renforcement de la prise, des poignets et des avant-bras.",
     videoUrl: null,
-    desc: "Poussée, développé, dips. Pour prendre du volume.",
     steps: DEFAULT_STEPS,
+    exercises: [
+      { name: "Élévation latérale", target: "x10", poseSvg: "press" },
+      { name: "Flexion marteau", target: "x12", poseSvg: "jacks" },
+      { name: "Étirement poignets", target: "00:20", poseSvg: "stretch" },
+    ],
   },
   {
     id: 4,
-    title: "Yoga Flow Matin",
-    cat: "Yoga",
-    level: "Débutant",
-    durationMinutes: 20,
-    caloriesBurned: 120,
-    img: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&q=80",
+    title: "Bras Débutant à Avancé",
+    cat: "Musculation",
+    focus: "Bras",
+    level: "Avancé",
+    durationMinutes: 25,
+    caloriesBurned: 290,
+    exerciseCount: 25,
+    img: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80",
+    desc: "Dips triceps, cercles de bras et gainage dynamique.",
     videoUrl: null,
-    desc: "Réveil en douceur, mobilité et respiration.",
     steps: DEFAULT_STEPS,
+    exercises: [
+      { name: "Cercles de bras", target: "x30", poseSvg: "jacks" },
+      { name: "Triceps dips sur chaise", target: "x12", poseSvg: "squat" },
+      { name: "Sauter sans corde", target: "00:30", poseSvg: "jacks" },
+    ],
   },
   {
     id: 5,
-    title: "Leg Day Puissance",
-    cat: "Musculation",
-    level: "Avancé",
-    durationMinutes: 50,
-    caloriesBurned: 500,
-    img: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80",
+    title: "Abdos & Ceinture Abdominale",
+    cat: "Cardio",
+    focus: "Abdos",
+    level: "Intermédiaire",
+    durationMinutes: 22,
+    caloriesBurned: 240,
+    exerciseCount: 21,
+    img: "https://images.unsplash.com/photo-1549060279-7e168fcee0c2?w=800&q=80",
+    desc: "Toucher les talons, crunchs croisés et pont latéral.",
     videoUrl: null,
-    desc: "Squats, fentes, mollets. Jambes en feu.",
     steps: DEFAULT_STEPS,
+    exercises: [
+      { name: "Toucher les talons", target: "x26", poseSvg: "plank" },
+      { name: "Crunchs croisés", target: "x20", poseSvg: "plank" },
+      { name: "Pont latéral", target: "x20", poseSvg: "plank" },
+    ],
   },
   {
     id: 6,
-    title: "Cardio Danse Fun",
-    cat: "Cardio",
-    level: "Débutant",
-    durationMinutes: 30,
-    caloriesBurned: 300,
-    img: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=800&q=80",
+    title: "Jambes & Fessiers Puissance",
+    cat: "Musculation",
+    focus: "Jambes",
+    level: "Intermédiaire",
+    durationMinutes: 33,
+    caloriesBurned: 380,
+    exerciseCount: 36,
+    img: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80",
+    desc: "Squats, fentes, sauts latéraux et renforcement du bas du corps.",
     videoUrl: null,
-    desc: "Cardio en musique, sans s'ennuyer.",
     steps: DEFAULT_STEPS,
+    exercises: [
+      { name: "Squats", target: "x14", poseSvg: "squat" },
+      { name: "Saut de côté", target: "00:30", poseSvg: "jacks" },
+      { name: "Fente avec torsion", target: "x10", poseSvg: "squat" },
+    ],
+  },
+  {
+    id: 7,
+    title: "HIIT Brûle-Graisse",
+    cat: "Cardio",
+    focus: "Brûlez les graisses",
+    level: "Intermédiaire",
+    durationMinutes: 25,
+    caloriesBurned: 350,
+    exerciseCount: 18,
+    img: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=800&q=80",
+    desc: "Intervalles dynamiques pour maximiser la dépense calorique.",
+    videoUrl: null,
+    steps: DEFAULT_STEPS,
+    exercises: [
+      { name: "Jumping jacks", target: "00:30", poseSvg: "jacks" },
+      { name: "Squats avec saut", target: "x15", poseSvg: "squat" },
+      { name: "Gainage actif", target: "00:40", poseSvg: "plank" },
+    ],
+  },
+  {
+    id: 8,
+    title: "Mobilité & Rester en forme",
+    cat: "Yoga",
+    focus: "Rester en forme",
+    level: "Débutant",
+    durationMinutes: 20,
+    caloriesBurned: 120,
+    exerciseCount: 12,
+    img: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&q=80",
+    desc: "Étirements doux du dos et du bas du corps pour la souplesse.",
+    videoUrl: null,
+    steps: DEFAULT_STEPS,
+    exercises: [
+      { name: "Étirement du dos", target: "00:45", poseSvg: "stretch" },
+      { name: "Étirement bas du corps", target: "00:45", poseSvg: "stretch" },
+      { name: "Respiration profonde", target: "00:30", poseSvg: "jacks" },
+    ],
   },
 ];
 
+function MovementIllustration({ pose }: { pose: ExercisePreview["poseSvg"] }) {
+  return (
+    <div className="w-12 h-12 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
+      <svg
+        viewBox="0 0 48 48"
+        className="w-9 h-9 text-lime-400"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        {pose === "jacks" && (
+          <>
+            <circle cx="24" cy="9" r="3.5" />
+            <path d="M24 13v12" />
+            <path d="M24 16L12 8M24 16l12-8" />
+            <path d="M24 25l-9 14M24 25l9 14" />
+          </>
+        )}
+        {pose === "squat" && (
+          <>
+            <circle cx="22" cy="11" r="3.5" />
+            <path d="M22 15l6 10-7 6" />
+            <path d="M25 18h10" />
+            <path d="M21 31l-4 9M21 31l6 9" />
+          </>
+        )}
+        {pose === "press" && (
+          <>
+            <circle cx="35" cy="21" r="3.5" />
+            <path d="M32 23L19 25l-9 5" />
+            <path d="M25 24l2 12" />
+          </>
+        )}
+        {pose === "plank" && (
+          <>
+            <circle cx="37" cy="23" r="3.5" />
+            <path d="M34 25L12 31" />
+            <path d="M30 26l-2 10M12 31l-2 5" />
+          </>
+        )}
+        {pose === "stretch" && (
+          <>
+            <circle cx="16" cy="22" r="3.5" />
+            <path d="M19 24l12 8h10" />
+            <path d="M22 26l13-3" />
+          </>
+        )}
+      </svg>
+    </div>
+  );
+}
+
+const FOCUS_LIST: TrainingFocus[] = [
+  "Tous",
+  "Poitrine",
+  "Avant-bras",
+  "Bras",
+  "Abdos",
+  "Jambes",
+  "Brûlez les graisses",
+  "Rester en forme",
+];
+
 export default function Entrainement() {
+  const { data: session, status } = useSession();
   const playerSectionRef = useRef<HTMLElement | null>(null);
-  const [filter, setFilter] = useState<string>("Tous");
-  const [userId, setUserId] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [focusFilter, setFocusFilter] = useState<TrainingFocus>("Tous");
   const [savingId, setSavingId] = useState<number | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [completedTitles, setCompletedTitles] = useState<string[]>([]);
@@ -238,41 +394,31 @@ export default function Entrainement() {
     null
   );
 
+  const userId =
+    (session?.user as { id?: string } | undefined)?.id ??
+    session?.user?.email ??
+    null;
+
   const loadUserWorkouts = useCallback(async () => {
-    setLoading(true);
-    setStatusMsg(null);
-    if (!supabase) {
-      setUserId(null);
+    if (status === "loading") return;
+
+    if (!userId) {
       setCompletedTitles([]);
-      setLoading(false);
       return;
     }
 
+    setStatusMsg(null);
     try {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (authError || !user) {
-        setUserId(null);
-        setCompletedTitles([]);
+      const res = await fetch("/api/workouts", { cache: "no-store" });
+      if (!res.ok) {
         return;
       }
-
-      setUserId(user.id);
-
-      const { data, error } = await supabase
-        .from("workouts")
-        .select("id, title, duration_minutes, calories_burned, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      const rows: UserWorkoutRow[] = data ?? [];
+      const data = await res.json().catch(() => null);
+      const rows: UserWorkoutRow[] = Array.isArray(data?.workouts)
+        ? data.workouts
+        : Array.isArray(data)
+          ? data
+          : [];
       const titles = rows
         .map((r) => r.title)
         .filter((t): t is string => Boolean(t));
@@ -283,10 +429,8 @@ export default function Entrainement() {
           ? err.message
           : "Impossible de charger vos séances enregistrées."
       );
-    } finally {
-      setLoading(false);
     }
-  }, []);
+  }, [status, userId]);
 
   useEffect(() => {
     loadUserWorkouts();
@@ -302,7 +446,7 @@ export default function Entrainement() {
   }, [selectedWorkout]);
 
   const handleLogWorkout = async (workout: WorkoutItem) => {
-    if (!supabase || !userId) {
+    if (!userId) {
       setStatusMsg(
         "Connectez-vous à votre compte FIT PRO pour enregistrer vos séances."
       );
@@ -313,15 +457,21 @@ export default function Entrainement() {
     setStatusMsg(null);
 
     try {
-      const { error } = await supabase.from("workouts").insert({
-        user_id: userId,
-        title: workout.title,
-        duration_minutes: workout.durationMinutes,
-        calories_burned: workout.caloriesBurned,
+      const res = await fetch("/api/workouts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: workout.title,
+          duration_minutes: workout.durationMinutes,
+          calories_burned: workout.caloriesBurned,
+        }),
       });
 
-      if (error) {
-        throw new Error(error.message);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(
+          errData?.error || "Erreur lors de l'enregistrement de la séance."
+        );
       }
 
       setCompletedTitles((prev) => [workout.title, ...prev]);
@@ -338,9 +488,9 @@ export default function Entrainement() {
   };
 
   const filtered =
-    filter === "Tous"
+    focusFilter === "Tous"
       ? WORKOUTS
-      : WORKOUTS.filter((w) => w.cat === filter);
+      : WORKOUTS.filter((w) => w.focus === focusFilter);
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white pb-24">
@@ -349,13 +499,17 @@ export default function Entrainement() {
           ← Retour
         </Link>
         <h1 className="text-3xl md:text-5xl font-black mt-4">ENTRAÎNEMENT</h1>
+        <p className="text-gray-400 text-sm mt-1">
+          Choisissez votre entraînement, visualisez les mouvements et suivez la
+          vidéo guidée étape par étape.
+        </p>
 
-        {loading ? (
-          <p className="text-gray-400 mt-2 text-sm">
+        {status === "loading" ? (
+          <p className="text-gray-400 mt-3 text-sm">
             Chargement de votre suivi personnel...
           </p>
         ) : userId ? (
-          <p className="text-gray-400 mt-2 text-sm">
+          <p className="text-lime-400 mt-3 text-sm font-semibold">
             {completedTitles.length} séance(s) enregistrée(s) sur votre compte
           </p>
         ) : (
@@ -387,41 +541,60 @@ export default function Entrainement() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-bold text-lime-400 uppercase">
-                  Lecteur vidéo intelligent
+                  Vidéo &amp; mouvements guidés • {selectedWorkout.focus}
                 </p>
-                <h2 className="text-xl font-black mt-0.5">
+                <h2 className="text-xl md:text-2xl font-black mt-0.5">
                   {selectedWorkout.title}
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedWorkout(null)}
-                className="rounded-full bg-white/10 px-3 py-1 text-xs text-gray-200"
+                className="rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-bold text-gray-200 hover:bg-white/15"
               >
                 Fermer
               </button>
             </div>
 
-            <SmartVideoPlayer
-              title={selectedWorkout.title}
-              videoUrl={selectedWorkout.videoUrl}
-              posterUrl={selectedWorkout.img}
-              steps={selectedWorkout.steps}
-              userId={userId}
-            />
+            <div className="mt-4">
+              <SmartVideoPlayer
+                title={selectedWorkout.title}
+                videoUrl={selectedWorkout.videoUrl}
+                posterUrl={selectedWorkout.img}
+                steps={selectedWorkout.steps}
+                userId={userId}
+              />
+            </div>
+
+            <div className="mt-5 grid sm:grid-cols-3 gap-3">
+              {selectedWorkout.exercises.map((ex) => (
+                <div
+                  key={ex.name}
+                  className="flex items-center gap-3 rounded-2xl bg-[#1C1C1C] border border-white/10 p-3"
+                >
+                  <MovementIllustration pose={ex.poseSvg} />
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm truncate">{ex.name}</p>
+                    <p className="text-xs text-lime-400 font-semibold mt-0.5">
+                      {ex.target}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </section>
         )}
 
         <div className="flex gap-2 mt-6 overflow-x-auto pb-2">
-          {["Tous", "Musculation", "Cardio", "Yoga"].map((c) => (
+          {FOCUS_LIST.map((c) => (
             <button
               key={c}
               type="button"
-              onClick={() => setFilter(c)}
-              className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap ${
-                filter === c
+              onClick={() => setFocusFilter(c)}
+              className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition ${
+                focusFilter === c
                   ? "bg-lime-400 text-black"
-                  : "bg-white/10 text-white"
+                  : "bg-white/10 text-white hover:bg-white/15"
               }`}
             >
               {c}
@@ -435,68 +608,4 @@ export default function Entrainement() {
               (t) => t === w.title
             ).length;
 
-            return (
-              <div
-                key={w.id}
-                className="bg-[#1A1A1A] rounded-3xl overflow-hidden border border-white/10"
-              >
-                <div className="relative h-48">
-                  <img
-                    src={w.img}
-                    className="w-full h-full object-cover"
-                    alt={w.title}
-                  />
-                  <span className="absolute top-3 left-3 bg-black/70 px-3 py-1 rounded-full text-xs font-bold">
-                    {w.cat}
-                  </span>
-                  {countForWorkout > 0 && (
-                    <span className="absolute top-3 right-3 bg-lime-400 text-black px-3 py-1 rounded-full text-xs font-black">
-                      ✓ {countForWorkout}x FAIT
-                    </span>
-                  )}
-                </div>
-                <div className="p-5">
-                  <h3 className="font-black text-lg">{w.title}</h3>
-                  <p className="text-gray-400 text-sm mt-1">{w.desc}</p>
-                  <div className="flex gap-2 mt-3 text-xs text-gray-300">
-                    <span className="bg-white/10 px-2 py-1 rounded-full">
-                      {w.level}
-                    </span>
-                    <span className="bg-white/10 px-2 py-1 rounded-full">
-                      {w.durationMinutes} min
-                    </span>
-                    <span className="bg-white/10 px-2 py-1 rounded-full">
-                      {w.caloriesBurned} kcal
-                    </span>
-                  </div>
-
-                  <div className="mt-4 flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedWorkout(w)}
-                      className="w-full py-2.5 rounded-full font-bold text-xs bg-white/10 text-white hover:bg-white/15"
-                    >
-                      Ouvrir le lecteur vidéo
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={savingId === w.id}
-                      onClick={() => handleLogWorkout(w)}
-                      className="w-full py-3 rounded-full font-black text-sm bg-lime-400 text-black disabled:opacity-60"
-                    >
-                      {savingId === w.id
-                        ? "Enregistrement..."
-                        : "✓ ENREGISTRER LA SÉANCE"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-      }
       
