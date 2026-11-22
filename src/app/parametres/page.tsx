@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
-import { supabase } from "../../lib/supabase";
+import { signOut, useSession } from "next-auth/react";
 import { playClick, playSuccess } from "../../lib/sound";
 
 type LangCode = "fr" | "en" | "es" | "pt" | "ar" | "de" | "it";
@@ -84,16 +83,13 @@ const I18N: Record<
     about: string;
     aboutDesc: string;
     signOut: string;
+    signInPrompt: string;
+    signInAction: string;
     modalTitle: string;
     subjectPlaceholder: string;
     messagePlaceholder: string;
     cancel: string;
     send: string;
-    navHome: string;
-    navWorkout: string;
-    navProgress: string;
-    navPremium: string;
-    navSettings: string;
   }
 > = {
   fr: {
@@ -103,12 +99,12 @@ const I18N: Record<
     langUpdated: (l) => `Langue : ${l}`,
     qualityUpdated: (q) => `Qualité vidéo : ${q}`,
     avatarUpdated: "Photo de profil mise à jour",
-    cloudSaved: "Sauvegarde cloud synchronisée",
-    cloudRestored: "Données cloud restaurées",
-    ticketSent: "Message envoyé au support FIT PRO",
+    cloudSaved: "Préférences enregistrées localement",
+    cloudRestored: "Préférences rechargées",
+    ticketSent: "Message préparé pour le support FIT PRO",
     syncing: "Synchronisation...",
     errorPrefix: "Erreur",
-    uploadPrefix: "Upload",
+    uploadPrefix: "Mise à jour",
     defaultMember: "Membre FIT PRO",
     appSettings: "Paramètres de l'application",
     language: "Langue",
@@ -127,34 +123,31 @@ const I18N: Record<
     powerSaver: "Mode économie d'énergie",
     powerSaverDesc: "Réduire la consommation",
     privacySection: "Données et confidentialité",
-    backup: "Sauvegarde des données",
-    backupDesc: "Sauvegarder sur le cloud",
-    restore: "Restaurer mes données",
-    restoreDesc: "Récupérer mes données",
+    backup: "Sauvegarde des préférences",
+    backupDesc: "Enregistrer l'état actuel",
+    restore: "Réinitialiser les préférences",
+    restoreDesc: "Revenir aux valeurs par défaut",
     deleteAccount: "Supprimer mon compte",
-    deleteAccountDesc: "Supprimer définitivement mon compte",
+    deleteAccountDesc: "Contacter le support pour suppression",
     privacyPolicy: "Politique de confidentialité",
-    privacyPolicyDesc: "Lire notre politique",
+    privacyPolicyDesc: "Protection de votre compte et de vos données",
     terms: "Conditions d'utilisation",
-    termsDesc: "Lire les conditions",
+    termsDesc: "Règles d'utilisation de FIT PRO",
     supportSection: "Aide et support",
     helpCenter: "Centre d'aide",
     helpCenterDesc: "Questions fréquentes et guides",
     contactSupport: "Contacter le support",
     contactSupportDesc: "Nous écrire",
     about: "À propos de FIT PRO",
-    aboutDesc: "Version 1.0.0 • Mis à jour le 21/11/2026",
+    aboutDesc: "Version 1.0.0 • Session NextAuth active",
     signOut: "Se déconnecter",
+    signInPrompt: "Aucune session active détectée.",
+    signInAction: "Se connecter",
     modalTitle: "Contacter le support FIT PRO",
     subjectPlaceholder: "Sujet",
     messagePlaceholder: "Votre message...",
     cancel: "Annuler",
     send: "Envoyer",
-    navHome: "Accueil",
-    navWorkout: "Entraînement",
-    navProgress: "Progrès",
-    navPremium: "Premium",
-    navSettings: "Paramètres",
   },
   en: {
     loading: "Loading...",
@@ -163,12 +156,12 @@ const I18N: Record<
     langUpdated: (l) => `Language: ${l}`,
     qualityUpdated: (q) => `Video quality: ${q}`,
     avatarUpdated: "Profile photo updated",
-    cloudSaved: "Cloud backup synced",
-    cloudRestored: "Cloud data restored",
-    ticketSent: "Message sent to FIT PRO support",
+    cloudSaved: "Preferences saved locally",
+    cloudRestored: "Preferences reloaded",
+    ticketSent: "Message prepared for FIT PRO support",
     syncing: "Syncing...",
     errorPrefix: "Error",
-    uploadPrefix: "Upload",
+    uploadPrefix: "Update",
     defaultMember: "FIT PRO Member",
     appSettings: "App settings",
     language: "Language",
@@ -187,34 +180,31 @@ const I18N: Record<
     powerSaver: "Power saving mode",
     powerSaverDesc: "Reduce battery usage",
     privacySection: "Data and privacy",
-    backup: "Backup data",
-    backupDesc: "Save to the cloud",
-    restore: "Restore my data",
-    restoreDesc: "Recover my data",
+    backup: "Save preferences",
+    backupDesc: "Store current settings",
+    restore: "Reset preferences",
+    restoreDesc: "Restore default values",
     deleteAccount: "Delete my account",
-    deleteAccountDesc: "Permanently delete my account",
+    deleteAccountDesc: "Contact support for account deletion",
     privacyPolicy: "Privacy policy",
-    privacyPolicyDesc: "Read our policy",
+    privacyPolicyDesc: "Account and data protection",
     terms: "Terms of use",
-    termsDesc: "Read the terms",
+    termsDesc: "FIT PRO terms of service",
     supportSection: "Help and support",
     helpCenter: "Help center",
     helpCenterDesc: "FAQs and guides",
     contactSupport: "Contact support",
     contactSupportDesc: "Write to us",
     about: "About FIT PRO",
-    aboutDesc: "Version 1.0.0 • Updated 21/11/2026",
+    aboutDesc: "Version 1.0.0 • NextAuth session active",
     signOut: "Sign out",
+    signInPrompt: "No active session detected.",
+    signInAction: "Sign in",
     modalTitle: "Contact FIT PRO support",
     subjectPlaceholder: "Subject",
     messagePlaceholder: "Your message...",
     cancel: "Cancel",
     send: "Send",
-    navHome: "Home",
-    navWorkout: "Workout",
-    navProgress: "Progress",
-    navPremium: "Premium",
-    navSettings: "Settings",
   },
   es: {
     loading: "Cargando...",
@@ -223,12 +213,12 @@ const I18N: Record<
     langUpdated: (l) => `Idioma: ${l}`,
     qualityUpdated: (q) => `Calidad de video: ${q}`,
     avatarUpdated: "Foto de perfil actualizada",
-    cloudSaved: "Respaldo en la nube sincronizado",
-    cloudRestored: "Datos de la nube restaurados",
-    ticketSent: "Mensaje enviado al soporte de FIT PRO",
+    cloudSaved: "Preferencias guardadas",
+    cloudRestored: "Preferencias restablecidas",
+    ticketSent: "Mensaje preparado para soporte FIT PRO",
     syncing: "Sincronizando...",
     errorPrefix: "Error",
-    uploadPrefix: "Subida",
+    uploadPrefix: "Actualización",
     defaultMember: "Miembro FIT PRO",
     appSettings: "Ajustes de la aplicación",
     language: "Idioma",
@@ -247,34 +237,31 @@ const I18N: Record<
     powerSaver: "Modo ahorro de energía",
     powerSaverDesc: "Reducir el consumo",
     privacySection: "Datos y privacidad",
-    backup: "Copia de seguridad",
-    backupDesc: "Guardar en la nube",
-    restore: "Restaurar mis datos",
-    restoreDesc: "Recuperar mis datos",
+    backup: "Guardar preferencias",
+    backupDesc: "Guardar ajustes actuales",
+    restore: "Restablecer ajustes",
+    restoreDesc: "Volver a valores por defecto",
     deleteAccount: "Eliminar mi cuenta",
-    deleteAccountDesc: "Eliminar permanentemente mi cuenta",
+    deleteAccountDesc: "Contactar soporte para eliminar cuenta",
     privacyPolicy: "Política de privacidad",
-    privacyPolicyDesc: "Leer nuestra política",
+    privacyPolicyDesc: "Protección de cuenta y datos",
     terms: "Términos de uso",
-    termsDesc: "Leer los términos",
+    termsDesc: "Condiciones de FIT PRO",
     supportSection: "Ayuda y soporte",
     helpCenter: "Centro de ayuda",
     helpCenterDesc: "Preguntas frecuentes y guías",
     contactSupport: "Contactar soporte",
     contactSupportDesc: "Escríbenos",
     about: "Acerca de FIT PRO",
-    aboutDesc: "Versión 1.0.0 • Actualizado el 21/11/2026",
+    aboutDesc: "Versión 1.0.0 • Sesión NextAuth activa",
     signOut: "Cerrar sesión",
+    signInPrompt: "No hay sesión activa.",
+    signInAction: "Iniciar sesión",
     modalTitle: "Contactar soporte de FIT PRO",
     subjectPlaceholder: "Asunto",
     messagePlaceholder: "Tu mensaje...",
     cancel: "Cancelar",
     send: "Enviar",
-    navHome: "Inicio",
-    navWorkout: "Entreno",
-    navProgress: "Progreso",
-    navPremium: "Premium",
-    navSettings: "Ajustes",
   },
   pt: {
     loading: "Carregando...",
@@ -283,12 +270,12 @@ const I18N: Record<
     langUpdated: (l) => `Idioma: ${l}`,
     qualityUpdated: (q) => `Qualidade do vídeo: ${q}`,
     avatarUpdated: "Foto de perfil atualizada",
-    cloudSaved: "Backup na nuvem sincronizado",
-    cloudRestored: "Dados da nuvem restaurados",
-    ticketSent: "Mensagem enviada ao suporte FIT PRO",
+    cloudSaved: "Preferências salvas",
+    cloudRestored: "Preferências restauradas",
+    ticketSent: "Mensagem preparada para o suporte FIT PRO",
     syncing: "Sincronizando...",
     errorPrefix: "Erro",
-    uploadPrefix: "Envio",
+    uploadPrefix: "Atualização",
     defaultMember: "Membro FIT PRO",
     appSettings: "Configurações do app",
     language: "Idioma",
@@ -307,34 +294,31 @@ const I18N: Record<
     powerSaver: "Modo economia de energia",
     powerSaverDesc: "Reduzir o consumo",
     privacySection: "Dados e privacidade",
-    backup: "Backup de dados",
-    backupDesc: "Salvar na nuvem",
-    restore: "Restaurar meus dados",
-    restoreDesc: "Recuperar meus dados",
+    backup: "Salvar preferências",
+    backupDesc: "Guardar ajustes atuais",
+    restore: "Redefinir ajustes",
+    restoreDesc: "Voltar ao padrão",
     deleteAccount: "Excluir minha conta",
-    deleteAccountDesc: "Excluir permanentemente minha conta",
+    deleteAccountDesc: "Falar com o suporte para excluir conta",
     privacyPolicy: "Política de privacidade",
-    privacyPolicyDesc: "Ler nossa política",
+    privacyPolicyDesc: "Proteção de conta e dados",
     terms: "Termos de uso",
-    termsDesc: "Ler os termos",
+    termsDesc: "Termos do FIT PRO",
     supportSection: "Ajuda e suporte",
     helpCenter: "Central de ajuda",
     helpCenterDesc: "Perguntas frequentes e guias",
     contactSupport: "Falar com o suporte",
     contactSupportDesc: "Escreva para nós",
     about: "Sobre o FIT PRO",
-    aboutDesc: "Versão 1.0.0 • Atualizado em 21/11/2026",
+    aboutDesc: "Versão 1.0.0 • Sessão NextAuth ativa",
     signOut: "Sair",
+    signInPrompt: "Nenhuma sessão ativa encontrada.",
+    signInAction: "Entrar",
     modalTitle: "Falar com o suporte FIT PRO",
     subjectPlaceholder: "Assunto",
     messagePlaceholder: "Sua mensagem...",
     cancel: "Cancelar",
     send: "Enviar",
-    navHome: "Início",
-    navWorkout: "Treino",
-    navProgress: "Progresso",
-    navPremium: "Premium",
-    navSettings: "Ajustes",
   },
   ar: {
     loading: "جارٍ التحميل...",
@@ -343,12 +327,12 @@ const I18N: Record<
     langUpdated: (l) => `اللغة: ${l}`,
     qualityUpdated: (q) => `جودة الفيديو: ${q}`,
     avatarUpdated: "تم تحديث صورة الملف الشخصي",
-    cloudSaved: "تمت مزامنة النسخ الاحتياطي السحابي",
-    cloudRestored: "تمت استعادة البيانات السحابية",
-    ticketSent: "تم إرسال الرسالة إلى دعم FIT PRO",
+    cloudSaved: "تم حفظ التفضيلات",
+    cloudRestored: "تمت استعادة التفضيلات",
+    ticketSent: "تم تجهيز الرسالة لدعم FIT PRO",
     syncing: "جارٍ المزامنة...",
     errorPrefix: "خطأ",
-    uploadPrefix: "رفع",
+    uploadPrefix: "تحديث",
     defaultMember: "عضو FIT PRO",
     appSettings: "إعدادات التطبيق",
     language: "اللغة",
@@ -367,34 +351,31 @@ const I18N: Record<
     powerSaver: "وضع توفير الطاقة",
     powerSaverDesc: "تقليل الاستهلاك",
     privacySection: "البيانات والخصوصية",
-    backup: "نسخ البيانات احتياطيًا",
-    backupDesc: "حفظ في السحابة",
-    restore: "استعادة بياناتي",
-    restoreDesc: "استرجاع بياناتي",
+    backup: "حفظ التفضيلات",
+    backupDesc: "حفظ الإعدادات الحالية",
+    restore: "إعادة ضبط الإعدادات",
+    restoreDesc: "العودة إلى الافتراضي",
     deleteAccount: "حذف حسابي",
-    deleteAccountDesc: "حذف حسابي نهائيًا",
+    deleteAccountDesc: "تواصل مع الدعم لحذف الحساب",
     privacyPolicy: "سياسة الخصوصية",
-    privacyPolicyDesc: "اقرأ سياستنا",
+    privacyPolicyDesc: "حماية الحساب والبيانات",
     terms: "شروط الاستخدام",
-    termsDesc: "اقرأ الشروط",
+    termsDesc: "شروط استخدام FIT PRO",
     supportSection: "المساعدة والدعم",
     helpCenter: "مركز المساعدة",
     helpCenterDesc: "الأسئلة الشائعة والأدلة",
     contactSupport: "تواصل مع الدعم",
     contactSupportDesc: "راسلنا",
     about: "حول FIT PRO",
-    aboutDesc: "الإصدار 1.0.0 • حُدّث في 21/11/2026",
+    aboutDesc: "الإصدار 1.0.0 • جلسة NextAuth نشطة",
     signOut: "تسجيل الخروج",
+    signInPrompt: "لا توجد جلسة نشطة.",
+    signInAction: "تسجيل الدخول",
     modalTitle: "تواصل مع دعم FIT PRO",
     subjectPlaceholder: "الموضوع",
     messagePlaceholder: "رسالتك...",
     cancel: "إلغاء",
     send: "إرسال",
-    navHome: "الرئيسية",
-    navWorkout: "التمرين",
-    navProgress: "التقدم",
-    navPremium: "بريميوم",
-    navSettings: "الإعدادات",
   },
   de: {
     loading: "Laden...",
@@ -403,12 +384,12 @@ const I18N: Record<
     langUpdated: (l) => `Sprache: ${l}`,
     qualityUpdated: (q) => `Videoqualität: ${q}`,
     avatarUpdated: "Profilbild aktualisiert",
-    cloudSaved: "Cloud-Backup synchronisiert",
-    cloudRestored: "Cloud-Daten wiederhergestellt",
-    ticketSent: "Nachricht an den FIT PRO Support gesendet",
+    cloudSaved: "Einstellungen gespeichert",
+    cloudRestored: "Einstellungen zurückgesetzt",
+    ticketSent: "Nachricht an FIT PRO Support vorbereitet",
     syncing: "Synchronisiere...",
     errorPrefix: "Fehler",
-    uploadPrefix: "Upload",
+    uploadPrefix: "Aktualisierung",
     defaultMember: "FIT PRO Mitglied",
     appSettings: "App-Einstellungen",
     language: "Sprache",
@@ -427,34 +408,31 @@ const I18N: Record<
     powerSaver: "Energiesparmodus",
     powerSaverDesc: "Verbrauch reduzieren",
     privacySection: "Daten und Datenschutz",
-    backup: "Datensicherung",
-    backupDesc: "In der Cloud speichern",
-    restore: "Meine Daten wiederherstellen",
-    restoreDesc: "Daten abrufen",
+    backup: "Einstellungen sichern",
+    backupDesc: "Aktuelle Auswahl speichern",
+    restore: "Standardwerte laden",
+    restoreDesc: "Einstellungen zurücksetzen",
     deleteAccount: "Konto löschen",
-    deleteAccountDesc: "Mein Konto dauerhaft löschen",
+    deleteAccountDesc: "Support für Kontolöschung kontaktieren",
     privacyPolicy: "Datenschutzerklärung",
-    privacyPolicyDesc: "Richtlinie lesen",
+    privacyPolicyDesc: "Konto- und Datenschutz",
     terms: "Nutzungsbedingungen",
-    termsDesc: "Bedingungen lesen",
+    termsDesc: "Nutzungsbedingungen von FIT PRO",
     supportSection: "Hilfe und Support",
     helpCenter: "Hilfecenter",
     helpCenterDesc: "Häufige Fragen und Anleitungen",
     contactSupport: "Support kontaktieren",
     contactSupportDesc: "Schreibe uns",
     about: "Über FIT PRO",
-    aboutDesc: "Version 1.0.0 • Aktualisiert am 21.11.2026",
+    aboutDesc: "Version 1.0.0 • NextAuth-Sitzung aktiv",
     signOut: "Abmelden",
+    signInPrompt: "Keine aktive Sitzung erkannt.",
+    signInAction: "Anmelden",
     modalTitle: "FIT PRO Support kontaktieren",
     subjectPlaceholder: "Betreff",
     messagePlaceholder: "Deine Nachricht...",
     cancel: "Abbrechen",
     send: "Senden",
-    navHome: "Start",
-    navWorkout: "Training",
-    navProgress: "Fortschritt",
-    navPremium: "Premium",
-    navSettings: "Einstellungen",
   },
   it: {
     loading: "Caricamento...",
@@ -463,12 +441,12 @@ const I18N: Record<
     langUpdated: (l) => `Lingua: ${l}`,
     qualityUpdated: (q) => `Qualità video: ${q}`,
     avatarUpdated: "Foto profilo aggiornata",
-    cloudSaved: "Backup cloud sincronizzato",
-    cloudRestored: "Dati cloud ripristinati",
-    ticketSent: "Messaggio inviato al supporto FIT PRO",
+    cloudSaved: "Preferenze salvate",
+    cloudRestored: "Preferenze ripristinate",
+    ticketSent: "Messaggio preparato per il supporto FIT PRO",
     syncing: "Sincronizzazione...",
     errorPrefix: "Errore",
-    uploadPrefix: "Caricamento",
+    uploadPrefix: "Aggiornamento",
     defaultMember: "Membro FIT PRO",
     appSettings: "Impostazioni dell'app",
     language: "Lingua",
@@ -487,37 +465,34 @@ const I18N: Record<
     powerSaver: "Risparmio energetico",
     powerSaverDesc: "Riduci il consumo",
     privacySection: "Dati e privacy",
-    backup: "Backup dati",
-    backupDesc: "Salva sul cloud",
-    restore: "Ripristina i miei dati",
-    restoreDesc: "Recupera i miei dati",
+    backup: "Salva preferenze",
+    backupDesc: "Salva impostazioni attuali",
+    restore: "Ripristina predefiniti",
+    restoreDesc: "Torna ai valori iniziali",
     deleteAccount: "Elimina il mio account",
-    deleteAccountDesc: "Elimina definitivamente il mio account",
+    deleteAccountDesc: "Contatta il supporto per eliminare l'account",
     privacyPolicy: "Informativa sulla privacy",
-    privacyPolicyDesc: "Leggi la nostra politica",
+    privacyPolicyDesc: "Protezione account e dati",
     terms: "Condizioni d'uso",
-    termsDesc: "Leggi le condizioni",
+    termsDesc: "Condizioni di FIT PRO",
     supportSection: "Aiuto e supporto",
     helpCenter: "Centro assistenza",
-    helpCenterDesc: "Domande frequenti e guide",
+    helpCenterDesc: "Domande frequentes e guide",
     contactSupport: "Contatta il supporto",
     contactSupportDesc: "Scrivici",
     about: "Informazioni su FIT PRO",
-    aboutDesc: "Versione 1.0.0 • Aggiornato il 21/11/2026",
+    aboutDesc: "Versione 1.0.0 • Sessione NextAuth attiva",
     signOut: "Esci",
+    signInPrompt: "Nessuna sessione attiva rilevata.",
+    signInAction: "Accedi",
     modalTitle: "Contatta il supporto FIT PRO",
     subjectPlaceholder: "Oggetto",
     messagePlaceholder: "Il tuo messaggio...",
     cancel: "Annulla",
     send: "Invia",
-    navHome: "Home",
-    navWorkout: "Allenamento",
-    navProgress: "Progressi",
-    navPremium: "Premium",
-    navSettings: "Impostazioni",
   },
 };
-
+  
 type S = {
   display_name: string;
   avatar_url: string;
@@ -544,9 +519,10 @@ const INIT: S = {
 
 export default function ParametresPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: session, status } = useSession();
+
   const [saving, setSaving] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [plan, setPlan] = useState("Premium");
   const [msg, setMsg] = useState<string | null>(null);
   const [supportOpen, setSupportOpen] = useState(false);
@@ -555,517 +531,473 @@ export default function ParametresPage() {
   const [s, setS] = useState<S>(INIT);
 
   const t = I18N[s.lang];
+  const userEmail = session?.user?.email || "";
+  const userName =
+    session?.user?.name ||
+    s.display_name ||
+    (userEmail ? userEmail.split("@")[0] : "") ||
+    t.defaultMember;
 
   useEffect(() => {
-    let ok = true;
-    (async () => {
-      const { data: { user: u } } = await supabase.auth.getUser();
-      if (!ok) return;
-      if (!u) { setLoading(false); router.replace("/login"); return; }
-      setUser(u);
+    if (status === "loading") return;
+    if (!session?.user) return;
 
-      const [r1, r2, r3] = await Promise.all([
-        supabase.from("user_settings").select("*").eq("user_id", u.id).maybeSingle(),
-        supabase.from("user_player_preferences").select("*").eq("user_id", u.id).maybeSingle(),
-        supabase.from("user_subscriptions").select("plan_name").eq("user_id", u.id).maybeSingle(),
-      ]);
-      if (!ok) return;
-      if (r3.data?.plan_name) setPlan(r3.data.plan_name);
+    setS((prev) => ({
+      ...prev,
+      display_name:
+        session.user?.name ||
+        prev.display_name ||
+        session.user?.email?.split("@")[0] ||
+        I18N[prev.lang].defaultMember,
+      avatar_url: session.user?.image || prev.avatar_url,
+    }));
+  }, [session, status]);
 
-      const resolvedLang = resolveLang(r1.data?.language);
-      setS({
-        display_name: r1.data?.display_name || u.user_metadata?.full_name || u.email?.split("@")[0] || I18N[resolvedLang].defaultMember,
-        avatar_url: r1.data?.avatar_url || "",
-        lang: resolvedLang,
-        dark_mode: r1.data?.dark_mode ?? true,
-        autoplay_videos: r2.data?.autoplay_videos ?? true,
-        video_quality: r2.data?.video_quality || I18N[resolvedLang].qualityHigh,
-        notifications_enabled: r1.data?.notifications_enabled ?? true,
-        sound_enabled: r2.data?.sound_enabled ?? true,
-        power_saver: r1.data?.power_saver ?? false,
-      });
-      setLoading(false);
-    })();
-    return () => { ok = false; };
-  }, [router]);
+  function flash(m: string) {
+    setMsg(m);
+    window.setTimeout(() => {
+      setMsg((cur) => (cur === m ? null : cur));
+    }, 2800);
+  }
 
-  const saveAll = async (next: S, info?: string) => {
-    const tr = I18N[next.lang];
+  function updatePref<K extends keyof S>(key: K, val: S[K], feedback?: string) {
     setSaving(true);
-    setMsg(null);
-    const { data: { user: activeUser }, error: authErr } = await supabase.auth.getUser();
-    const uid = activeUser?.id || user?.id;
-    if (authErr || !uid) {
+    setS((prev) => ({ ...prev, [key]: val }));
+    window.setTimeout(() => {
       setSaving(false);
-      setMsg(`${tr.errorPrefix} : ${authErr?.message || "Session introuvable"}`);
-      return;
-    }
+      flash(feedback || t.saved);
+    }, 150);
+  }
 
-    const now = new Date().toISOString();
-    const basePayload = {
-      user_id: uid,
-      display_name: next.display_name,
-      avatar_url: next.avatar_url,
-      language: LANG_LABELS[next.lang],
-      notifications_enabled: next.notifications_enabled,
-      power_saver: next.power_saver,
-      updated_at: now,
-    };
+  function handleLangChange(nextLang: LangCode) {
+    playClick();
+    const nextQuality =
+      nextLang === "en"
+        ? I18N.en.qualityHigh
+        : nextLang === "es"
+        ? I18N.es.qualityHigh
+        : nextLang === "pt"
+        ? I18N.pt.qualityHigh
+        : nextLang === "ar"
+        ? I18N.ar.qualityHigh
+        : nextLang === "de"
+        ? I18N.de.qualityHigh
+        : nextLang === "it"
+        ? I18N.it.qualityHigh
+        : I18N.fr.qualityHigh;
 
-    let res1 = await supabase
-      .from("user_settings")
-      .upsert({ ...basePayload, dark_mode: next.dark_mode }, { onConflict: "user_id" });
+    setS((prev) => ({
+      ...prev,
+      lang: nextLang,
+      video_quality: nextQuality,
+    }));
+    flash(I18N[nextLang].langUpdated(LANG_LABELS[nextLang]));
+  }
 
-    if (res1.error && res1.error.message.toLowerCase().includes("dark_mode")) {
-      res1 = await supabase
-        .from("user_settings")
-        .upsert(basePayload, { onConflict: "user_id" });
-    }
+  function handleQualityChange(nextQuality: string) {
+    playClick();
+    updatePref("video_quality", nextQuality, t.qualityUpdated(nextQuality));
+  }
 
-    const res2 = await supabase
-      .from("user_player_preferences")
-      .upsert({
-        user_id: uid,
-        autoplay_videos: next.autoplay_videos,
-        video_quality: next.video_quality,
-        sound_enabled: next.sound_enabled,
-        updated_at: now,
-      }, { onConflict: "user_id" });
-
-    setSaving(false);
-    if (res1.error || res2.error) {
-      setMsg(`${tr.errorPrefix} : ${res1.error?.message || res2.error?.message}`);
-      return;
-    }
-    if (next.sound_enabled) playSuccess();
-    setMsg(info ?? tr.saved);
-  };
-
-  const toggle = async (k: "dark_mode" | "autoplay_videos" | "notifications_enabled" | "sound_enabled" | "power_saver") => {
-    if (s.sound_enabled) playClick();
-    const next = { ...s, [k]: !s[k] };
-    setS(next);
-    await saveAll(next);
-  };
-
-  const cycleLang = async () => {
-    if (s.sound_enabled) playClick();
-    const nextLang = LANG_ORDER[(LANG_ORDER.indexOf(s.lang) + 1) % LANG_ORDER.length];
-    const next = { ...s, lang: nextLang };
-    setS(next);
-    await saveAll(next, I18N[nextLang].langUpdated(LANG_LABELS[nextLang]));
-  };
-
-  const cycleQuality = async () => {
-    if (s.sound_enabled) playClick();
-    const list = [t.qualityHigh, t.qualityMed, t.qualityLow];
-    const video_quality = list[(list.indexOf(s.video_quality) + 1) % list.length];
-    const next = { ...s, video_quality };
-    setS(next);
-    await saveAll(next, t.qualityUpdated(video_quality));
-  };
-
-  const onAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (s.sound_enabled) playClick();
-    setSaving(true);
-    const { data: { user: activeUser } } = await supabase.auth.getUser();
-    const uid = activeUser?.id || user?.id;
-    if (!uid) { setSaving(false); setMsg(`${t.errorPrefix} : Session introuvable`); return; }
+    playClick();
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        updatePref("avatar_url", reader.result, t.avatarUpdated);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
 
-    const ext = file.name.split(".").pop() || "png";
-    const path = `${uid}/avatar.${ext}`;
-    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-    if (error) { setSaving(false); setMsg(`${t.uploadPrefix} : ${error.message}`); return; }
-    const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-    const next = { ...s, avatar_url: `${data.publicUrl}?t=${Date.now()}` };
-    setS(next);
-    await saveAll(next, t.avatarUpdated);
-  };
+  async function handleSignOut() {
+    playClick();
+    setSigningOut(true);
+    try {
+      await signOut({ callbackUrl: "/login" });
+    } catch {
+      setSigningOut(false);
+      router.push("/login");
+    }
+  }
 
-  const sendTicket = async (e: React.FormEvent) => {
+  function handleSendSupport(e: React.FormEvent) {
     e.preventDefault();
-    if (!subject.trim() || !body.trim()) {
-      setMsg(`${t.errorPrefix} : ${t.subjectPlaceholder} / ${t.messagePlaceholder}`);
-      return;
-    }
-    if (s.sound_enabled) playClick();
-    setSaving(true);
-    setMsg(null);
-
-    const { data: { user: activeUser }, error: authErr } = await supabase.auth.getUser();
-    const uid = activeUser?.id || user?.id;
-    if (authErr || !uid) {
-      setSaving(false);
-      setMsg(`${t.errorPrefix} : ${authErr?.message || "Session introuvable"}`);
-      return;
-    }
-
-    const { error } = await supabase.from("support_tickets").insert({
-      user_id: uid,
-      subject: subject.trim(),
-      message: body.trim(),
-      status: "open",
-    });
-
-    setSaving(false);
-    if (error) {
-      setMsg(`${t.errorPrefix} : ${error.message}`);
-      return;
-    }
-    if (s.sound_enabled) playSuccess();
+    if (!subject.trim() && !body.trim()) return;
+    playSuccess();
+    setSupportOpen(false);
     setSubject("");
     setBody("");
-    setSupportOpen(false);
-    setMsg(t.ticketSent);
-  };
+    flash(t.ticketSent);
+  }
 
-  const signOut = async () => {
-    if (s.sound_enabled) playClick();
-    await supabase.auth.signOut();
-    router.replace("/login");
-    router.refresh();
-  };  if (loading) {
+  if (status === "loading") {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#08040f] text-sm text-purple-200">
-        {t.loading}
-      </main>
+      <div className="min-h-screen bg-[#07090d] text-white flex items-center justify-center px-4">
+        <div className="text-sm text-zinc-400">{I18N.fr.loading}</div>
+      </div>
     );
   }
 
-  return (
-    <main dir={s.lang === "ar" ? "rtl" : "ltr"} className="min-h-screen bg-[#08040f] pb-24 text-white">
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-purple-500/20 bg-[#0b0615]/95 px-4 py-3.5 backdrop-blur">
+  if (!session?.user) {
+    return (
+      <div className="min-h-screen bg-[#07090d] text-white flex flex-col items-center justify-center px-4 gap-4">
+        <p className="text-sm text-zinc-300">{t.signInPrompt}</p>
         <button
           type="button"
-          onClick={() => router.back()}
-          className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-950/70 text-lg text-purple-200"
+          onClick={() => router.push("/login")}
+          className="rounded-xl bg-[#00e65b] px-5 py-2.5 text-sm font-bold text-black hover:opacity-90"
         >
-          ‹
+          {t.signInAction}
         </button>
-        <h1 className="text-base font-bold">{t.title}</h1>
-        <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-purple-950/70 text-purple-200">
-          <span>🔔</span>
-          {s.notifications_enabled && (
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold">
-              3
+      </div>
+    );
+  }
+
+  const initials = (userName || "FP")
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  return (
+    <div
+      dir={s.lang === "ar" ? "rtl" : "ltr"}
+      className="min-h-screen bg-[#07090d] text-white pb-28"
+    >
+      <div className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-extrabold tracking-tight">{t.title}</h1>
+          {(saving || signingOut) && (
+            <span className="text-xs font-medium text-[#00e65b]">
+              {t.syncing}
             </span>
           )}
         </div>
-      </header>
 
-      <div className="mx-auto max-w-xl space-y-5 px-4 pt-4">
         {msg && (
-          <div className="flex items-center justify-between rounded-2xl border border-purple-400/35 bg-purple-600/20 px-4 py-3 text-xs text-purple-100">
-            <span>{saving ? t.syncing : msg}</span>
-            <button type="button" onClick={() => setMsg(null)} className="ml-3 text-purple-300">
-              ✕
-            </button>
+          <div className="rounded-xl border border-[#00e65b]/40 bg-[#00e65b]/10 px-4 py-3 text-sm text-[#00e65b]">
+            {msg}
           </div>
         )}
 
-        <section className="flex items-center justify-between rounded-2xl border border-purple-500/30 bg-gradient-to-r from-[#1e1038] to-[#120922] p-4 shadow-lg">
-          <div className="flex items-center gap-3.5">
-            <label className="relative cursor-pointer">
-              <img
-                src={s.avatar_url || "https://placehold.co/72x72/2b1652/d8b4fe?text=FP"}
-                alt={s.display_name}
-                className="h-16 w-16 rounded-full border-2 border-purple-400/70 object-cover"
+        <div className="rounded-2xl border border-white/10 bg-[#12161f] p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <label className="relative cursor-pointer shrink-0">
+              {s.avatar_url ? (
+                <img
+                  src={s.avatar_url}
+                  alt={userName}
+                  className="w-14 h-14 rounded-full object-cover border border-[#00e65b]/50"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-[#1a2230] border border-[#00e65b]/40 flex items-center justify-center text-base font-bold text-[#00e65b]">
+                  {initials}
+                </div>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="hidden"
               />
-              <span className="absolute bottom-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-[10px] font-bold">
-                ✎
-              </span>
-              <input type="file" accept="image/*" onChange={onAvatar} className="hidden" />
             </label>
+            <div className="min-w-0">
+              <div className="font-bold text-base truncate">{userName}</div>
+              {userEmail && (
+                <div className="text-xs text-zinc-400 truncate">{userEmail}</div>
+              )}
+              <div className="mt-1 inline-block rounded-full bg-[#00e65b]/15 px-2.5 py-0.5 text-[11px] font-semibold text-[#00e65b]">
+                {plan}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={signingOut}
+            onClick={handleSignOut}
+            className="shrink-0 rounded-xl border border-red-500/40 bg-red-500/10 px-3.5 py-2 text-xs font-semibold text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+          >
+            {signingOut ? "..." : t.signOut}
+          </button>
+        </div>
+
+        <section className="rounded-2xl border border-white/10 bg-[#12161f] p-4 space-y-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+            {t.appSettings}
+          </h2>
+
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-medium">{t.language}</span>
+            <select
+              value={s.lang}
+              onChange={(e) => handleLangChange(e.target.value as LangCode)}
+              className="rounded-xl border border-white/10 bg-[#0b0e14] px-3 py-2 text-sm text-white focus:border-[#00e65b] focus:outline-none"
+            >
+              {LANG_ORDER.map((code) => (
+                <option key={code} value={code}>
+                  {LANG_LABELS[code]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="flex items-center gap-1.5">
-                <h2 className="text-base font-bold">{s.display_name}</h2>
-                <span className="text-sm text-amber-400">👑</span>
-              </div>
-              <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-purple-400/35 bg-purple-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-purple-200">
-                ♦ {plan}
-              </span>
-              <p className="mt-1 text-[11px] text-purple-300/75">
-                ID : FIT-{user?.id?.slice(0, 8).toUpperCase()}
-              </p>
+              <div className="text-sm font-medium">{t.theme}</div>
+              <div className="text-xs text-zinc-400">{t.themeDark}</div>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                playClick();
+                updatePref("dark_mode", !s.dark_mode);
+              }}
+              className={`w-12 h-7 rounded-full transition-colors p-1 ${
+                s.dark_mode ? "bg-[#00e65b]" : "bg-zinc-700"
+              }`}
+            >
+              <div
+                className={`w-5 h-5 rounded-full bg-black transition-transform ${
+                  s.dark_mode ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
           </div>
-          <span className="text-xl text-purple-300/70">›</span>
-        </section>
 
-        <section className="space-y-1.5">
-          <h3 className="px-1 text-xs font-semibold uppercase tracking-wider text-purple-300/85">
-            ⚙ {t.appSettings}
-          </h3>
-          <div className="divide-y divide-purple-500/15 overflow-hidden rounded-2xl border border-purple-500/20 bg-[#130b22]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-medium">{t.autoplay}</div>
+              <div className="text-xs text-zinc-400">{t.autoplayDesc}</div>
+            </div>
             <button
               type="button"
-              onClick={cycleLang}
-              className="flex w-full items-center justify-between px-4 py-3.5 text-left"
+              onClick={() => {
+                playClick();
+                updatePref("autoplay_videos", !s.autoplay_videos);
+              }}
+              className={`w-12 h-7 rounded-full transition-colors p-1 ${
+                s.autoplay_videos ? "bg-[#00e65b]" : "bg-zinc-700"
+              }`}
             >
-              <div>
-                <p className="text-sm font-medium">🌐 {t.language}</p>
-                <p className="text-xs text-purple-300/70">{LANG_LABELS[s.lang]}</p>
-              </div>
-              <span className="text-lg text-purple-300/60">›</span>
+              <div
+                className={`w-5 h-5 rounded-full bg-black transition-transform ${
+                  s.autoplay_videos ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
             </button>
-
-            <div className="flex items-center justify-between px-4 py-3.5">
-              <div>
-                <p className="text-sm font-medium">🎨 {t.theme}</p>
-                <p className="text-xs text-purple-300/70">{t.themeDark}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => toggle("dark_mode")}
-                className={`h-6 w-11 rounded-full p-0.5 ${s.dark_mode ? "bg-purple-600" : "bg-zinc-700"}`}
-              >
-                <span
-                  className={`block h-5 w-5 rounded-full bg-white transition ${
-                    s.dark_mode ? "translate-x-5" : ""
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between px-4 py-3.5">
-              <div>
-                <p className="text-sm font-medium">▶ {t.autoplay}</p>
-                <p className="text-xs text-purple-300/70">{t.autoplayDesc}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => toggle("autoplay_videos")}
-                className={`h-6 w-11 rounded-full p-0.5 ${
-                  s.autoplay_videos ? "bg-purple-600" : "bg-zinc-700"
-                }`}
-              >
-                <span
-                  className={`block h-5 w-5 rounded-full bg-white transition ${
-                    s.autoplay_videos ? "translate-x-5" : ""
-                  }`}
-                />
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={cycleQuality}
-              className="flex w-full items-center justify-between px-4 py-3.5 text-left"
-            >
-              <div>
-                <p className="text-sm font-medium">🎬 {t.quality}</p>
-                <p className="text-xs text-purple-300/70">{s.video_quality}</p>
-              </div>
-              <span className="text-lg text-purple-300/60">›</span>
-            </button>
-
-            <div className="flex items-center justify-between px-4 py-3.5">
-              <div>
-                <p className="text-sm font-medium">🔔 {t.notifications}</p>
-                <p className="text-xs text-purple-300/70">{t.notificationsDesc}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => toggle("notifications_enabled")}
-                className={`h-6 w-11 rounded-full p-0.5 ${
-                  s.notifications_enabled ? "bg-purple-600" : "bg-zinc-700"
-                }`}
-              >
-                <span
-                  className={`block h-5 w-5 rounded-full bg-white transition ${
-                    s.notifications_enabled ? "translate-x-5" : ""
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between px-4 py-3.5">
-              <div>
-                <p className="text-sm font-medium">🔊 {t.sound}</p>
-                <p className="text-xs text-purple-300/70">{t.soundDesc}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => toggle("sound_enabled")}
-                className={`h-6 w-11 rounded-full p-0.5 ${
-                  s.sound_enabled ? "bg-purple-600" : "bg-zinc-700"
-                }`}
-              >
-                <span
-                  className={`block h-5 w-5 rounded-full bg-white transition ${
-                    s.sound_enabled ? "translate-x-5" : ""
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between px-4 py-3.5">
-              <div>
-                <p className="text-sm font-medium">🔋 {t.powerSaver}</p>
-                <p className="text-xs text-purple-300/70">{t.powerSaverDesc}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => toggle("power_saver")}
-                className={`h-6 w-11 rounded-full p-0.5 ${
-                  s.power_saver ? "bg-purple-600" : "bg-zinc-700"
-                }`}
-              >
-                <span
-                  className={`block h-5 w-5 rounded-full bg-white transition ${
-                    s.power_saver ? "translate-x-5" : ""
-                  }`}
-                />
-              </button>
-            </div>
           </div>
-        </section>
 
-        <section className="space-y-1.5">
-          <h3 className="px-1 text-xs font-semibold uppercase tracking-wider text-purple-300/85">
-            🔒 {t.privacySection}
-          </h3>
-          <div className="divide-y divide-purple-500/15 overflow-hidden rounded-2xl border border-purple-500/20 bg-[#130b22]">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-medium">{t.quality}</span>
+            <select
+              value={s.video_quality}
+              onChange={(e) => handleQualityChange(e.target.value)}
+              className="rounded-xl border border-white/10 bg-[#0b0e14] px-3 py-2 text-sm text-white focus:border-[#00e65b] focus:outline-none"
+            >
+              <option value={t.qualityHigh}>{t.qualityHigh}</option>
+              <option value={t.qualityMed}>{t.qualityMed}</option>
+              <option value={t.qualityLow}>{t.qualityLow}</option>
+            </select>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-medium">{t.notifications}</div>
+              <div className="text-xs text-zinc-400">{t.notificationsDesc}</div>
+            </div>
             <button
               type="button"
-              onClick={() => saveAll(s, t.cloudSaved)}
-              className="flex w-full items-center justify-between px-4 py-3.5 text-left"
+              onClick={() => {
+                playClick();
+                updatePref("notifications_enabled", !s.notifications_enabled);
+              }}
+              className={`w-12 h-7 rounded-full transition-colors p-1 ${
+                s.notifications_enabled ? "bg-[#00e65b]" : "bg-zinc-700"
+              }`}
             >
-              <div>
-                <p className="text-sm font-medium">☁ {t.backup}</p>
-                <p className="text-xs text-purple-300/70">{t.backupDesc}</p>
-              </div>
-              <span className="text-lg text-purple-300/60">›</span>
+              <div
+                className={`w-5 h-5 rounded-full bg-black transition-transform ${
+                  s.notifications_enabled ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
             </button>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-medium">{t.sound}</div>
+              <div className="text-xs text-zinc-400">{t.soundDesc}</div>
+            </div>
             <button
               type="button"
-              onClick={() => saveAll(s, t.cloudRestored)}
-              className="flex w-full items-center justify-between px-4 py-3.5 text-left"
+              onClick={() => {
+                playClick();
+                updatePref("sound_enabled", !s.sound_enabled);
+              }}
+              className={`w-12 h-7 rounded-full transition-colors p-1 ${
+                s.sound_enabled ? "bg-[#00e65b]" : "bg-zinc-700"
+              }`}
             >
-              <div>
-                <p className="text-sm font-medium">↺ {t.restore}</p>
-                <p className="text-xs text-purple-300/70">{t.restoreDesc}</p>
-              </div>
-              <span className="text-lg text-purple-300/60">›</span>
+              <div
+                className={`w-5 h-5 rounded-full bg-black transition-transform ${
+                  s.sound_enabled ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
             </button>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-medium">{t.powerSaver}</div>
+              <div className="text-xs text-zinc-400">{t.powerSaverDesc}</div>
+            </div>
             <button
               type="button"
-              onClick={() => setSupportOpen(true)}
-              className="flex w-full items-center justify-between px-4 py-3.5 text-left"
+              onClick={() => {
+                playClick();
+                updatePref("power_saver", !s.power_saver);
+              }}
+              className={`w-12 h-7 rounded-full transition-colors p-1 ${
+                s.power_saver ? "bg-[#00e65b]" : "bg-zinc-700"
+              }`}
             >
-              <div>
-                <p className="text-sm font-medium text-rose-300">🗑 {t.deleteAccount}</p>
-                <p className="text-xs text-purple-300/70">{t.deleteAccountDesc}</p>
-              </div>
-              <span className="text-lg text-purple-300/60">›</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/confidentialite")}
-              className="flex w-full items-center justify-between px-4 py-3.5 text-left"
-            >
-              <div>
-                <p className="text-sm font-medium">🛡 {t.privacyPolicy}</p>
-                <p className="text-xs text-purple-300/70">{t.privacyPolicyDesc}</p>
-              </div>
-              <span className="text-lg text-purple-300/60">›</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push("/conditions")}
-              className="flex w-full items-center justify-between px-4 py-3.5 text-left"
-            >
-              <div>
-                <p className="text-sm font-medium">📄 {t.terms}</p>
-                <p className="text-xs text-purple-300/70">{t.termsDesc}</p>
-              </div>
-              <span className="text-lg text-purple-300/60">›</span>
+              <div
+                className={`w-5 h-5 rounded-full bg-black transition-transform ${
+                  s.power_saver ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
             </button>
           </div>
         </section>
 
-        <section className="space-y-1.5">
-          <h3 className="px-1 text-xs font-semibold uppercase tracking-wider text-purple-300/85">
-            ? {t.supportSection}
-          </h3>
-          <div className="divide-y divide-purple-500/15 overflow-hidden rounded-2xl border border-purple-500/20 bg-[#130b22]">
-            <button
-              type="button"
-              onClick={() => setSupportOpen(true)}
-              className="flex w-full items-center justify-between px-4 py-3.5 text-left"
-            >
-              <div>
-                <p className="text-sm font-medium">🎧 {t.helpCenter}</p>
-                <p className="text-xs text-purple-300/70">{t.helpCenterDesc}</p>
-              </div>
-              <span className="text-lg text-purple-300/60">›</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSupportOpen(true)}
-              className="flex w-full items-center justify-between px-4 py-3.5 text-left"
-            >
-              <div>
-                <p className="text-sm font-medium">✉ {t.contactSupport}</p>
-                <p className="text-xs text-purple-300/70">{t.contactSupportDesc}</p>
-              </div>
-              <span className="text-lg text-purple-300/60">›</span>
-            </button>
-            <div className="flex items-center justify-between px-4 py-3.5">
-              <div>
-                <p className="text-sm font-medium">ℹ {t.about}</p>
-                <p className="text-xs text-purple-300/70">{t.aboutDesc}</p>
-              </div>
-              <span className="text-lg text-purple-300/60">›</span>
+        <section className="rounded-2xl border border-white/10 bg-[#12161f] p-4 space-y-3">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+            {t.privacySection}
+          </h2>
+
+          <button
+            type="button"
+            onClick={() => {
+              playSuccess();
+              flash(t.cloudSaved);
+            }}
+            className="w-full flex items-center justify-between rounded-xl bg-[#0b0e14] px-3.5 py-3 text-left hover:bg-white/5"
+          >
+            <div>
+              <div className="text-sm font-medium">{t.backup}</div>
+              <div className="text-xs text-zinc-400">{t.backupDesc}</div>
             </div>
+            <span className="text-xs text-[#00e65b]">OK</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              setS((prev) => ({ ...INIT, lang: prev.lang }));
+              flash(t.cloudRestored);
+            }}
+            className="w-full flex items-center justify-between rounded-xl bg-[#0b0e14] px-3.5 py-3 text-left hover:bg-white/5"
+          >
+            <div>
+              <div className="text-sm font-medium">{t.restore}</div>
+              <div className="text-xs text-zinc-400">{t.restoreDesc}</div>
+            </div>
+            <span className="text-xs text-zinc-400">↺</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              setSubject(t.deleteAccount);
+              setSupportOpen(true);
+            }}
+            className="w-full flex items-center justify-between rounded-xl bg-[#0b0e14] px-3.5 py-3 text-left hover:bg-red-500/10"
+          >
+            <div>
+              <div className="text-sm font-medium text-red-300">
+                {t.deleteAccount}
+              </div>
+              <div className="text-xs text-zinc-400">{t.deleteAccountDesc}</div>
+            </div>
+            <span className="text-xs text-red-400">→</span>
+          </button>
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-[#12161f] p-4 space-y-3">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
+            {t.supportSection}
+          </h2>
+
+          <button
+            type="button"
+            onClick={() => {
+              playClick();
+              setSupportOpen(true);
+            }}
+            className="w-full flex items-center justify-between rounded-xl bg-[#0b0e14] px-3.5 py-3 text-left hover:bg-white/5"
+          >
+            <div>
+              <div className="text-sm font-medium">{t.contactSupport}</div>
+              <div className="text-xs text-zinc-400">{t.contactSupportDesc}</div>
+            </div>
+            <span className="text-xs text-[#00e65b]">→</span>
+          </button>
+
+          <div className="rounded-xl bg-[#0b0e14] px-3.5 py-3">
+            <div className="text-sm font-medium">{t.about}</div>
+            <div className="text-xs text-zinc-400">{t.aboutDesc}</div>
           </div>
         </section>
 
         <button
           type="button"
-          onClick={signOut}
-          className="w-full rounded-2xl bg-gradient-to-r from-purple-600 via-violet-600 to-fuchsia-600 py-3.5 text-sm font-bold text-white shadow-lg"
+          disabled={signingOut}
+          onClick={handleSignOut}
+          className="w-full rounded-2xl border border-red-500/40 bg-red-500/10 py-3.5 text-sm font-bold text-red-300 hover:bg-red-500/20 disabled:opacity-50"
         >
-          ↪ {t.signOut}
+          {signingOut ? t.syncing : t.signOut}
         </button>
       </div>
 
       {supportOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <form
-            onSubmit={sendTicket}
-            className="w-full max-w-md space-y-3 rounded-2xl border border-purple-500/30 bg-[#150c26] p-5 text-white"
+            onSubmit={handleSendSupport}
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-[#12161f] p-5 space-y-4"
           >
-            <h4 className="text-base font-bold">{t.modalTitle}</h4>
+            <h3 className="text-base font-bold">{t.modalTitle}</h3>
             <input
               type="text"
-              required
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder={t.subjectPlaceholder}
-              className="w-full rounded-xl border border-purple-500/25 bg-[#0c0716] px-3 py-2.5 text-sm outline-none"
+              className="w-full rounded-xl border border-white/10 bg-[#0b0e14] px-3.5 py-2.5 text-sm text-white focus:border-[#00e65b] focus:outline-none"
             />
             <textarea
-              rows={3}
-              required
+              rows={4}
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder={t.messagePlaceholder}
-              className="w-full rounded-xl border border-purple-500/25 bg-[#0c0716] px-3 py-2.5 text-sm outline-none"
+              className="w-full rounded-xl border border-white/10 bg-[#0b0e14] px-3.5 py-2.5 text-sm text-white focus:border-[#00e65b] focus:outline-none"
             />
-            <div className="flex justify-end gap-2">
+            <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setSupportOpen(false)}
-                className="rounded-xl bg-white/10 px-4 py-2 text-xs text-purple-200"
+                className="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-zinc-300"
               >
                 {t.cancel}
               </button>
               <button
                 type="submit"
-                className="rounded-xl bg-purple-600 px-4 py-2 text-xs font-semibold"
+                className="rounded-xl bg-[#00e65b] px-4 py-2 text-xs font-bold text-black"
               >
                 {t.send}
               </button>
@@ -1073,51 +1005,7 @@ export default function ParametresPage() {
           </form>
         </div>
       )}
-
-      <nav className="fixed bottom-0 left-0 right-0 z-20 flex items-center justify-around border-t border-purple-500/20 bg-[#0b0615]/95 py-2.5 text-[11px] backdrop-blur">
-        <button
-          type="button"
-          onClick={() => router.push("/dashboard")}
-          className="flex flex-col items-center gap-0.5 text-zinc-400"
-        >
-          <span>⌂</span>
-          <span>{t.navHome}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => router.push("/entrainement")}
-          className="flex flex-col items-center gap-0.5 text-zinc-400"
-        >
-          <span>🏋</span>
-          <span>{t.navWorkout}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => router.push("/progres")}
-          className="flex flex-col items-center gap-0.5 text-zinc-400"
-        >
-          <span>◎</span>
-          <span>{t.navProgress}</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => router.push("/premium")}
-          className="flex flex-col items-center gap-0.5 text-zinc-400"
-        >
-          <span>👑</span>
-          <span>{t.navPremium}</span>
-        </button>
-        <button
-          type="button"
-          className="flex flex-col items-center gap-0.5 font-semibold text-purple-400"
-        >
-          <span>⚙</span>
-          <span>{t.navSettings}</span>
-        </button>
-      </nav>
-    </main>
+    </div>
   );
-                   }
-        
-
+    }
       
