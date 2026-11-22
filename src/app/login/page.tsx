@@ -32,6 +32,11 @@ export default function LoginPage() {
 
   function switchToMode(nextMode: Mode) {
     clearMessages();
+    if (nextMode === "login") {
+      setOtpCode("");
+      setNewPassword("");
+      setConfirmPassword("");
+    }
     setMode(nextMode);
   }
 
@@ -73,7 +78,7 @@ export default function LoginPage() {
 
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
-      setErrorMessage("Veuillez saisir votre adresse Gmail.");
+      setErrorMessage("Veuillez saisir votre adresse e-mail.");
       return;
     }
 
@@ -111,7 +116,7 @@ export default function LoginPage() {
 
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
-      setErrorMessage("Veuillez saisir votre adresse Gmail.");
+      setErrorMessage("Veuillez saisir votre adresse e-mail.");
       return;
     }
 
@@ -289,7 +294,7 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="exemple@gmail.com"
+                placeholder="exemple@domaine.com"
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none"
               />
             </div>
@@ -351,7 +356,7 @@ export default function LoginPage() {
           <form onSubmit={handleSendOtp} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-1">
-                Adresse Gmail
+                Adresse e-mail
               </label>
               <input
                 type="email"
@@ -359,14 +364,14 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="exemple@gmail.com"
+                placeholder="exemple@domaine.com"
                 className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none"
               />
             </div>
 
             <p className="text-xs text-zinc-400">
               Un code de vérification à 6 chiffres valable 10 minutes et à usage
-              unique sera envoyé dans votre boîte Gmail. Aucune donnée de votre
+              unique sera envoyé dans votre boîte e-mail. Aucune donnée de votre
               compte ne sera supprimée.
             </p>
 
@@ -392,7 +397,7 @@ export default function LoginPage() {
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-1">
-                Adresse Gmail
+                Adresse e-mail
               </label>
               <input
                 type="email"
@@ -513,5 +518,5 @@ export default function LoginPage() {
       </div>
     </div>
   );
-  }
+      }
       
