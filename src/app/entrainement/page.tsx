@@ -141,7 +141,7 @@ const DEFAULT_STEPS: SynchronizedVideoStep[] = [
       pt: "Respeite o tempo de descanso antes da próxima série.",
       ar: "التزم بوقت الراحة قبل بدء المجموعة التالية.",
       de: "Halte deine Pause vor dem nächsten Satz ein.",
-      it: "Rispetta il tempo di recupero prima della serie successiva.",
+      it: "Rispetta il tempo de recupero prima della serie successiva.",
     },
   },
   {
@@ -597,4 +597,15 @@ export default function Entrainement() {
                   : "bg-white/10 text-white hover:bg-white/15"
               }`}
             >
-              
+              {c}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mt-6">
+          {filtered.map((w) => {
+            const countForWorkout = completedTitles.filter(
+              (t) => t === w.title
+            ).length;
+
+      
