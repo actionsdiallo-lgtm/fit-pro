@@ -1,6 +1,5 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
 import prisma from "@/lib/prisma";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
@@ -68,27 +67,35 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    const resend = new Resend(apiKey);
-    const { data, error } = await resend.emails.send({
-      from: fromEmail,
-      to: [user.email],
-      subject: "Votre code de vérification FIT PRO (valable 10 minutes)",
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827; max-width: 480px;">
-          <h2 style="margin-bottom: 8px;">FIT PRO — Code de réinitialisation</h2>
-          <p>Voici votre code de vérification à 6 chiffres pour réinitialiser le mot de passe de votre compte <strong>${user.email}</strong> :</p>
-          <div style="font-size: 28px; font-weight: 700; letter-spacing: 6px; padding: 14px 20px; background: #f3f4f6; border-radius: 8px; text-align: center; margin: 16px 0;">
-            ${otpCode}
+    const resendRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [user.email],
+        subject: "Votre code de vérification FIT PRO (valable 10 minutes)",
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827; max-width: 480px;">
+            <h2 style="margin-bottom: 8px;">FIT PRO — Code de réinitialisation</h2>
+            <p>Voici votre code de vérification à 6 chiffres pour réinitialiser le mot de passe de votre compte <strong>${user.email}</strong> :</p>
+            <div style="font-size: 28px; font-weight: 700; letter-spacing: 6px; padding: 14px 20px; background: #f3f4f6; border-radius: 8px; text-align: center; margin: 16px 0;">
+              ${otpCode}
+            </div>
+            <p>Ce code expire dans <strong>10 minutes</strong> et ne peut être utilisé qu'une seule fois.</p>
+            <p>Votre compte ainsi que toutes vos données (profil, entraînements, nutrition, poids, progrès, historique, paramètres et abonnement) sont conservés.</p>
+            <p style="font-size: 12px; color: #6b7280;">Si vous n'avez pas demandé ce code, ignorez cet e-mail.</p>
           </div>
-          <p>Ce code expire dans <strong>10 minutes</strong> et ne peut être utilisé qu'une seule fois.</p>
-          <p>Votre compte ainsi que toutes vos données (profil, entraînements, nutrition, poids, progrès, historique, paramètres et abonnement) sont conservés.</p>
-          <p style="font-size: 12px; color: #6b7280;">Si vous n'avez pas demandé ce code, ignorez cet e-mail.</p>
-        </div>
-      `,
+        `,
+      }),
     });
 
-    if (error || !data?.id) {
-      console.error("Erreur envoi OTP Resend:", error);
+    const resendData = await resendRes.json().catch(() => null);
+
+    if (!resendRes.ok || !resendData?.id) {
+      console.error("Erreur envoi OTP Resend:", resendRes.status, resendData);
       return NextResponse.json(
         {
           error:
@@ -109,5 +116,5 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
-  
+      }
+                
