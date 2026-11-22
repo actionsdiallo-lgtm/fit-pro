@@ -1,182 +1,517 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { supabase } from "../../lib/supabase";
+import { signIn } from "next-auth/react";
 
-export default function Login() {
+type Mode = "login" | "forgot" | "verify" | "reset";
+
+export default function LoginPage() {
   const router = useRouter();
 
+  const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [show, setShow] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  const [otpCode, setOtpCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [resending, setResending] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const [forgotOpen, setForgotOpen] = useState(false);
-  const [resetEmail, setResetEmail] = useState("");
-  const [resetMessage, setResetMessage] = useState("");
-  const [resetLoading, setResetLoading] = useState(false);
+  function clearMessages() {
+    setStatusMessage(null);
+    setErrorMessage(null);
+  }
 
-  const handleLogin = async (e: FormEvent) => {
+  function switchToMode(nextMode: Mode) {
+    clearMessages();
+    setMode(nextMode);
+  }
+
+  async function handleLoginSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setResetMessage("");
+    clearMessages();
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !password) {
+      setErrorMessage("Veuillez saisir votre adresse e-mail et votre mot de passe.");
+      return;
+    }
+
     setLoading(true);
+    try {
+      const res = await signIn("credentials", {
+        email: cleanEmail,
+        password,
+        redirect: false,
+      });
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+      if (!res || res.error) {
+        setErrorMessage("Adresse e-mail ou mot de passe incorrect.");
+        return;
+      }
 
-    setLoading(false);
-
-    if (signInError) {
-      setError("E-mail ou mot de passe incorrect. Vérifie tes identifiants ou crée un compte.");
-      return;
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setErrorMessage("Erreur lors de la connexion. Veuillez réessayer.");
+    } finally {
+      setLoading(false);
     }
+  }
 
-    router.push("/dashboard");
-  };
-
-  const openForgotPassword = () => {
-    setError("");
-    setResetMessage("");
-    setResetEmail((prev) => prev || email.trim());
-    setForgotOpen((prev) => !prev);
-  };
-
-  const handleSendResetLink = async (e: FormEvent) => {
+  async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
-    setResetMessage("");
+    clearMessages();
 
-    const targetEmail = resetEmail.trim();
-    if (!targetEmail) {
-      setError("Entre l'adresse e-mail du compte pour recevoir le lien de réinitialisation.");
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) {
+      setErrorMessage("Veuillez saisir votre adresse Gmail.");
       return;
     }
 
-    setResetLoading(true);
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setResetLoading(false);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail }),
+      });
 
-    if (resetError) {
-      setError(resetError.message);
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setErrorMessage(
+          data?.error || "Impossible d'envoyer le code de vérification."
+        );
+        return;
+      }
+
+      setOtpCode("");
+      setStatusMessage(
+        data?.message ||
+          `Un code à 6 chiffres a été envoyé à ${cleanEmail} (valable 10 minutes).`
+      );
+      setMode("verify");
+    } catch {
+      setErrorMessage("Erreur réseau lors de l'envoi du code.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResendOtp() {
+    clearMessages();
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail) {
+      setErrorMessage("Veuillez saisir votre adresse Gmail.");
       return;
     }
 
-    setResetMessage(
-      "Si un compte existe avec cette adresse, un lien de réinitialisation a été envoyé dans ta boîte Gmail (pense à vérifier les Spams)."
-    );
-  };
+    setResending(true);
+    try {
+      const res = await fetch("/api/auth/resend-reset-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: cleanEmail }),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setErrorMessage(
+          data?.error || "Impossible de renvoyer le code de vérification."
+        );
+        return;
+      }
+
+      setOtpCode("");
+      setStatusMessage(
+        data?.message ||
+          `Un nouveau code à 6 chiffres a été envoyé à ${cleanEmail} (valable 10 minutes).`
+      );
+    } catch {
+      setErrorMessage("Erreur réseau lors du renvoi du code.");
+    } finally {
+      setResending(false);
+    }
+  }
+
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    clearMessages();
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanCode = otpCode.replace(/\D/g, "").trim();
+
+    if (!cleanEmail) {
+      setErrorMessage("Veuillez saisir votre adresse e-mail.");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(cleanCode)) {
+      setErrorMessage("Veuillez saisir le code de vérification à 6 chiffres.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/verify-reset-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: cleanEmail,
+          code: cleanCode,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.verified) {
+        setErrorMessage(
+          data?.error || "Le code à 6 chiffres est invalide ou expiré."
+        );
+        return;
+      }
+
+      setStatusMessage(
+        data?.message ||
+          "Code vérifié. Vous pouvez maintenant définir votre nouveau mot de passe."
+      );
+      setMode("reset");
+    } catch {
+      setErrorMessage("Erreur réseau lors de la vérification du code.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    clearMessages();
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanCode = otpCode.replace(/\D/g, "").trim();
+
+    if (!/^\d{6}$/.test(cleanCode)) {
+      setErrorMessage("Code à 6 chiffres manquant. Veuillez recommencer la vérification.");
+      setMode("verify");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setErrorMessage("Le nouveau mot de passe doit contenir au moins 6 caractères.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setErrorMessage("Les deux mots de passe ne correspondent pas.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: cleanEmail,
+          code: cleanCode,
+          newPassword,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setErrorMessage(
+          data?.error || "Impossible de réinitialiser le mot de passe."
+        );
+        return;
+      }
+
+      setPassword("");
+      setOtpCode("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setStatusMessage(
+        data?.message ||
+          "Votre mot de passe a bien été mis à jour. Connectez-vous avec votre nouveau mot de passe."
+      );
+      setMode("login");
+    } catch {
+      setErrorMessage("Erreur réseau lors de la réinitialisation.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 bg-black text-white">
-      <div className="w-full max-w-md rounded-2xl p-6 bg-zinc-900 border border-zinc-800 space-y-5">
-        <div className="text-center space-y-1">
-          <h1 className="text-2xl font-extrabold tracking-wide">
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-4 py-8">
+      <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-xl">
+        <div className="text-center mb-6">
+          <div className="text-2xl font-extrabold tracking-wide">
             FIT <span className="text-emerald-400">PRO</span>
-          </h1>
-          <p className="text-sm text-zinc-400">Bon retour, connecte-toi</p>
+          </div>
+          <p className="text-sm text-zinc-400 mt-1">
+            {mode === "login" && "Bon retour, connecte-toi"}
+            {mode === "forgot" && "Récupération du compte par code à 6 chiffres"}
+            {mode === "verify" && "Vérification du code à 6 chiffres"}
+            {mode === "reset" && "Définir un nouveau mot de passe"}
+          </p>
         </div>
 
-        {error && (
-          <div className="p-3 rounded-xl bg-red-950/60 border border-red-700 text-sm text-red-200">
-            {error}
+        {statusMessage && (
+          <div className="mb-4 rounded-xl border border-emerald-700/60 bg-emerald-950/60 p-3.5 text-sm text-emerald-200">
+            {statusMessage}
           </div>
         )}
 
-        {resetMessage && (
-          <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-700 text-sm text-emerald-200">
-            {resetMessage}
+        {errorMessage && (
+          <div className="mb-4 rounded-xl border border-red-700/60 bg-red-950/60 p-3.5 text-sm text-red-200">
+            {errorMessage}
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm text-zinc-300 mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="ton@email.com"
-              className="w-full rounded-xl px-3.5 py-2.5 bg-zinc-800 border border-zinc-700 text-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-zinc-300 mb-1">Mot de passe</label>
-            <div className="flex gap-2">
+        {mode === "login" && (
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1">
+                Email
+              </label>
               <input
-                type={show ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                type="email"
+                autoComplete="email"
                 required
-                className="flex-1 rounded-xl px-3.5 py-2.5 bg-zinc-800 border border-zinc-700 text-white"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="exemple@gmail.com"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none"
               />
-              <button
-                type="button"
-                onClick={() => setShow((prev) => !prev)}
-                className="px-3.5 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-sm font-medium text-zinc-200"
-              >
-                {show ? "Masquer" : "Voir"}
-              </button>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-xl font-bold bg-emerald-500 text-black disabled:opacity-50"
-          >
-            {loading ? "Connexion..." : "SE CONNECTER"}
-          </button>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-zinc-300">
+                  Mot de passe
+                </label>
+                <button
+                  type="button"
+                  onClick={() => switchToMode("forgot")}
+                  className="text-xs font-medium text-emerald-400 hover:underline"
+                >
+                  Mot de passe oublié ?
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
+                >
+                  {showPassword ? "Masquer" : "Voir"}
+                </button>
+              </div>
+            </div>
 
-          <div className="flex items-center justify-between text-sm pt-1">
-            <Link href="/register" className="text-zinc-400 hover:text-white">
-              Créer un compte
-            </Link>
-            <button
-              type="button"
-              onClick={openForgotPassword}
-              className="text-sky-400 hover:underline"
-            >
-              Mot de passe oublié ?
-            </button>
-          </div>
-        </form>
-
-        {forgotOpen && (
-          <form
-            onSubmit={handleSendResetLink}
-            className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3"
-          >
-            <p className="text-xs text-zinc-300 font-medium">
-              Réinitialisation du mot de passe (sans mot de passe requis)
-            </p>
-            <input
-              type="email"
-              value={resetEmail}
-              onChange={(e) => setResetEmail(e.target.value)}
-              placeholder="Entre ton adresse Gmail"
-              className="w-full rounded-xl px-3 py-2 bg-zinc-800 border border-zinc-700 text-sm text-white"
-            />
             <button
               type="submit"
-              disabled={resetLoading}
-              className="w-full py-2.5 rounded-xl font-bold bg-sky-500 text-black text-sm disabled:opacity-50"
+              disabled={loading}
+              className="w-full rounded-xl bg-emerald-500 py-3 font-bold text-black hover:bg-emerald-400 disabled:opacity-60"
             >
-              {resetLoading ? "Envoi..." : "Envoyer le lien dans Gmail"}
+              {loading ? "Connexion..." : "SE CONNECTER"}
+            </button>
+
+            <div className="pt-2 text-center text-sm text-zinc-400">
+              Pas encore de compte ?{" "}
+              <Link
+                href="/register"
+                className="font-semibold text-emerald-400 hover:underline"
+              >
+                Créer un compte
+              </Link>
+            </div>
+          </form>
+        )}
+
+        {mode === "forgot" && (
+          <form onSubmit={handleSendOtp} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1">
+                Adresse Gmail
+              </label>
+              <input
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="exemple@gmail.com"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <p className="text-xs text-zinc-400">
+              Un code de vérification à 6 chiffres valable 10 minutes et à usage
+              unique sera envoyé dans votre boîte Gmail. Aucune donnée de votre
+              compte ne sera supprimée.
+            </p>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-emerald-500 py-3 font-bold text-black hover:bg-emerald-400 disabled:opacity-60"
+            >
+              {loading ? "Envoi du code..." : "ENVOYER LE CODE À 6 CHIFFRES"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => switchToMode("login")}
+              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+            >
+              Retour à la connexion
+            </button>
+          </form>
+        )}
+
+        {mode === "verify" && (
+          <form onSubmit={handleVerifyOtp} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1">
+                Adresse Gmail
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 text-white focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1">
+                Code à 6 chiffres
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                required
+                value={otpCode}
+                onChange={(e) =>
+                  setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                }
+                placeholder="123456"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 text-center text-xl font-bold tracking-[0.4em] text-white placeholder-zinc-600 focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-emerald-500 py-3 font-bold text-black hover:bg-emerald-400 disabled:opacity-60"
+            >
+              {loading ? "Vérification..." : "VÉRIFIER LE CODE"}
+            </button>
+
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <button
+                type="button"
+                disabled={resending}
+                onClick={handleResendOtp}
+                className="rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 font-medium text-emerald-400 hover:bg-zinc-800 disabled:opacity-60"
+              >
+                {resending ? "Renvoi..." : "Renvoyer le code"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => switchToMode("login")}
+                className="rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 font-medium text-zinc-300 hover:bg-zinc-800"
+              >
+                Annuler
+              </button>
+            </div>
+          </form>
+        )}
+
+        {mode === "reset" && (
+          <form onSubmit={handleResetPassword} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1">
+                Nouveau mot de passe
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Au moins 6 caractères"
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((prev) => !prev)}
+                  className="rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800"
+                >
+                  {showNewPassword ? "Masquer" : "Voir"}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1">
+                Confirmer le nouveau mot de passe
+              </label>
+              <input
+                type={showNewPassword ? "text" : "password"}
+                autoComplete="new-password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Répéter le mot de passe"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3.5 py-2.5 text-white placeholder-zinc-500 focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-emerald-500 py-3 font-bold text-black hover:bg-emerald-400 disabled:opacity-60"
+            >
+              {loading
+                ? "Enregistrement..."
+                : "ENREGISTRER LE NOUVEAU MOT DE PASSE"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => switchToMode("login")}
+              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-2.5 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+            >
+              Retour à la connexion
             </button>
           </form>
         )}
       </div>
-    </main>
+    </div>
   );
-      }
-          
+                                     }
+            
