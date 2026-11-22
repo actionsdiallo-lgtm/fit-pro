@@ -1,608 +1,524 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import SmartVideoPlayer, {
-  type SynchronizedVideoStep,
-} from "@/components/SmartVideoPlayer";
 
-type TrainingFocus =
+type Niveau = "Débutant" | "Intermédiaire" | "Avancé";
+
+type CategorieEntrainement =
   | "Tous"
-  | "Poitrine"
-  | "Avant-bras"
-  | "Bras"
   | "Abdos"
+  | "Bras"
+  | "Avant-bras"
+  | "Poitrine"
   | "Jambes"
-  | "Brûlez les graisses"
-  | "Rester en forme";
+  | "Fessiers"
+  | "Épaules et dos"
+  | "Augmentation de taille"
+  | "Objectifs populaires";
 
-interface ExercisePreview {
-  name: string;
-  target: string;
-  poseSvg: "jacks" | "squat" | "press" | "plank" | "stretch";
-}
-
-interface WorkoutItem {
-  id: number;
-  title: string;
-  cat: "Musculation" | "Cardio" | "Yoga";
-  focus: Exclude<TrainingFocus, "Tous">;
-  level: "Débutant" | "Intermédiaire" | "Avancé";
-  durationMinutes: number;
-  caloriesBurned: number;
-  exerciseCount: number;
-  img: string;
-  desc: string;
-  videoUrl: string | null;
-  steps: SynchronizedVideoStep[];
-  exercises: ExercisePreview[];
-}
-
-interface UserWorkoutRow {
+interface ExerciceDessine {
   id: string;
-  title?: string | null;
-  duration_minutes?: number | null;
-  calories_burned?: number | null;
-  created_at: string;
+  nom: string;
+  zone: string;
+  dosage: string;
+  dureeMinutes: number;
+  couleur: string;
+  mouvement: "debout" | "sol" | "squat" | "etirement";
 }
 
-const DEFAULT_STEPS: SynchronizedVideoStep[] = [
-  {
-    id: "step-1",
-    phase: "presentation",
-    label: "1. Présentation de l'exercice",
-    startSec: 0,
-    endSec: 8,
-    captions: {
-      fr: "Présentation de l'exercice et des groupes musculaires sollicités.",
-      en: "Exercise overview and targeted muscle groups.",
-      es: "Presentación del ejercicio y los grupos musculares trabajados.",
-      pt: "Apresentação do exercício e dos grupos musculares trabalhados.",
-      ar: "تقديم التمرين والمجموعات العضلية المستهدفة.",
-      de: "Vorstellung der Übung und der beanspruchten Muskelgruppen.",
-      it: "Presentazione dell'esercizio e dei gruppi muscolari coinvolti.",
-    },
-  },
-  {
-    id: "step-2",
-    phase: "start_position",
-    label: "2. Position de départ",
-    startSec: 8,
-    endSec: 16,
-    captions: {
-      fr: "Placez-vous en position de départ stable, buste gainé et appuis solides.",
-      en: "Set a stable starting position with a braced core and solid footing.",
-      es: "Colócate en una posición inicial estable, con el core activado y buen apoyo.",
-      pt: "Assuma uma posição inicial estável, abdômen firme e bom apoio.",
-      ar: "اتخذ وضعية بداية ثابتة مع شد الجذع وتثبيت الارتكاز.",
-      de: "Nimm eine stabile Ausgangsposition mit aktivierter Rumpfspannung ein.",
-      it: "Assumi una posizione di partenza stabile con core attivo e appoggi saldi.",
-    },
-  },
-  {
-    id: "step-3",
-    phase: "movement",
-    label: "3. Démonstration du mouvement",
-    startSec: 16,
-    endSec: 28,
-    captions: {
-      fr: "Exécutez le mouvement avec amplitude contrôlée sans à-coup.",
-      en: "Perform the movement through a controlled range of motion without jerking.",
-      es: "Ejecuta el movimiento con amplitud controlada y sin tirones.",
-      pt: "Execute o movimento com amplitude controlada e sem trancos.",
-      ar: "نفّذ الحركة بمدى متحكم فيه دون اندفاع مفاجئ.",
-      de: "Führe die Bewegung kontrolliert ohne Schwung aus.",
-      it: "Esegui il movimento con ampiezza controllata e senza strappi.",
-    },
-  },
-  {
-    id: "step-4",
-    phase: "breathing",
-    label: "4. Respiration",
-    startSec: 28,
-    endSec: 36,
-    captions: {
-      fr: "Inspirez lors de la phase excentrique et expirez sur l'effort.",
-      en: "Inhale on the lowering phase and exhale on exertion.",
-      es: "Inhala al bajar y exhala durante el esfuerzo.",
-      pt: "Inspire na fase de descida e expire no esforço.",
-      ar: "استنشق عند النزول وازفر أثناء بذل الجهد.",
-      de: "Atme beim Absenken ein und bei der Belastung aus.",
-      it: "Inspira nella fase di discesa ed espira durante lo sforzo.",
-    },
-  },
-  {
-    id: "step-5",
-    phase: "reps",
-    label: "5. Répétitions",
-    startSec: 36,
-    endSec: 44,
-    captions: {
-      fr: "Enchaînez vos répétitions à un rythme régulier adapté à votre niveau.",
-      en: "Complete your repetitions at a steady pace suited to your level.",
-      es: "Completa tus repeticiones a un ritmo constante adaptado a tu nivel.",
-      pt: "Complete as repetições em um ritmo constante adequado ao seu nível.",
-      ar: "أكمل التكرارات بإيقاع منتظم يناسب مستواك.",
-      de: "Absolviere die Wiederholungen in einem gleichmäßigen Tempo.",
-      it: "Completa le ripetizioni con un ritmo costante adatto al tuo livello.",
-    },
-  },
-  {
-    id: "step-6",
-    phase: "rest",
-    label: "6. Temps de repos",
-    startSec: 44,
-    endSec: 52,
-    captions: {
-      fr: "Respectez votre temps de récupération avant la série suivante.",
-      en: "Take your rest period before starting the next set.",
-      es: "Respeta el tiempo de descanso antes de la siguiente serie.",
-      pt: "Respeite o tempo de descanso antes da próxima série.",
-      ar: "التزم بوقت الراحة قبل بدء المجموعة التالية.",
-      de: "Halte deine Pause vor dem nächsten Satz ein.",
-      it: "Rispetta il tempo de recupero prima della serie successiva.",
-    },
-  },
-  {
-    id: "step-7",
-    phase: "safety",
-    label: "7. Conseils de sécurité",
-    startSec: 52,
-    endSec: 60,
-    captions: {
-      fr: "Gardez le dos neutre et arrêtez immédiatement en cas de douleur articulaire.",
-      en: "Keep a neutral spine and stop immediately if you feel joint pain.",
-      es: "Mantén la espalda neutra y detente de inmediato ante dolor articular.",
-      pt: "Mantenha a coluna neutra e pare imediatamente se sentir dor articular.",
-      ar: "حافظ على استقامة الظهر وتوقف فوراً عند الشعور بألم في المفاصل.",
-      de: "Halte den Rücken neutral und brich bei Gelenkschmerzen sofort ab.",
-      it: "Mantieni la schiena neutra e fermati subito in caso di dolore articolare.",
-    },
-  },
-];
-
-const WORKOUTS: WorkoutItem[] = [
-  {
-    id: 1,
-    title: "Poitrine Débutant",
-    cat: "Musculation",
-    focus: "Poitrine",
-    level: "Débutant",
-    durationMinutes: 11,
-    caloriesBurned: 140,
-    exerciseCount: 11,
-    img: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=800&q=80",
-    desc: "Pompes mains surélevées et pompes sur les genoux pour débuter.",
-    videoUrl: null,
-    steps: DEFAULT_STEPS,
-    exercises: [
-      { name: "Jumping jacks", target: "00:30", poseSvg: "jacks" },
-      { name: "Pompes mains surélevées", target: "x16", poseSvg: "press" },
-      { name: "Pompes sur les genoux", target: "x12", poseSvg: "plank" },
-    ],
-  },
-  {
-    id: 2,
-    title: "Poitrine Intermédiaire & Avancé",
-    cat: "Musculation",
-    focus: "Poitrine",
-    level: "Intermédiaire",
-    durationMinutes: 19,
-    caloriesBurned: 260,
-    exerciseCount: 16,
-    img: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80",
-    desc: "Travail complet des pectoraux avec amplitude contrôlée.",
-    videoUrl: null,
-    steps: DEFAULT_STEPS,
-    exercises: [
-      { name: "Jumping jacks", target: "00:30", poseSvg: "jacks" },
-      { name: "Pompes classiques", target: "x14", poseSvg: "press" },
-      { name: "Pompes piquées", target: "x14", poseSvg: "press" },
-    ],
-  },
-  {
-    id: 3,
-    title: "Avant-bras Débutant à Avancé",
-    cat: "Musculation",
-    focus: "Avant-bras",
-    level: "Intermédiaire",
-    durationMinutes: 20,
-    caloriesBurned: 190,
-    exerciseCount: 24,
-    img: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=800&q=80",
-    desc: "Renforcement de la prise, des poignets et des avant-bras.",
-    videoUrl: null,
-    steps: DEFAULT_STEPS,
-    exercises: [
-      { name: "Élévation latérale", target: "x10", poseSvg: "press" },
-      { name: "Flexion marteau", target: "x12", poseSvg: "jacks" },
-      { name: "Étirement poignets", target: "00:20", poseSvg: "stretch" },
-    ],
-  },
-  {
-    id: 4,
-    title: "Bras Débutant à Avancé",
-    cat: "Musculation",
-    focus: "Bras",
-    level: "Avancé",
-    durationMinutes: 25,
-    caloriesBurned: 290,
-    exerciseCount: 25,
-    img: "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=800&q=80",
-    desc: "Dips triceps, cercles de bras et gainage dynamique.",
-    videoUrl: null,
-    steps: DEFAULT_STEPS,
-    exercises: [
-      { name: "Cercles de bras", target: "x30", poseSvg: "jacks" },
-      { name: "Triceps dips sur chaise", target: "x12", poseSvg: "squat" },
-      { name: "Sauter sans corde", target: "00:30", poseSvg: "jacks" },
-    ],
-  },
-  {
-    id: 5,
-    title: "Abdos & Ceinture Abdominale",
-    cat: "Cardio",
-    focus: "Abdos",
-    level: "Intermédiaire",
-    durationMinutes: 22,
-    caloriesBurned: 240,
-    exerciseCount: 21,
-    img: "https://images.unsplash.com/photo-1549060279-7e168fcee0c2?w=800&q=80",
-    desc: "Toucher les talons, crunchs croisés et pont latéral.",
-    videoUrl: null,
-    steps: DEFAULT_STEPS,
-    exercises: [
-      { name: "Toucher les talons", target: "x26", poseSvg: "plank" },
-      { name: "Crunchs croisés", target: "x20", poseSvg: "plank" },
-      { name: "Pont latéral", target: "x20", poseSvg: "plank" },
-    ],
-  },
-  {
-    id: 6,
-    title: "Jambes & Fessiers Puissance",
-    cat: "Musculation",
-    focus: "Jambes",
-    level: "Intermédiaire",
-    durationMinutes: 33,
-    caloriesBurned: 380,
-    exerciseCount: 36,
-    img: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80",
-    desc: "Squats, fentes, sauts latéraux et renforcement du bas du corps.",
-    videoUrl: null,
-    steps: DEFAULT_STEPS,
-    exercises: [
-      { name: "Squats", target: "x14", poseSvg: "squat" },
-      { name: "Saut de côté", target: "00:30", poseSvg: "jacks" },
-      { name: "Fente avec torsion", target: "x10", poseSvg: "squat" },
-    ],
-  },
-  {
-    id: 7,
-    title: "HIIT Brûle-Graisse",
-    cat: "Cardio",
-    focus: "Brûlez les graisses",
-    level: "Intermédiaire",
-    durationMinutes: 25,
-    caloriesBurned: 350,
-    exerciseCount: 18,
-    img: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=800&q=80",
-    desc: "Intervalles dynamiques pour maximiser la dépense calorique.",
-    videoUrl: null,
-    steps: DEFAULT_STEPS,
-    exercises: [
-      { name: "Jumping jacks", target: "00:30", poseSvg: "jacks" },
-      { name: "Squats avec saut", target: "x15", poseSvg: "squat" },
-      { name: "Gainage actif", target: "00:40", poseSvg: "plank" },
-    ],
-  },
-  {
-    id: 8,
-    title: "Mobilité & Rester en forme",
-    cat: "Yoga",
-    focus: "Rester en forme",
-    level: "Débutant",
-    durationMinutes: 20,
-    caloriesBurned: 120,
-    exerciseCount: 12,
-    img: "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&q=80",
-    desc: "Étirements doux du dos et du bas du corps pour la souplesse.",
-    videoUrl: null,
-    steps: DEFAULT_STEPS,
-    exercises: [
-      { name: "Étirement du dos", target: "00:45", poseSvg: "stretch" },
-      { name: "Étirement bas du corps", target: "00:45", poseSvg: "stretch" },
-      { name: "Respiration profonde", target: "00:30", poseSvg: "jacks" },
-    ],
-  },
-];
-
-function MovementIllustration({ pose }: { pose: ExercisePreview["poseSvg"] }) {
-  return (
-    <div className="w-12 h-12 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
-      <svg
-        viewBox="0 0 48 48"
-        className="w-9 h-9 text-lime-400"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        {pose === "jacks" && (
-          <>
-            <circle cx="24" cy="9" r="3.5" />
-            <path d="M24 13v12" />
-            <path d="M24 16L12 8M24 16l12-8" />
-            <path d="M24 25l-9 14M24 25l9 14" />
-          </>
-        )}
-        {pose === "squat" && (
-          <>
-            <circle cx="22" cy="11" r="3.5" />
-            <path d="M22 15l6 10-7 6" />
-            <path d="M25 18h10" />
-            <path d="M21 31l-4 9M21 31l6 9" />
-          </>
-        )}
-        {pose === "press" && (
-          <>
-            <circle cx="35" cy="21" r="3.5" />
-            <path d="M32 23L19 25l-9 5" />
-            <path d="M25 24l2 12" />
-          </>
-        )}
-        {pose === "plank" && (
-          <>
-            <circle cx="37" cy="23" r="3.5" />
-            <path d="M34 25L12 31" />
-            <path d="M30 26l-2 10M12 31l-2 5" />
-          </>
-        )}
-        {pose === "stretch" && (
-          <>
-            <circle cx="16" cy="22" r="3.5" />
-            <path d="M19 24l12 8h10" />
-            <path d="M22 26l13-3" />
-          </>
-        )}
-      </svg>
-    </div>
-  );
+interface ProgrammeEntrainement {
+  id: string;
+  titre: string;
+  categorie: Exclude<CategorieEntrainement, "Tous">;
+  niveau: Niveau;
+  dureeMinutes: number;
+  nbExercices: number;
+  couleur: string;
+  exercices: ExerciceDessine[];
 }
 
-const FOCUS_LIST: TrainingFocus[] = [
+const CATEGORIES: CategorieEntrainement[] = [
   "Tous",
-  "Poitrine",
-  "Avant-bras",
-  "Bras",
   "Abdos",
+  "Bras",
+  "Avant-bras",
+  "Poitrine",
   "Jambes",
-  "Brûlez les graisses",
-  "Rester en forme",
+  "Fessiers",
+  "Épaules et dos",
+  "Augmentation de taille",
+  "Objectifs populaires",
 ];
-  export default function Entrainement() {
-  const sessionResult = useSession();
-  const session = sessionResult?.data ?? null;
-  const status = sessionResult?.status ?? "unauthenticated";
-  const playerSectionRef = useRef<HTMLElement | null>(null);
-  const [focusFilter, setFocusFilter] = useState<TrainingFocus>("Tous");
-  const [savingId, setSavingId] = useState<number | null>(null);
-  const [statusMsg, setStatusMsg] = useState<string | null>(null);
-  const [completedTitles, setCompletedTitles] = useState<string[]>([]);
-  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutItem | null>(
-    null
-  );
 
-  const userId =
-    (session?.user as { id?: string } | undefined)?.id ??
-    session?.user?.email ??
-    null;
+const PROGRAMMES: ProgrammeEntrainement[] = [
+  {
+    id: "abdos-intermediaire",
+    titre: "Abdos Intermédiaire",
+    categorie: "Abdos",
+    niveau: "Intermédiaire",
+    dureeMinutes: 4,
+    nbExercices: 21,
+    couleur: "#38bdf8",
+    exercices: [
+      { id: "a1", nom: "Jumping jacks", zone: "Cardio & Sangle", dosage: "00:30", dureeMinutes: 1, couleur: "#38bdf8", mouvement: "debout" },
+      { id: "a2", nom: "Toucher les talons", zone: "Obliques", dosage: "x26", dureeMinutes: 1, couleur: "#38bdf8", mouvement: "sol" },
+      { id: "a3", nom: "Crunchs croisés", zone: "Abdos", dosage: "x20", dureeMinutes: 2, couleur: "#38bdf8", mouvement: "sol" },
+    ],
+  },
+  {
+    id: "abdos-avance",
+    titre: "Abdos Avancé",
+    categorie: "Abdos",
+    niveau: "Avancé",
+    dureeMinutes: 5,
+    nbExercices: 21,
+    couleur: "#0ea5e9",
+    exercices: [
+      { id: "a4", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 1, couleur: "#0ea5e9", mouvement: "debout" },
+      { id: "a5", nom: "Relevés de buste", zone: "Grand droit", dosage: "x20", dureeMinutes: 2, couleur: "#0ea5e9", mouvement: "sol" },
+      { id: "a6", nom: "Pont latéral gauche", zone: "Gainage latéral", dosage: "x20", dureeMinutes: 2, couleur: "#0ea5e9", mouvement: "sol" },
+    ],
+  },
+  {
+    id: "bras-debutant",
+    titre: "Bras Débutant",
+    categorie: "Bras",
+    niveau: "Débutant",
+    dureeMinutes: 3,
+    nbExercices: 19,
+    couleur: "#a3e635",
+    exercices: [
+      { id: "b1", nom: "Élévations des bras", zone: "Épaules & Bras", dosage: "x10", dureeMinutes: 1, couleur: "#a3e635", mouvement: "debout" },
+      { id: "b2", nom: "Élévation latérale des bras", zone: "Deltoïdes", dosage: "x10", dureeMinutes: 1, couleur: "#a3e635", mouvement: "debout" },
+      { id: "b3", nom: "Triceps : dips sur chaise", zone: "Triceps", dosage: "x10", dureeMinutes: 1, couleur: "#a3e635", mouvement: "squat" },
+    ],
+  },
+  {
+    id: "bras-intermediaire",
+    titre: "Bras Intermédiaire",
+    categorie: "Bras",
+    niveau: "Intermédiaire",
+    dureeMinutes: 4,
+    nbExercices: 25,
+    couleur: "#84cc16",
+    exercices: [
+      { id: "b4", nom: "Cercles de bras sens horaire", zone: "Épaules", dosage: "x30", dureeMinutes: 1, couleur: "#84cc16", mouvement: "debout" },
+      { id: "b5", nom: "Cercles de bras sens antihoraire", zone: "Épaules", dosage: "x30", dureeMinutes: 1, couleur: "#84cc16", mouvement: "debout" },
+      { id: "b6", nom: "Dips au sol", zone: "Triceps", dosage: "x14", dureeMinutes: 2, couleur: "#84cc16", mouvement: "sol" },
+    ],
+  },
+  {
+    id: "bras-avance",
+    titre: "Bras Avancé",
+    categorie: "Bras",
+    niveau: "Avancé",
+    dureeMinutes: 5,
+    nbExercices: 28,
+    couleur: "#65a30d",
+    exercices: [
+      { id: "b7", nom: "Cercles de bras sens horaire", zone: "Endurance bras", dosage: "x30", dureeMinutes: 2, couleur: "#65a30d", mouvement: "debout" },
+      { id: "b8", nom: "Cercles de bras sens antihoraire", zone: "Endurance bras", dosage: "x30", dureeMinutes: 2, couleur: "#65a30d", mouvement: "debout" },
+      { id: "b9", nom: "Sauter sans corde", zone: "Cardio & Poignets", dosage: "00:30", dureeMinutes: 1, couleur: "#65a30d", mouvement: "debout" },
+    ],
+  },
+  {
+    id: "avant-bras-debutant",
+    titre: "Avant-bras Débutant",
+    categorie: "Avant-bras",
+    niveau: "Débutant",
+    dureeMinutes: 3,
+    nbExercices: 24,
+    couleur: "#f59e0b",
+    exercices: [
+      { id: "av1", nom: "Flexion marteau alternée", zone: "Avant-bras & Biceps", dosage: "x6", dureeMinutes: 2, couleur: "#f59e0b", mouvement: "debout" },
+      { id: "av2", nom: "Étirement des poignets et chevilles", zone: "Mobilité", dosage: "00:20", dureeMinutes: 1, couleur: "#f59e0b", mouvement: "etirement" },
+    ],
+  },
+  {
+    id: "avant-bras-intermediaire",
+    titre: "Avant-bras Intermédiaire",
+    categorie: "Avant-bras",
+    niveau: "Intermédiaire",
+    dureeMinutes: 3,
+    nbExercices: 24,
+    couleur: "#d97706",
+    exercices: [
+      { id: "av3", nom: "Élévation latérale avec haltère", zone: "Épaules & Prise", dosage: "x8", dureeMinutes: 2, couleur: "#d97706", mouvement: "debout" },
+      { id: "av4", nom: "Étirement des poignets et chevilles", zone: "Récupération", dosage: "00:20", dureeMinutes: 1, couleur: "#d97706", mouvement: "etirement" },
+    ],
+  },
+  {
+    id: "avant-bras-avance",
+    titre: "Avant-bras Avancé",
+    categorie: "Avant-bras",
+    niveau: "Avancé",
+    dureeMinutes: 4,
+    nbExercices: 24,
+    couleur: "#b45309",
+    exercices: [
+      { id: "av5", nom: "Développé militaire", zone: "Épaules & Stabilisation", dosage: "x10", dureeMinutes: 2, couleur: "#b45309", mouvement: "debout" },
+      { id: "av6", nom: "Étirement des poignets et chevilles", zone: "Mobilité", dosage: "00:20", dureeMinutes: 2, couleur: "#b45309", mouvement: "etirement" },
+    ],
+  },
+  {
+    id: "poitrine-debutant",
+    titre: "Poitrine Débutant",
+    categorie: "Poitrine",
+    niveau: "Débutant",
+    dureeMinutes: 3,
+    nbExercices: 11,
+    couleur: "#f43f5e",
+    exercices: [
+      { id: "p1", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 1, couleur: "#f43f5e", mouvement: "debout" },
+      { id: "p2", nom: "Pompes avec mains surélevées", zone: "Pectoraux", dosage: "x16", dureeMinutes: 1, couleur: "#f43f5e", mouvement: "sol" },
+      { id: "p3", nom: "Pompes sur les genoux", zone: "Pectoraux", dosage: "x12", dureeMinutes: 1, couleur: "#f43f5e", mouvement: "sol" },
+    ],
+  },
+  {
+    id: "poitrine-intermediaire",
+    titre: "Poitrine Intermédiaire",
+    categorie: "Poitrine",
+    niveau: "Intermédiaire",
+    dureeMinutes: 4,
+    nbExercices: 14,
+    couleur: "#e11d48",
+    exercices: [
+      { id: "p4", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 1, couleur: "#e11d48", mouvement: "debout" },
+      { id: "p5", nom: "Pompes sur les genoux", zone: "Pectoraux", dosage: "x12", dureeMinutes: 1, couleur: "#e11d48", mouvement: "sol" },
+      { id: "p6", nom: "Pompes classiques", zone: "Pectoraux & Triceps", dosage: "x12", dureeMinutes: 2, couleur: "#e11d48", mouvement: "sol" },
+    ],
+  },
+  {
+    id: "poitrine-avance",
+    titre: "Poitrine Avancé",
+    categorie: "Poitrine",
+    niveau: "Avancé",
+    dureeMinutes: 4,
+    nbExercices: 16,
+    couleur: "#be123c",
+    exercices: [
+      { id: "p7", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 1, couleur: "#be123c", mouvement: "debout" },
+      { id: "p8", nom: "Cercle avec les bras", zone: "Mobilité épaules", dosage: "x20", dureeMinutes: 2, couleur: "#be123c", mouvement: "debout" },
+      { id: "p9", nom: "Étirement des épaules", zone: "Souplesse", dosage: "00:30", dureeMinutes: 1, couleur: "#be123c", mouvement: "etirement" },
+    ],
+  },
+  {
+    id: "jambes-debutant",
+    titre: "Jambes Débutant",
+    categorie: "Jambes",
+    niveau: "Débutant",
+    dureeMinutes: 4,
+    nbExercices: 23,
+    couleur: "#a855f7",
+    exercices: [
+      { id: "j1", nom: "Saut de côté", zone: "Agilité & Jambes", dosage: "00:30", dureeMinutes: 2, couleur: "#a855f7", mouvement: "squat" },
+      { id: "j2", nom: "Squats", zone: "Quadriceps & Fessiers", dosage: "x12", dureeMinutes: 2, couleur: "#a855f7", mouvement: "squat" },
+    ],
+  },
+  {
+    id: "jambes-intermediaire",
+    titre: "Jambes Intermédiaire",
+    categorie: "Jambes",
+    niveau: "Intermédiaire",
+    dureeMinutes: 5,
+    nbExercices: 36,
+    couleur: "#9333ea",
+    exercices: [
+      { id: "j3", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 2, couleur: "#9333ea", mouvement: "debout" },
+      { id: "j4", nom: "Squats", zone: "Quadriceps & Fessiers", dosage: "x12", dureeMinutes: 3, couleur: "#9333ea", mouvement: "squat" },
+    ],
+  },
+  {
+    id: "jambes-avance",
+    titre: "Jambes Avancé",
+    categorie: "Jambes",
+    niveau: "Avancé",
+    dureeMinutes: 6,
+    nbExercices: 43,
+    couleur: "#7e22ce",
+    exercices: [
+      { id: "j5", nom: "Burpees", zone: "Full body & Jambes", dosage: "x10", dureeMinutes: 3, couleur: "#7e22ce", mouvement: "squat" },
+      { id: "j6", nom: "Squats", zone: "Quadriceps & Fessiers", dosage: "x14", dureeMinutes: 3, couleur: "#7e22ce", mouvement: "squat" },
+    ],
+  },
+  {
+    id: "fessiers-debutant",
+    titre: "Fessiers Débutant",
+    categorie: "Fessiers",
+    niveau: "Débutant",
+    dureeMinutes: 3,
+    nbExercices: 15,
+    couleur: "#ec4899",
+    exercices: [
+      { id: "f1", nom: "Genou au torse debout", zone: "Hanches & Fessiers", dosage: "x10", dureeMinutes: 1, couleur: "#ec4899", mouvement: "debout" },
+      { id: "f2", nom: "Coups de pied squat", zone: "Fessiers", dosage: "x10", dureeMinutes: 1, couleur: "#ec4899", mouvement: "squat" },
+      { id: "f3", nom: "Flexion avant", zone: "Ischio-jambiers", dosage: "x14", dureeMinutes: 1, couleur: "#ec4899", mouvement: "etirement" },
+    ],
+  },
+  {
+    id: "fessiers-intermediaire",
+    titre: "Fessiers Intermédiaire",
+    categorie: "Fessiers",
+    niveau: "Intermédiaire",
+    dureeMinutes: 4,
+    nbExercices: 17,
+    couleur: "#db2777",
+    exercices: [
+      { id: "f4", nom: "Coups de pied squat", zone: "Fessiers", dosage: "x10", dureeMinutes: 1, couleur: "#db2777", mouvement: "squat" },
+      { id: "f5", nom: "Levé de jambe en arrière", zone: "Grand fessier", dosage: "x30", dureeMinutes: 1, couleur: "#db2777", mouvement: "debout" },
+      { id: "f6", nom: "Squats avec saut", zone: "Puissance jambes", dosage: "x22", dureeMinutes: 2, couleur: "#db2777", mouvement: "squat" },
+    ],
+  },
+  {
+    id: "fessiers-avance",
+    titre: "Fessiers Avancé",
+    categorie: "Fessiers",
+    niveau: "Avancé",
+    dureeMinutes: 5,
+    nbExercices: 18,
+    couleur: "#be185d",
+    exercices: [
+      { id: "f7", nom: "Cercle de hanche debout", zone: "Mobilité hanche", dosage: "x8", dureeMinutes: 1, couleur: "#be185d", mouvement: "debout" },
+      { id: "f8", nom: "Fente avec torsion", zone: "Fessiers & Obliques", dosage: "x8", dureeMinutes: 2, couleur: "#be185d", mouvement: "squat" },
+      { id: "f9", nom: "Squat sumo", zone: "Adducteurs & Fessiers", dosage: "x10", dureeMinutes: 2, couleur: "#be185d", mouvement: "squat" },
+    ],
+  },
+  {
+    id: "epaules-dos-debutant",
+    titre: "Épaules et dos Débutant",
+    categorie: "Épaules et dos",
+    niveau: "Débutant",
+    dureeMinutes: 3,
+    nbExercices: 17,
+    couleur: "#14b8a6",
+    exercices: [
+      { id: "e1", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 1, couleur: "#14b8a6", mouvement: "debout" },
+      { id: "e2", nom: "Élévations des bras", zone: "Épaules", dosage: "x6", dureeMinutes: 1, couleur: "#14b8a6", mouvement: "debout" },
+      { id: "e3", nom: "Étirements des rhomboïdes", zone: "Haut du dos", dosage: "x14", dureeMinutes: 1, couleur: "#14b8a6", mouvement: "etirement" },
+    ],
+  },
+  {
+    id: "epaules-dos-intermediaire",
+    titre: "Épaules et dos Intermédiaire",
+    categorie: "Épaules et dos",
+    niveau: "Intermédiaire",
+    dureeMinutes: 4,
+    nbExercices: 17,
+    couleur: "#0d9488",
+    exercices: [
+      { id: "e4", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 1, couleur: "#0d9488", mouvement: "debout" },
+      { id: "e5", nom: "Kickbacks triceps", zone: "Arrière bras & Dos", dosage: "x14", dureeMinutes: 1, couleur: "#0d9488", mouvement: "squat" },
+      { id: "e6", nom: "Pompes avec mains surélevées", zone: "Haut du corps", dosage: "x14", dureeMinutes: 2, couleur: "#0d9488", mouvement: "sol" },
+    ],
+  },
+  {
+    id: "epaules-dos-avance",
+    titre: "Épaules et dos Avancé",
+    categorie: "Épaules et dos",
+    niveau: "Avancé",
+    dureeMinutes: 5,
+    nbExercices: 17,
+    couleur: "#0f766e",
+    exercices: [
+      { id: "e7", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 1, couleur: "#0f766e", mouvement: "debout" },
+      { id: "e8", nom: "Hyper-extension", zone: "Lombaires & Dos", dosage: "x14", dureeMinutes: 2, couleur: "#0f766e", mouvement: "sol" },
+      { id: "e9", nom: "Pompes piquées", zone: "Épaules", dosage: "x14", dureeMinutes: 2, couleur: "#0f766e", mouvement: "sol" },
+    ],
+  },
+  {
+    id: "taille-defi-28j",
+    titre: "Défi pour gagner en taille (28 jours)",
+    categorie: "Augmentation de taille",
+    niveau: "Débutant",
+    dureeMinutes: 4,
+    nbExercices: 22,
+    couleur: "#22c55e",
+    exercices: [
+      { id: "t1", nom: "Étirement du dos", zone: "Posture & Colonne", dosage: "14 min", dureeMinutes: 2, couleur: "#22c55e", mouvement: "etirement" },
+      { id: "t2", nom: "Étirement du bas du corps", zone: "Souplesse", dosage: "15 min", dureeMinutes: 2, couleur: "#22c55e", mouvement: "etirement" },
+    ],
+  },
+  {
+    id: "objectif-bruler-graisses",
+    titre: "HIIT Brûle-graisses & Quadriceps",
+    categorie: "Objectifs populaires",
+    niveau: "Intermédiaire",
+    dureeMinutes: 5,
+    nbExercices: 12,
+    couleur: "#f97316",
+    exercices: [
+      { id: "o1", nom: "Chaise contre le mur", zone: "Quadriceps", dosage: "19 min", dureeMinutes: 2, couleur: "#f97316", mouvement: "squat" },
+      { id: "o2", nom: "Exercices HIIT brûle-graisses", zone: "Cardio", dosage: "8 min", dureeMinutes: 2, couleur: "#f97316", mouvement: "debout" },
+      { id: "o3", nom: "3 exercices pour perdre du ventre", zone: "Sangle abdominale", dosage: "9 min", dureeMinutes: 1, couleur: "#f97316", mouvement: "sol" },
+    ],
+  },
+];
 
-  const loadUserWorkouts = useCallback(async () => {
-    if (status === "loading") return;
-
-    if (!userId) {
-      setCompletedTitles([]);
-      return;
-    }
-
-    setStatusMsg(null);
-    try {
-      const res = await fetch("/api/workouts", { cache: "no-store" });
-      if (!res.ok) {
-        return;
-      }
-      const data = await res.json().catch(() => null);
-      const rows: UserWorkoutRow[] = Array.isArray(data?.workouts)
-        ? data.workouts
-        : Array.isArray(data)
-          ? data
-          : [];
-      const titles = rows
-        .map((r) => r.title)
-        .filter((t): t is string => Boolean(t));
-      setCompletedTitles(titles);
-    } catch (err) {
-      setStatusMsg(
-        err instanceof Error
-          ? err.message
-          : "Impossible de charger vos séances enregistrées."
-      );
-    }
-  }, [status, userId]);
-
-  useEffect(() => {
-    loadUserWorkouts();
-  }, [loadUserWorkouts]);
-
-  useEffect(() => {
-    if (selectedWorkout && playerSectionRef.current) {
-      playerSectionRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }
-  }, [selectedWorkout]);
-
-  const handleLogWorkout = async (workout: WorkoutItem) => {
-    if (!userId) {
-      setStatusMsg(
-        "Connectez-vous à votre compte FIT PRO pour enregistrer vos séances."
-      );
-      return;
-    }
-
-    setSavingId(workout.id);
-    setStatusMsg(null);
-
-    try {
-      const res = await fetch("/api/workouts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: workout.title,
-          duration_minutes: workout.durationMinutes,
-          calories_burned: workout.caloriesBurned,
-        }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json().catch(() => null);
-        throw new Error(
-          errData?.error || "Erreur lors de l'enregistrement de la séance."
-        );
-      }
-
-      setCompletedTitles((prev) => [workout.title, ...prev]);
-      setStatusMsg(`Séance "${workout.title}" enregistrée dans votre compte.`);
-    } catch (err) {
-      setStatusMsg(
-        err instanceof Error
-          ? err.message
-          : "Erreur lors de l'enregistrement de la séance."
-      );
-    } finally {
-      setSavingId(null);
-    }
-  };
-
-  const filtered =
-    focusFilter === "Tous"
-      ? WORKOUTS
-      : WORKOUTS.filter((w) => w.focus === focusFilter);
-
+function CartePhotoOriginale({
+  programme,
+  onAppuyerImage,
+}: {
+  programme: ProgrammeEntrainement;
+  onAppuyerImage: () => void;
+}) {
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white pb-24">
-      <div className="max-w-6xl mx-auto px-4 pt-8">
-        <Link href="/" className="text-gray-400 text-sm hover:text-lime-400">
-          ← Retour
-        </Link>
-        <h1 className="text-3xl md:text-5xl font-black mt-4">ENTRAÎNEMENT</h1>
-        <p className="text-gray-400 text-sm mt-1">
-          Choisissez votre entraînement, visualisez les mouvements et suivez la
-          vidéo guidée étape par étape.
-        </p>
-
-        {status === "loading" ? (
-          <p className="text-gray-400 mt-3 text-sm">
-            Chargement de votre suivi personnel...
-          </p>
-        ) : userId ? (
-          <p className="text-lime-400 mt-3 text-sm font-semibold">
-            {completedTitles.length} séance(s) enregistrée(s) sur votre compte
-          </p>
-        ) : (
-          <div className="mt-3 rounded-2xl border border-amber-500/30 bg-amber-950/40 p-3 text-xs text-amber-200 flex items-center justify-between gap-3">
-            <span>
-              Connectez-vous pour enregistrer et consulter vos séances
-              personnelles.
-            </span>
-            <Link
-              href="/login"
-              className="rounded-lg bg-lime-400 px-3 py-1.5 font-bold text-black whitespace-nowrap"
-            >
-              Connexion
-            </Link>
-          </div>
-        )}
-
-        {statusMsg && (
-          <p className="mt-3 rounded-xl border border-white/10 bg-[#151515] px-4 py-2.5 text-xs text-lime-300">
-            {statusMsg}
-          </p>
-        )}
-
-        {selectedWorkout && (
-          <section
-            ref={playerSectionRef}
-            className="mt-6 rounded-3xl border border-lime-400/30 bg-[#141414] p-5"
+    <button
+      type="button"
+      onClick={onAppuyerImage}
+      className="group relative w-full overflow-hidden rounded-2xl border border-white/15 bg-slate-950 text-left focus:outline-none focus:ring-2 focus:ring-lime-400"
+      aria-label={`Ouvrir et lancer la vidéo dessinée de ${programme.titre}`}
+    >
+      <div
+        className="flex h-44 w-full items-center justify-between px-5 py-4"
+        style={{
+          background: `linear-gradient(135deg, ${programme.couleur}36 0%, #0f172a 60%, #020617 100%)`,
+        }}
+      >
+        <div className="max-w-[63%] space-y-1.5">
+          <span
+            className="inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-slate-950"
+            style={{ backgroundColor: programme.couleur }}
           >
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold text-lime-400 uppercase">
-                  Vidéo &amp; mouvements guidés • {selectedWorkout.focus}
-                </p>
-                <h2 className="text-xl md:text-2xl font-black mt-0.5">
-                  {selectedWorkout.title}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedWorkout(null)}
-                className="rounded-full bg-white/10 px-3.5 py-1.5 text-xs font-bold text-gray-200 hover:bg-white/15"
-              >
-                Fermer
-              </button>
-            </div>
-
-            <div className="mt-4">
-              <SmartVideoPlayer
-                title={selectedWorkout.title}
-                videoUrl={selectedWorkout.videoUrl}
-                posterUrl={selectedWorkout.img}
-                steps={selectedWorkout.steps}
-                userId={userId}
-              />
-            </div>
-
-            <div className="mt-5 grid sm:grid-cols-3 gap-3">
-              {selectedWorkout.exercises.map((ex) => (
-                <div
-                  key={ex.name}
-                  className="flex items-center gap-3 rounded-2xl bg-[#1C1C1C] border border-white/10 p-3"
-                >
-                  <MovementIllustration pose={ex.poseSvg} />
-                  <div className="min-w-0">
-                    <p className="font-bold text-sm truncate">{ex.name}</p>
-                    <p className="text-xs text-lime-400 font-semibold mt-0.5">
-                      {ex.target}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <div className="flex gap-2 mt-6 overflow-x-auto pb-2">
-          {FOCUS_LIST.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setFocusFilter(c)}
-              className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition ${
-                focusFilter === c
-                  ? "bg-lime-400 text-black"
-                  : "bg-white/10 text-white hover:bg-white/15"
-              }`}
-            >
-              {c}
-            </button>
-          ))}
+            {programme.categorie}
+          </span>
+          <h2 className="text-lg font-black leading-snug text-white">
+            {programme.titre}
+          </h2>
+          <p className="text-xs font-semibold text-slate-200">
+            Appuyer sur l&apos;image · Vidéo auto ({programme.dureeMinutes} min)
+          </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mt-6">
-          {filtered.map((w) => {
-            const countForW
+        <svg
+          viewBox="0 0 120 120"
+          className="h-24 w-24 shrink-0 transition-transform duration-300 group-hover:scale-105"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <circle cx="60" cy="60" r="52" fill={programme.couleur} fillOpacity="0.16" />
+          <circle
+            cx="60"
+            cy="60"
+            r="39"
+            stroke={programme.couleur}
+            strokeWidth="2.5"
+            strokeDasharray="7 5"
+          />
+          <circle cx="60" cy="34" r="9" fill="#f8fafc" />
+          <path
+            d="M42 56C42 50 50 47 60 47C70 47 78 50 78 56L73 78H47L42 56Z"
+            fill={programme.couleur}
+          />
+          <path
+            d="M34 52L46 57M86 52L74 57M51 78L44 102M69 78L76 102"
+            stroke="#f8fafc"
+            strokeWidth="4.5"
+            strokeLinecap="round"
+          />
+        </svg>
+
+        <span className="absolute bottom-3 right-3 rounded-xl border border-lime-400/35 bg-black/80 px-3 py-1 text-xs font-bold text-lime-300">
+          AUTO · {programme.dureeMinutes} min
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function VideoDessinAuto({
+  exercice,
+  index,
+  total,
+  secondesRestantes,
+  enLecture,
+  onToggleLecture,
+  onSuivant,
+}: {
+  exercice: ExerciceDessine;
+  index: number;
+  total: number;
+  secondesRestantes: number;
+  enLecture: boolean;
+  onToggleLecture: () => void;
+  onSuivant: () => void;
+}) {
+  const minutes = Math.floor(secondesRestantes / 60);
+  const secondes = secondesRestantes % 60;
+  const chrono = `${String(minutes).padStart(2, "0")}:${String(secondes).padStart(2, "0")}`;
+
+  return (
+    <div className="rounded-2xl border border-lime-400/40 bg-[#0d1424] p-4 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+        <div>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-lime-400">
+            Vidéo dessinée auto ({index + 1}/{total}) · {exercice.dureeMinutes} min
+          </span>
+          <h3 className="text-base font-extrabold text-white">{exercice.nom}</h3>
+          <p className="text-xs text-slate-300">
+            {exercice.zone} · {exercice.dosage}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="rounded-lg bg-sky-500/20 px-3 py-1 font-mono text-sm font-bold text-sky-300">
+            {chrono}
+          </span>
+          <button
+            type="button"
+            onClick={onToggleLecture}
+            className="rounded-lg bg-lime-400 px-3 py-1.5 text-xs font-bold text-slate-950"
+          >
+            {enLecture ? "Pause" : "Reprendre"}
+          </button>
+          <button
+            type="button"
+            onClick={onSuivant}
+            className="rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-slate-200 hover:bg-white/5"
+          >
+            Suivant →
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center justify-center rounded-xl border border-white/10 bg-slate-950 py-5 px-4">
+        <style>{`
+          @keyframes fitProBras {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(-6deg); }
+          }
+          @keyframes fitProSquat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(14px); }
+          }
+          .fit-pro-anim {
+            transform-origin: 90px 95px;
+            animation: ${
+              exercice.mouvement === "squat"
+                ? "fitProSquat 1.6s ease-in-out infinite"
+                : "fitProBras 1.4s ease-in-out infinite"
+            };
+          }
+        `}</style>
+
+        <svg
+          viewBox="0 0 180 140"
+          className="h-32 w-44"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-label={`Démonstration dessinée de ${exercice.nom}`}
+        >
+          <line
+            x1="20"
+            y1="124"
+            x2="160"
+            y2="124"
+            stroke="#334155"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+          <g className={enLecture ? "fit-pro-anim" : ""}>
+            <circle
+              cx="90"
+       
