@@ -383,7 +383,9 @@ const FOCUS_LIST: TrainingFocus[] = [
   "Rester en forme",
 ];
   export default function Entrainement() {
-  const { data: session, status } = useSession();
+  const sessionResult = useSession();
+  const session = sessionResult?.data ?? null;
+  const status = sessionResult?.status ?? "unauthenticated";
   const playerSectionRef = useRef<HTMLElement | null>(null);
   const [focusFilter, setFocusFilter] = useState<TrainingFocus>("Tous");
   const [savingId, setSavingId] = useState<number | null>(null);
@@ -699,5 +701,4 @@ const FOCUS_LIST: TrainingFocus[] = [
       </div>
     </div>
   );
-        }
-    
+      }
