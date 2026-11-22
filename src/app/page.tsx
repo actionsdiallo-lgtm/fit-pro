@@ -3,12 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { useSession } from "next-auth/react";
 
 interface WorkoutCard {
   title: string;
@@ -21,17 +16,6 @@ interface WorkoutCard {
 interface MealCard {
   name: string;
   image: string;
-}
-
-interface UserProfileRow {
-  id: string;
-  first_name?: string | null;
-  full_name?: string | null;
-  avatar_url?: string | null;
-  goal?: string | null;
-  weight_kg?: number | null;
-  is_premium?: boolean | null;
-  subscription_expires_at?: string | null;
 }
 
 interface WorkoutLogRow {
@@ -90,6 +74,8 @@ const HERO_VIDEO_POSTER =
   "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1600";
 
 export default function HomePage() {
+  const { data: session, status } = useSession();
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -100,9 +86,6 @@ export default function HomePage() {
   );
   const [isSlowConnection, setIsSlowConnection] = useState(false);
 
-  const [isLogged, setIsLogged] = useState(false);
-  const [firstName, setFirstName] = useState<string | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
   const [weightKg, setWeightKg] = useState<number | null>(null);
   const [isPremium, setIsPremium] = useState(false);
@@ -125,6 +108,13 @@ export default function HomePage() {
   const [coachError, setCoachError] = useState<string | null>(null);
 
   const [now, setNow] = useState<Date>(() => new Date());
+
+  const isLogged = status === "authenticated" && Boolean(session?.user);
+  const firstName =
+    session?.user?.name?.trim()?.split(" ")[0] ||
+    session?.user?.email?.split("@")[0] ||
+    null;
+  const avatarUrl = session?.user?.image || null;
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60_000);
@@ -154,33 +144,20 @@ export default function HomePage() {
     };
   }, []);
 
-  const loadHomeData = useCallback(async (isRefresh = false) => {
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      setIsOffline(true);
-      setLoading(false);
-      setErrorMsg(
-        "Connexion Internet interrompue. Reconnexion automatique dès le retour du réseau."
-      );
-      return;
-    }
+  const loadHomeData = useCallback(
+    async (isRefresh = false) => {
+      if (status === "loading") return;
 
-    if (isRefresh) {
-      setSyncing(true);
-    } else {
-      setLoading(true);
-    }
-    setErrorMsg(null);
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        setIsOffline(true);
+        setLoading(false);
+        setErrorMsg(
+          "Connexion Internet interrompue. Reconnexion automatique dès le retour du réseau."
+        );
+        return;
+      }
 
-    try {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (authError || !user) {
-        setIsLogged(false);
-        setFirstName(null);
-        setAvatarUrl(null);
+      if (!isLogged) {
         setGoal(null);
         setWeightKg(null);
         setIsPremium(false);
@@ -190,94 +167,89 @@ export default function HomePage() {
         setTotalMinutes(0);
         setRecentLogs([]);
         setNotifications([]);
+        setErrorMsg(null);
+        setLoading(false);
+        setSyncing(false);
         return;
       }
 
-      setIsLogged(true);
-
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle<UserProfileRow>();
-
-      const derivedName =
-        profileData?.first_name?.trim() ||
-        profileData?.full_name?.trim()?.split(" ")[0] ||
-        (typeof user.user_metadata?.first_name === "string"
-          ? user.user_metadata.first_name
-          : null);
-
-      setFirstName(derivedName);
-      setAvatarUrl(
-        profileData?.avatar_url ||
-          (typeof user.user_metadata?.avatar_url === "string"
-            ? user.user_metadata.avatar_url
-            : null)
-      );
-      setGoal(profileData?.goal ?? null);
-      setWeightKg(
-        typeof profileData?.weight_kg === "number" ? profileData.weight_kg : null
-      );
-
-      const expiresAt = profileData?.subscription_expires_at
-        ? new Date(profileData.subscription_expires_at)
-        : null;
-      const activePremium =
-        Boolean(profileData?.is_premium) && (!expiresAt || expiresAt > new Date());
-      setIsPremium(activePremium);
-
-      const { data: allWorkouts, error: workoutsError } = await supabase
-        .from("workouts")
-        .select("id, title, duration_minutes, calories_burned, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (workoutsError) {
-        throw new Error(workoutsError.message);
+      if (isRefresh) {
+        setSyncing(true);
+      } else {
+        setLoading(true);
       }
+      setErrorMsg(null);
 
-      const logs = allWorkouts ?? [];
-      const startWeek = new Date();
-      startWeek.setDate(startWeek.getDate() - 7);
+      try {
+        const res = await fetch("/api/workouts", { cache: "no-store" });
+        if (!res.ok) {
+          if (res.status === 401) {
+            setWeekWorkouts(0);
+            setTotalWorkouts(0);
+            setTotalCalories(0);
+            setTotalMinutes(0);
+            setRecentLogs([]);
+            return;
+          }
+          const body = await res.json().catch(() => null);
+          throw new Error(
+            body?.error || "Erreur lors du chargement des données utilisateur."
+          );
+        }
 
-      const weeklyCount = logs.filter(
-        (w) => new Date(w.created_at) >= startWeek
-      ).length;
-      const caloriesSum = logs.reduce(
-        (sum, w) => sum + (Number(w.calories_burned) || 0),
-        0
-      );
-      const minutesSum = logs.reduce(
-        (sum, w) => sum + (Number(w.duration_minutes) || 0),
-        0
-      );
+        const data = await res.json();
+        const logs: WorkoutLogRow[] = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.workouts)
+          ? data.workouts
+          : [];
 
-      setWeekWorkouts(weeklyCount);
-      setTotalWorkouts(logs.length);
-      setTotalCalories(caloriesSum);
-      setTotalMinutes(minutesSum);
-      setRecentLogs(logs.slice(0, 5));
+        const startWeek = new Date();
+        startWeek.setDate(startWeek.getDate() - 7);
 
-      const { data: notifRows } = await supabase
-        .from("notifications")
-        .select("id, title, message, read, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(10);
+        const weeklyCount = logs.filter(
+          (w) => new Date(w.created_at) >= startWeek
+        ).length;
+        const caloriesSum = logs.reduce(
+          (sum, w) => sum + (Number(w.calories_burned) || 0),
+          0
+        );
+        const minutesSum = logs.reduce(
+          (sum, w) => sum + (Number(w.duration_minutes) || 0),
+          0
+        );
 
-      setNotifications(notifRows ?? []);
-    } catch (err) {
-      setErrorMsg(
-        err instanceof Error
-          ? err.message
-          : "Erreur lors du chargement des données utilisateur."
-      );
-    } finally {
-      setLoading(false);
-      setSyncing(false);
-    }
-  }, []);
+        setWeekWorkouts(weeklyCount);
+        setTotalWorkouts(logs.length);
+        setTotalCalories(caloriesSum);
+        setTotalMinutes(minutesSum);
+        setRecentLogs(logs.slice(0, 5));
+
+        if (data?.profile) {
+          setGoal(data.profile.goal ?? null);
+          setWeightKg(
+            typeof data.profile.weight_kg === "number"
+              ? data.profile.weight_kg
+              : null
+          );
+          setIsPremium(Boolean(data.profile.is_premium));
+        }
+        if (Array.isArray(data?.notifications)) {
+          setNotifications(data.notifications.slice(0, 10));
+        }
+      } catch (err) {
+        setErrorMsg(
+          err instanceof Error
+            ? err.message
+            : "Erreur lors du chargement des données utilisateur."
+        );
+      } finally {
+        setLoading(false);
+        setSyncing(false);
+      }
+    },
+    [isLogged, status]
+  );
 
   useEffect(() => {
     loadHomeData(false);
@@ -328,8 +300,8 @@ export default function HomePage() {
   const handleAskCoach = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!coachQuestion.trim()) return;
-    if (!isPremium) {
-      setCoachError("L'Assistant IA FIT PRO est réservé aux membres Premium.");
+    if (!isLogged) {
+      setCoachError("Connectez-vous pour utiliser l'Assistant IA FIT PRO.");
       return;
     }
 
@@ -425,7 +397,7 @@ export default function HomePage() {
                 )}
                 <span>{firstName || "Compte"}</span>
                 <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs text-lime-400">
-                  {isPremium ? "Premium" : "Standard"}
+                  {isPremium ? "Premium" : "Connecté"}
                 </span>
               </Link>
             ) : (
@@ -435,10 +407,10 @@ export default function HomePage() {
             )}
 
             <Link
-              href="/abonnement"
+              href="/parametres"
               className="rounded-full bg-lime-400 px-5 py-2.5 font-bold text-black"
             >
-              Premium
+              Paramètres
             </Link>
           </div>
 
@@ -458,8 +430,8 @@ export default function HomePage() {
             <Link href="/nutrition">Nutrition</Link>
             <Link href="/progres">Progression</Link>
             <Link href="/ai-coach">Assistant IA</Link>
-            <Link href="/abonnement">Premium</Link>
-            <Link href="/login">Connexion</Link>
+            <Link href="/parametres">Paramètres</Link>
+            {!isLogged && <Link href="/login">Connexion</Link>}
           </nav>
         )}
       </header>
@@ -475,7 +447,9 @@ export default function HomePage() {
                 Connectez-vous pour consulter vos notifications personnelles.
               </p>
             ) : notifications.length === 0 ? (
-              <p className="text-xs text-gray-400">Aucune notification enregistrée.</p>
+              <p className="text-xs text-gray-400">
+                Aucune notification enregistrée.
+              </p>
             ) : (
               <ul className="space-y-2">
                 {notifications.map((n) => (
@@ -568,13 +542,14 @@ export default function HomePage() {
                 Commencer maintenant →
               </Link>
               <Link
-                href="/abonnement"
+                href="/progres"
                 className="rounded-xl border border-white/30 px-7 py-4 font-semibold"
               >
-                Découvrir Premium
+                Voir ma progression
               </Link>
             </div>
-              {loading ? (
+
+            {status === "loading" || loading ? (
               <p className="mt-10 text-sm text-gray-400">
                 Chargement de vos statistiques...
               </p>
@@ -600,19 +575,34 @@ export default function HomePage() {
                 </div>
                 <div>
                   <p className="text-3xl font-bold text-white">
-                    {weightKg !== null ? `${weightKg} kg` : "—"}
+                    {weightKg !== null ? `${weightKg} kg` : `${weekProgress}%`}
                   </p>
-                  <p className="text-sm text-gray-400">Poids</p>
+                  <p className="text-sm text-gray-400">
+                    {weightKg !== null ? "Poids" : "Objectif semaine"}
+                  </p>
                 </div>
               </div>
             ) : (
               <p className="mt-10 text-sm text-gray-400">
-                Connectez-vous pour afficher vos statistiques personnelles (0 séance n&apos;est enregistrée).
+                Connectez-vous pour afficher vos statistiques personnelles.
               </p>
             )}
           </div>
         </div>
       </section>
-    </main>
-  );
-      }
+
+      <section className="mx-auto max-w-7xl px-6 py-16">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-black">Programmes d&apos;entraînement</h2>
+          <Link href="/entrainement" className="text-sm text-lime-400 font-semibold">
+            Tout voir →
+          </Link>
+        </div>
+        <div className="grid gap-6 md:grid-cols-3">
+          {workouts.map((item) => (
+            <Link
+              key={item.title}
+              href={item.href}
+              className="group overflow-hidden rounded-2xl border border-white/10 bg-[#111923]"
+            >
+              
