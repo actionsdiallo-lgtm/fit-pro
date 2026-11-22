@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 
 export type VoiceProfileId =
   | "male_natural"
@@ -34,9 +35,20 @@ const SUPPORTED_LANGUAGES: NarrationLanguage[] = [
   "it",
 ];
 
+const MAX_NARRATION_LENGTH = 2500;
+
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json()) as NarrationRequestBody;
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Connectez-vous pour utiliser la narration vocale." },
+        { status: 401 }
+      );
+    }
+
+    const body = (await req.json().catch(() => ({}))) as NarrationRequestBody;
     const text = typeof body.text === "string" ? body.text.trim() : "";
     const voiceId = body.voiceId;
     const language = body.language;
@@ -44,6 +56,15 @@ export async function POST(req: NextRequest) {
     if (!text) {
       return NextResponse.json(
         { error: "Texte de narration manquant." },
+        { status: 400 }
+      );
+    }
+
+    if (text.length > MAX_NARRATION_LENGTH) {
+      return NextResponse.json(
+        {
+          error: `Le texte de narration dépasse la limite autorisée (${MAX_NARRATION_LENGTH} caractères).`,
+        },
         { status: 400 }
       );
     }
@@ -76,8 +97,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const modelId =
-      process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2";
+    const modelId = process.env.ELEVENLABS_MODEL_ID || "eleven_multilingual_v2";
 
     const ttsResponse = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(
@@ -138,4 +158,5 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+    }
+        
