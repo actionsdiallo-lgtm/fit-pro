@@ -1,135 +1,113 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { Resend } from "resend";
 import prisma from "@/lib/prisma";
 
-function getAppUrl(req: NextRequest): string {
-  const configured =
-    process.env.APP_URL?.trim() ||
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    process.env.NEXTAUTH_URL?.trim();
-  if (configured) {
-    return configured.replace(/\/+$/, "");
-  }
-  const origin = req.headers.get("origin")?.trim();
-  if (origin) {
-    return origin.replace(/\/+$/, "");
-  }
-  return `https://${req.headers.get("host") ?? "fit-pro-vert.vercel.app"}`;
+const OTP_TTL_MS = 10 * 60 * 1000;
+
+function normalizeEmail(value: unknown): string {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
-async function sendResetEmail(params: {
-  to: string;
-  resetUrl: string;
-}): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!apiKey) {
-    throw new Error("RESEND_API_KEY manquante");
-  }
-
-  const from =
-    process.env.EMAIL_FROM?.trim() ||
-    process.env.RESEND_FROM?.trim() ||
-    "FIT PRO <onboarding@resend.dev>";
-
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [params.to],
-      subject: "FIT PRO — Réinitialisation de votre mot de passe",
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111;">
-          <h2>Réinitialisation de mot de passe — FIT PRO</h2>
-          <p>Vous avez demandé à réinitialiser le mot de passe de votre compte FIT PRO.</p>
-          <p>
-            <a href="${params.resetUrl}" style="display:inline-block;padding:12px 20px;background:#16a34a;color:#fff;text-decoration:none;border-radius:6px;font-weight:bold;">
-              Choisir un nouveau mot de passe
-            </a>
-          </p>
-          <p>Ce lien est valable 1 heure et à usage unique. Votre compte, votre historique et vos progressions restent intacts.</p>
-          <p>Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.</p>
-        </div>
-      `,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Échec d'envoi Resend (${response.status}): ${errorText}`);
-  }
+function hashOtp(email: string, code: string): string {
+  return crypto
+    .createHash("sha256")
+    .update(`${email}:${code}`)
+    .digest("hex");
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);
-    const rawEmail = typeof body?.email === "string" ? body.email : "";
-    const email = rawEmail.trim().toLowerCase();
+    const email = normalizeEmail(body?.email);
 
-    if (!email || !email.includes("@")) {
+    if (!email) {
       return NextResponse.json(
-        { error: "Veuillez saisir une adresse e-mail valide." },
+        { error: "Veuillez saisir votre adresse Gmail." },
         { status: 400 }
       );
     }
 
-    const user = await prisma.user.findFirst({
-      where: {
-        email: {
-          equals: email,
-          mode: "insensitive",
-        },
-      },
-      select: { id: true, email: true },
-    });
+    const apiKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.EMAIL_FROM;
 
-    if (!user || !user.email) {
-      return NextResponse.json({
-        ok: true,
-        message:
-          "Si un compte est associé à cette adresse, un lien de réinitialisation a été envoyé.",
-      });
+    if (!apiKey || !fromEmail) {
+      return NextResponse.json(
+        {
+          error:
+            "Service d'envoi d'e-mails indisponible (RESEND_API_KEY ou EMAIL_FROM manquant).",
+        },
+        { status: 500 }
+      );
     }
 
-    const rawToken = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto
-      .createHash("sha256")
-      .update(rawToken)
-      .digest("hex");
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Aucun compte FIT PRO n'est associé à cette adresse e-mail." },
+        { status: 404 }
+      );
+    }
+
+    const otpCode = String(crypto.randomInt(100000, 1000000));
+    const otpHash = hashOtp(user.email.toLowerCase(), otpCode);
+    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        resetPasswordToken: tokenHash,
+        resetPasswordToken: otpHash,
         resetPasswordExpires: expiresAt,
       },
     });
 
-    const appUrl = getAppUrl(req);
-    const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(
-      rawToken
-    )}`;
-
-    await sendResetEmail({
-      to: user.email,
-      resetUrl,
+    const resend = new Resend(apiKey);
+    const { data, error } = await resend.emails.send({
+      from: fromEmail,
+      to: [user.email],
+      subject: "Votre code de vérification FIT PRO (valable 10 minutes)",
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827; max-width: 480px;">
+          <h2 style="margin-bottom: 8px;">FIT PRO — Code de réinitialisation</h2>
+          <p>Voici votre code de vérification à 6 chiffres pour réinitialiser le mot de passe de votre compte <strong>${user.email}</strong> :</p>
+          <div style="font-size: 28px; font-weight: 700; letter-spacing: 6px; padding: 14px 20px; background: #f3f4f6; border-radius: 8px; text-align: center; margin: 16px 0;">
+            ${otpCode}
+          </div>
+          <p>Ce code expire dans <strong>10 minutes</strong> et ne peut être utilisé qu'une seule fois.</p>
+          <p>Votre compte ainsi que toutes vos données (profil, entraînements, nutrition, poids, progrès, historique, paramètres et abonnement) sont conservés.</p>
+          <p style="font-size: 12px; color: #6b7280;">Si vous n'avez pas demandé ce code, ignorez cet e-mail.</p>
+        </div>
+      `,
     });
+
+    if (error || !data?.id) {
+      console.error("Erreur envoi OTP Resend:", error);
+      return NextResponse.json(
+        {
+          error:
+            "L'envoi du code par e-mail a échoué. Veuillez réessayer dans un instant.",
+        },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json({
       ok: true,
-      message:
-        "Un lien de réinitialisation sécurisé vient d'être envoyé dans votre boîte Gmail.",
+      message: `Un code à 6 chiffres a été envoyé à ${user.email} (valable 10 minutes).`,
     });
   } catch (err) {
     console.error("Erreur /api/auth/forgot-password:", err);
     return NextResponse.json(
-      { error: "Impossible d'envoyer l'e-mail de réinitialisation pour le moment." },
+      { error: "Erreur serveur lors de l'envoi du code." },
       { status: 500 }
     );
   }
-           }
-      
+}
+  
