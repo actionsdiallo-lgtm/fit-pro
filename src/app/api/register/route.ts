@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import prisma from "@/lib/prisma";
+
+function hashPasswordScrypt(password: string): string {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const derivedKey = crypto.scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${derivedKey}`;
+}
 
 export async function POST(req: Request) {
   try {
@@ -19,7 +25,7 @@ export async function POST(req: Request) {
 
     if (password.length < 6) {
       return NextResponse.json(
-        { error: "Mot de passe trop court" },
+        { error: "Mot de passe trop court (6 caractères minimum)" },
         { status: 400 }
       );
     }
@@ -31,23 +37,35 @@ export async function POST(req: Request) {
 
     if (existing) {
       return NextResponse.json(
-        { error: "Ce email est déjà utilisé" },
-        { status: 400 }
+        { error: "Ce compte existe déjà avec cet email" },
+        { status: 409 }
       );
     }
 
-    const hashed = await bcrypt.hash(password, 10);
+    const passwordHash = hashPasswordScrypt(password);
 
     await prisma.user.create({
       data: {
         name,
         email,
-        passwordHash: hashed,
+        passwordHash,
       },
     });
 
-    return NextResponse.json({ ok: true });
-  } catch (e) {
+    return NextResponse.json({ ok: true }, { status: 201 });
+  } catch (e: unknown) {
+    const prismaCode =
+      typeof e === "object" && e !== null && "code" in e
+        ? String((e as { code?: unknown }).code)
+        : "";
+
+    if (prismaCode === "P2002") {
+      return NextResponse.json(
+        { error: "Ce compte existe déjà avec cet email" },
+        { status: 409 }
+      );
+    }
+
     console.error("Erreur /api/register:", e);
     return NextResponse.json(
       { error: "Erreur serveur" },
