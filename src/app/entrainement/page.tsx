@@ -68,20 +68,6 @@ const PROGRAMMES: ProgrammeEntrainement[] = [
     ],
   },
   {
-    id: "abdos-avance",
-    titre: "Abdos Avancé",
-    categorie: "Abdos",
-    niveau: "Avancé",
-    dureeMinutes: 5,
-    nbExercices: 21,
-    couleur: "#0ea5e9",
-    exercices: [
-      { id: "a4", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 1, couleur: "#0ea5e9", mouvement: "debout" },
-      { id: "a5", nom: "Relevés de buste", zone: "Grand droit", dosage: "x20", dureeMinutes: 2, couleur: "#0ea5e9", mouvement: "sol" },
-      { id: "a6", nom: "Pont latéral gauche", zone: "Gainage latéral", dosage: "x20", dureeMinutes: 2, couleur: "#0ea5e9", mouvement: "sol" },
-    ],
-  },
-  {
     id: "bras-debutant",
     titre: "Bras Débutant",
     categorie: "Bras",
@@ -96,34 +82,6 @@ const PROGRAMMES: ProgrammeEntrainement[] = [
     ],
   },
   {
-    id: "bras-intermediaire",
-    titre: "Bras Intermédiaire",
-    categorie: "Bras",
-    niveau: "Intermédiaire",
-    dureeMinutes: 4,
-    nbExercices: 25,
-    couleur: "#84cc16",
-    exercices: [
-      { id: "b4", nom: "Cercles de bras sens horaire", zone: "Épaules", dosage: "x30", dureeMinutes: 1, couleur: "#84cc16", mouvement: "debout" },
-      { id: "b5", nom: "Cercles de bras sens antihoraire", zone: "Épaules", dosage: "x30", dureeMinutes: 1, couleur: "#84cc16", mouvement: "debout" },
-      { id: "b6", nom: "Dips au sol", zone: "Triceps", dosage: "x14", dureeMinutes: 2, couleur: "#84cc16", mouvement: "sol" },
-    ],
-  },
-  {
-    id: "bras-avance",
-    titre: "Bras Avancé",
-    categorie: "Bras",
-    niveau: "Avancé",
-    dureeMinutes: 5,
-    nbExercices: 28,
-    couleur: "#65a30d",
-    exercices: [
-      { id: "b7", nom: "Cercles de bras sens horaire", zone: "Endurance bras", dosage: "x30", dureeMinutes: 2, couleur: "#65a30d", mouvement: "debout" },
-      { id: "b8", nom: "Cercles de bras sens antihoraire", zone: "Endurance bras", dosage: "x30", dureeMinutes: 2, couleur: "#65a30d", mouvement: "debout" },
-      { id: "b9", nom: "Sauter sans corde", zone: "Cardio & Poignets", dosage: "00:30", dureeMinutes: 1, couleur: "#65a30d", mouvement: "debout" },
-    ],
-  },
-  {
     id: "avant-bras-debutant",
     titre: "Avant-bras Débutant",
     categorie: "Avant-bras",
@@ -134,32 +92,6 @@ const PROGRAMMES: ProgrammeEntrainement[] = [
     exercices: [
       { id: "av1", nom: "Flexion marteau alternée", zone: "Avant-bras & Biceps", dosage: "x6", dureeMinutes: 2, couleur: "#f59e0b", mouvement: "debout" },
       { id: "av2", nom: "Étirement des poignets et chevilles", zone: "Mobilité", dosage: "00:20", dureeMinutes: 1, couleur: "#f59e0b", mouvement: "etirement" },
-    ],
-  },
-  {
-    id: "avant-bras-intermediaire",
-    titre: "Avant-bras Intermédiaire",
-    categorie: "Avant-bras",
-    niveau: "Intermédiaire",
-    dureeMinutes: 3,
-    nbExercices: 24,
-    couleur: "#d97706",
-    exercices: [
-      { id: "av3", nom: "Élévation latérale avec haltère", zone: "Épaules & Prise", dosage: "x8", dureeMinutes: 2, couleur: "#d97706", mouvement: "debout" },
-      { id: "av4", nom: "Étirement des poignets et chevilles", zone: "Récupération", dosage: "00:20", dureeMinutes: 1, couleur: "#d97706", mouvement: "etirement" },
-    ],
-  },
-  {
-    id: "avant-bras-avance",
-    titre: "Avant-bras Avancé",
-    categorie: "Avant-bras",
-    niveau: "Avancé",
-    dureeMinutes: 4,
-    nbExercices: 24,
-    couleur: "#b45309",
-    exercices: [
-      { id: "av5", nom: "Développé militaire", zone: "Épaules & Stabilisation", dosage: "x10", dureeMinutes: 2, couleur: "#b45309", mouvement: "debout" },
-      { id: "av6", nom: "Étirement des poignets et chevilles", zone: "Mobilité", dosage: "00:20", dureeMinutes: 2, couleur: "#b45309", mouvement: "etirement" },
     ],
   },
   {
@@ -177,34 +109,6 @@ const PROGRAMMES: ProgrammeEntrainement[] = [
     ],
   },
   {
-    id: "poitrine-intermediaire",
-    titre: "Poitrine Intermédiaire",
-    categorie: "Poitrine",
-    niveau: "Intermédiaire",
-    dureeMinutes: 4,
-    nbExercices: 14,
-    couleur: "#e11d48",
-    exercices: [
-      { id: "p4", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 1, couleur: "#e11d48", mouvement: "debout" },
-      { id: "p5", nom: "Pompes sur les genoux", zone: "Pectoraux", dosage: "x12", dureeMinutes: 1, couleur: "#e11d48", mouvement: "sol" },
-      { id: "p6", nom: "Pompes classiques", zone: "Pectoraux & Triceps", dosage: "x12", dureeMinutes: 2, couleur: "#e11d48", mouvement: "sol" },
-    ],
-  },
-  {
-    id: "poitrine-avance",
-    titre: "Poitrine Avancé",
-    categorie: "Poitrine",
-    niveau: "Avancé",
-    dureeMinutes: 4,
-    nbExercices: 16,
-    couleur: "#be123c",
-    exercices: [
-      { id: "p7", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 1, couleur: "#be123c", mouvement: "debout" },
-      { id: "p8", nom: "Cercle avec les bras", zone: "Mobilité épaules", dosage: "x20", dureeMinutes: 2, couleur: "#be123c", mouvement: "debout" },
-      { id: "p9", nom: "Étirement des épaules", zone: "Souplesse", dosage: "00:30", dureeMinutes: 1, couleur: "#be123c", mouvement: "etirement" },
-    ],
-  },
-  {
     id: "jambes-debutant",
     titre: "Jambes Débutant",
     categorie: "Jambes",
@@ -215,32 +119,6 @@ const PROGRAMMES: ProgrammeEntrainement[] = [
     exercices: [
       { id: "j1", nom: "Saut de côté", zone: "Agilité & Jambes", dosage: "00:30", dureeMinutes: 2, couleur: "#a855f7", mouvement: "squat" },
       { id: "j2", nom: "Squats", zone: "Quadriceps & Fessiers", dosage: "x12", dureeMinutes: 2, couleur: "#a855f7", mouvement: "squat" },
-    ],
-  },
-  {
-    id: "jambes-intermediaire",
-    titre: "Jambes Intermédiaire",
-    categorie: "Jambes",
-    niveau: "Intermédiaire",
-    dureeMinutes: 5,
-    nbExercices: 36,
-    couleur: "#9333ea",
-    exercices: [
-      { id: "j3", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 2, couleur: "#9333ea", mouvement: "debout" },
-      { id: "j4", nom: "Squats", zone: "Quadriceps & Fessiers", dosage: "x12", dureeMinutes: 3, couleur: "#9333ea", mouvement: "squat" },
-    ],
-  },
-  {
-    id: "jambes-avance",
-    titre: "Jambes Avancé",
-    categorie: "Jambes",
-    niveau: "Avancé",
-    dureeMinutes: 6,
-    nbExercices: 43,
-    couleur: "#7e22ce",
-    exercices: [
-      { id: "j5", nom: "Burpees", zone: "Full body & Jambes", dosage: "x10", dureeMinutes: 3, couleur: "#7e22ce", mouvement: "squat" },
-      { id: "j6", nom: "Squats", zone: "Quadriceps & Fessiers", dosage: "x14", dureeMinutes: 3, couleur: "#7e22ce", mouvement: "squat" },
     ],
   },
   {
@@ -258,34 +136,6 @@ const PROGRAMMES: ProgrammeEntrainement[] = [
     ],
   },
   {
-    id: "fessiers-intermediaire",
-    titre: "Fessiers Intermédiaire",
-    categorie: "Fessiers",
-    niveau: "Intermédiaire",
-    dureeMinutes: 4,
-    nbExercices: 17,
-    couleur: "#db2777",
-    exercices: [
-      { id: "f4", nom: "Coups de pied squat", zone: "Fessiers", dosage: "x10", dureeMinutes: 1, couleur: "#db2777", mouvement: "squat" },
-      { id: "f5", nom: "Levé de jambe en arrière", zone: "Grand fessier", dosage: "x30", dureeMinutes: 1, couleur: "#db2777", mouvement: "debout" },
-      { id: "f6", nom: "Squats avec saut", zone: "Puissance jambes", dosage: "x22", dureeMinutes: 2, couleur: "#db2777", mouvement: "squat" },
-    ],
-  },
-  {
-    id: "fessiers-avance",
-    titre: "Fessiers Avancé",
-    categorie: "Fessiers",
-    niveau: "Avancé",
-    dureeMinutes: 5,
-    nbExercices: 18,
-    couleur: "#be185d",
-    exercices: [
-      { id: "f7", nom: "Cercle de hanche debout", zone: "Mobilité hanche", dosage: "x8", dureeMinutes: 1, couleur: "#be185d", mouvement: "debout" },
-      { id: "f8", nom: "Fente avec torsion", zone: "Fessiers & Obliques", dosage: "x8", dureeMinutes: 2, couleur: "#be185d", mouvement: "squat" },
-      { id: "f9", nom: "Squat sumo", zone: "Adducteurs & Fessiers", dosage: "x10", dureeMinutes: 2, couleur: "#be185d", mouvement: "squat" },
-    ],
-  },
-  {
     id: "epaules-dos-debutant",
     titre: "Épaules et dos Débutant",
     categorie: "Épaules et dos",
@@ -297,34 +147,6 @@ const PROGRAMMES: ProgrammeEntrainement[] = [
       { id: "e1", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 1, couleur: "#14b8a6", mouvement: "debout" },
       { id: "e2", nom: "Élévations des bras", zone: "Épaules", dosage: "x6", dureeMinutes: 1, couleur: "#14b8a6", mouvement: "debout" },
       { id: "e3", nom: "Étirements des rhomboïdes", zone: "Haut du dos", dosage: "x14", dureeMinutes: 1, couleur: "#14b8a6", mouvement: "etirement" },
-    ],
-  },
-  {
-    id: "epaules-dos-intermediaire",
-    titre: "Épaules et dos Intermédiaire",
-    categorie: "Épaules et dos",
-    niveau: "Intermédiaire",
-    dureeMinutes: 4,
-    nbExercices: 17,
-    couleur: "#0d9488",
-    exercices: [
-      { id: "e4", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 1, couleur: "#0d9488", mouvement: "debout" },
-      { id: "e5", nom: "Kickbacks triceps", zone: "Arrière bras & Dos", dosage: "x14", dureeMinutes: 1, couleur: "#0d9488", mouvement: "squat" },
-      { id: "e6", nom: "Pompes avec mains surélevées", zone: "Haut du corps", dosage: "x14", dureeMinutes: 2, couleur: "#0d9488", mouvement: "sol" },
-    ],
-  },
-  {
-    id: "epaules-dos-avance",
-    titre: "Épaules et dos Avancé",
-    categorie: "Épaules et dos",
-    niveau: "Avancé",
-    dureeMinutes: 5,
-    nbExercices: 17,
-    couleur: "#0f766e",
-    exercices: [
-      { id: "e7", nom: "Jumping jacks", zone: "Échauffement", dosage: "00:30", dureeMinutes: 1, couleur: "#0f766e", mouvement: "debout" },
-      { id: "e8", nom: "Hyper-extension", zone: "Lombaires & Dos", dosage: "x14", dureeMinutes: 2, couleur: "#0f766e", mouvement: "sol" },
-      { id: "e9", nom: "Pompes piquées", zone: "Épaules", dosage: "x14", dureeMinutes: 2, couleur: "#0f766e", mouvement: "sol" },
     ],
   },
   {
@@ -351,7 +173,6 @@ const PROGRAMMES: ProgrammeEntrainement[] = [
     exercices: [
       { id: "o1", nom: "Chaise contre le mur", zone: "Quadriceps", dosage: "19 min", dureeMinutes: 2, couleur: "#f97316", mouvement: "squat" },
       { id: "o2", nom: "Exercices HIIT brûle-graisses", zone: "Cardio", dosage: "8 min", dureeMinutes: 2, couleur: "#f97316", mouvement: "debout" },
-      { id: "o3", nom: "3 exercices pour perdre du ventre", zone: "Sangle abdominale", dosage: "9 min", dureeMinutes: 1, couleur: "#f97316", mouvement: "sol" },
     ],
   },
 ];
@@ -521,4 +342,262 @@ function VideoDessinAuto({
           <g className={enLecture ? "fit-pro-anim" : ""}>
             <circle
               cx="90"
-       
+              cy="30"
+              r="10"
+              stroke="#f8fafc"
+              strokeWidth="3.5"
+              fill={exercice.couleur}
+              fillOpacity="0.35"
+            />
+            <line
+              x1="90"
+              y1="40"
+              x2="90"
+              y2="82"
+              stroke="#f8fafc"
+              strokeWidth="4"
+              strokeLinecap="round"
+            />
+            <path
+              d="M90 50L58 64M90 50L122 64"
+              stroke={exercice.couleur}
+              strokeWidth="4"
+              strokeLinecap="round"
+            />
+            <path
+              d="M90 82L68 120M90 82L112 120"
+              stroke="#f8fafc"
+              strokeWidth="4"
+              strokeLinecap="round"
+            />
+          </g>
+        </svg>
+
+        <p className="mt-2 text-center text-xs text-slate-300">
+          Vidéo automatique sur{" "}
+          <strong className="text-white">{exercice.dureeMinutes} minute(s)</strong>{" "}
+          avec passage automatique au mouvement suivant.
+        </p>
+      </div>
+    </div>
+  );
+       }
+       export default function EntrainementPage() {
+  const { data: session, status } = useSession();
+  const [categorieActive, setCategorieActive] =
+    useState<CategorieEntrainement>("Tous");
+  const [programmeId, setProgrammeId] = useState<string>(PROGRAMMES[0].id);
+  const [indexExercice, setIndexExercice] = useState<number>(0);
+  const [secondesRestantes, setSecondesRestantes] = useState<number>(
+    PROGRAMMES[0].exercices[0].dureeMinutes * 60
+  );
+  const [enLecture, setEnLecture] = useState<boolean>(true);
+
+  const filtered = useMemo(() => {
+    if (categorieActive === "Tous") return PROGRAMMES;
+    return PROGRAMMES.filter((p) => p.categorie === categorieActive);
+  }, [categorieActive]);
+
+  const programmeActuel =
+    PROGRAMMES.find((p) => p.id === programmeId) ?? PROGRAMMES[0];
+
+  const exerciceActuel =
+    programmeActuel.exercices[indexExercice] ?? programmeActuel.exercices[0];
+
+  const demarrerAutomatique = useCallback(
+    (prog: ProgrammeEntrainement, idx = 0) => {
+      const indexValide = Math.max(0, Math.min(idx, prog.exercices.length - 1));
+      const exo = prog.exercices[indexValide];
+      setProgrammeId(prog.id);
+      setIndexExercice(indexValide);
+      setSecondesRestantes((exo?.dureeMinutes ?? 1) * 60);
+      setEnLecture(true);
+    },
+    []
+  );
+
+  const passerExerciceSuivant = useCallback(() => {
+    const suivant = indexExercice + 1;
+    if (suivant < programmeActuel.exercices.length) {
+      const exoSuivant = programmeActuel.exercices[suivant];
+      setIndexExercice(suivant);
+      setSecondesRestantes(exoSuivant.dureeMinutes * 60);
+      setEnLecture(true);
+    } else {
+      setEnLecture(false);
+    }
+  }, [indexExercice, programmeActuel]);
+
+  useEffect(() => {
+    if (!enLecture) return;
+
+    const interval = window.setInterval(() => {
+      setSecondesRestantes((prev) => {
+        if (prev > 1) return prev - 1;
+        window.setTimeout(() => {
+          passerExerciceSuivant();
+        }, 0);
+        return 0;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [enLecture, passerExerciceSuivant]);
+
+  return (
+    <main className="min-h-screen bg-[#0b0f19] text-white pb-24">
+      <div className="mx-auto max-w-5xl px-4 pt-5 space-y-6">
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-lime-400">
+                FIT PRO · Entraînement en cours
+              </p>
+              <h1 className="text-2xl font-black">{programmeActuel.titre}</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/"
+                className="rounded-xl border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:bg-white/5"
+              >
+                Accueil
+              </Link>
+              {status !== "authenticated" && (
+                <Link
+                  href="/login"
+                  className="rounded-xl bg-lime-400 px-3 py-1.5 text-xs font-bold text-slate-950"
+                >
+                  Connexion
+                </Link>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <CartePhotoOriginale
+              programme={programmeActuel}
+              onAppuyerImage={() => demarrerAutomatique(programmeActuel, 0)}
+            />
+
+            <VideoDessinAuto
+              exercice={exerciceActuel}
+              index={indexExercice}
+              total={programmeActuel.exercices.length}
+              secondesRestantes={secondesRestantes}
+              enLecture={enLecture}
+              onToggleLecture={() => setEnLecture((prev) => !prev)}
+              onSuivant={passerExerciceSuivant}
+            />
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-[#111827] p-4 space-y-2.5">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Enchaînement automatique des exercices
+            </p>
+            {programmeActuel.exercices.map((exo, idx) => {
+              const courant = idx === indexExercice;
+              return (
+                <button
+                  key={exo.id}
+                  type="button"
+                  onClick={() => demarrerAutomatique(programmeActuel, idx)}
+                  className={`w-full rounded-xl border p-3 text-left flex items-center justify-between transition ${
+                    courant
+                      ? "border-lime-400 bg-lime-400/10"
+                      : "border-white/10 bg-[#0b0f19] hover:border-lime-400/50"
+                  }`}
+                >
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {idx + 1}. {exo.nom}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {exo.zone} · {exo.dosage}
+                    </p>
+                  </div>
+                  <span className="rounded-md bg-lime-400/15 px-2.5 py-1 text-xs font-bold text-lime-300">
+                    {exo.dureeMinutes} min
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="space-y-3 border-t border-white/10 pt-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold">Autres programmes d&apos;entraînement</h2>
+            <span className="text-xs text-slate-400">
+              {status === "authenticated"
+                ? session?.user?.name || session?.user?.email
+                : "Mode invité"}
+            </span>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {CATEGORIES.map((cat) => {
+              const actif = categorieActive === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => {
+                    setCategorieActive(cat);
+                    const liste =
+                      cat === "Tous"
+                        ? PROGRAMMES
+                        : PROGRAMMES.filter((p) => p.categorie === cat);
+                    if (liste[0]) demarrerAutomatique(liste[0], 0);
+                  }}
+                  className={`shrink-0 rounded-full px-4 py-2 text-xs font-bold transition ${
+                    actif
+                      ? "bg-lime-400 text-slate-950"
+                      : "border border-white/10 bg-[#111827] text-slate-200 hover:border-white/25"
+                  }`}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            {filtered.map((w) => {
+              const countForW = Array.isArray(w.exercices) ? w.exercices.length : 0;
+              const dureeMin = Math.max(3, w.dureeMinutes || countForW);
+              const actif = w.id === programmeActuel.id;
+
+              return (
+                <article
+                  key={w.id}
+                  className={`rounded-2xl border p-3.5 transition ${
+                    actif
+                      ? "border-lime-400 bg-[#172033]"
+                      : "border-white/10 bg-[#111827] hover:border-white/25"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => demarrerAutomatique(w, 0)}
+                    className="w-full text-left flex items-center justify-between gap-3"
+                  >
+                    <div>
+                      <h3 className="text-sm font-bold text-white">{w.titre}</h3>
+                      <p className="mt-0.5 text-xs text-slate-300">
+                        {dureeMin} min vidéo auto · {w.nbExercices} Exercices · {w.niveau}
+                      </p>
+                    </div>
+                    <span className="rounded-lg bg-white/10 px-2.5 py-1 text-xs font-bold">
+                      {dureeMin} min
+                    </span>
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+    }
+      
