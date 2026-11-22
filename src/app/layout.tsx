@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SessionProvider } from "next-auth/react";
 import { LanguageProvider } from "../lib/LanguageContext";
 import LanguageSwitcher from "../lib/LanguageSwitcher";
 import "./globals.css";
@@ -73,66 +74,66 @@ export default function RootLayout({
       ),
     },
   ];
-
-  return (
+            return (
     <html lang="fr">
       <head>
         <title>FIT PRO - Coaching Sportif</title>
         <meta name="description" content="Transformez votre corps" />
       </head>
       <body>
-        <LanguageProvider>
-          <div className="min-h-screen bg-black text-white pb-24">
-            <header className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur border-b border-white/10">
-              <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-                <Link href="/" className="text-xl font-bold">
-                  FIT<span className="text-yellow-400">PRO</span>
-                </Link>
-                <nav className="hidden md:flex items-center gap-6 text-sm">
-                  <Link href="/" className="hover:text-yellow-400">Accueil</Link>
-                  <Link href="/programs" className="hover:text-yellow-400">Programmes</Link>
-                  <Link href="/entrainement" className="hover:text-yellow-400">Entraînement</Link>
-                  <Link href="/nutrition" className="hover:text-yellow-400">Nutrition</Link>
-                </nav>
-                <div className="flex items-center gap-3">
-                  <LanguageSwitcher />
-                  <Link href="/programs" className="bg-yellow-400 text-black px-4 py-2 rounded-full text-sm font-bold">
-                    Commencer
+        <SessionProvider>
+          <LanguageProvider>
+            <div className="min-h-screen bg-black text-white pb-24">
+              <header className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur border-b border-white/10">
+                <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                  <Link href="/" className="text-xl font-bold">
+                    FIT<span className="text-yellow-400">PRO</span>
                   </Link>
+                  <nav className="hidden md:flex items-center gap-6 text-sm">
+                    <Link href="/" className="hover:text-yellow-400">Accueil</Link>
+                    <Link href="/programs" className="hover:text-yellow-400">Programmes</Link>
+                    <Link href="/entrainement" className="hover:text-yellow-400">Entraînement</Link>
+                    <Link href="/nutrition" className="hover:text-yellow-400">Nutrition</Link>
+                  </nav>
+                  <div className="flex items-center gap-3">
+                    <LanguageSwitcher />
+                    <Link href="/programs" className="bg-yellow-400 text-black px-4 py-2 rounded-full text-sm font-bold">
+                      Commencer
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            </header>
+              </header>
 
-            <main className="pt-16">{children}</main>
+              <main className="pt-16">{children}</main>
 
-            <nav
-              aria-label="Navigation principale"
-              className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-[#050806] border-t border-[#22ff22] rounded-t-[18px] pt-2.5 pb-3.5 px-2 shadow-[0_-4px_22px_rgba(34,255,34,0.28)]"
-            >
-              {navItems.map((item) => {
-                const isActive = item.match(pathname || "/");
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors ${
-                      isActive ? "text-[#22ff22] font-semibold" : "text-[#e5e7eb] hover:text-white"
-                    }`}
-                  >
-                    <div className={isActive ? "drop-shadow-[0_0_8px_rgba(34,255,34,0.65)]" : ""}>
-                      {item.icon(isActive)}
-                    </div>
-                    <span className="text-[11px] leading-tight tracking-tight">
-                      {item.label}
-                    </span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-        </LanguageProvider>
+              <nav
+                aria-label="Navigation principale"
+                className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around bg-[#050806] border-t border-[#22ff22] rounded-t-[18px] pt-2.5 pb-3.5 px-2 shadow-[0_-4px_22px_rgba(34,255,34,0.28)]"
+              >
+                {navItems.map((item) => {
+                  const isActive = item.match(pathname || "/");
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors ${
+                        isActive ? "text-[#22ff22] font-semibold" : "text-[#e5e7eb] hover:text-white"
+                      }`}
+                    >
+                      <div className={isActive ? "drop-shadow-[0_0_8px_rgba(34,255,34,0.65)]" : ""}>
+                        {item.icon(isActive)}
+                      </div>
+                      <span className="text-[11px] leading-tight tracking-tight">
+                        {item.label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          </LanguageProvider>
+        </SessionProvider>
       </body>
     </html>
   );
-        }
-      
+}
