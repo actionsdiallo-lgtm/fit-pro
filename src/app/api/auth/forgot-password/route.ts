@@ -1,23 +1,23 @@
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
 
-const globalForPg = globalThis as unknown as { pgPool?: Pool };
+function getSupabaseServerConfig() {
+  const url = (
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    ""
+  )
+    .trim()
+    .replace(/\/+$/, "");
+  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 
-function getPool(): Pool {
-  if (!globalForPg.pgPool) {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      throw new Error("DATABASE_URL manquante");
-    }
-    globalForPg.pgPool = new Pool({
-      connectionString,
-      ssl: connectionString.includes("localhost")
-        ? false
-        : { rejectUnauthorized: false },
-    });
+  if (!url || !serviceKey) {
+    throw new Error(
+      "Configuration serveur base incomplète (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)"
+    );
   }
-  return globalForPg.pgPool;
+
+  return { url, serviceKey };
 }
 
 function getAppUrl(req: NextRequest): string {
@@ -89,21 +89,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const pool = getPool();
-
-    // Réponse neutre par défaut pour ne pas divulguer l'existence d'un compte
     const genericOkResponse = NextResponse.json({
       ok: true,
       message:
         "Si un compte est associé à cette adresse, un lien de réinitialisation a été envoyé.",
     });
 
-    const userResult = await pool.query<{ id: string; email: string }>(
-      `select id, email from public.app_users where lower(email) = $1 limit 1`,
-      [email]
+    const { url, serviceKey } = getSupabaseServerConfig();
+
+    const lookupRes = await fetch(
+      `${url}/rest/v1/app_users?select=id,email&email=eq.${encodeURIComponent(
+        email
+      )}&limit=1`,
+      {
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+        },
+        cache: "no-store",
+      }
     );
 
-    const user = userResult.rows[0];
+    if (!lookupRes.ok) {
+      throw new Error(`Erreur lecture app_users: ${await lookupRes.text()}`);
+    }
+
+    const users = (await lookupRes.json()) as Array<{
+      id: string;
+      email: string;
+    }>;
+    const user = users[0];
     if (!user) {
       return genericOkResponse;
     }
@@ -113,17 +128,36 @@ export async function POST(req: NextRequest) {
       .createHash("sha256")
       .update(rawToken)
       .digest("hex");
-
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
-    await pool.query(
-      `insert into public.password_reset_tokens (user_id, token_hash, expires_at)
-       values ($1, $2, $3)`,
-      [user.id, tokenHash, expiresAt]
+    const insertTokenRes = await fetch(
+      `${url}/rest/v1/password_reset_tokens`,
+      {
+        method: "POST",
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          token_hash: tokenHash,
+          expires_at: expiresAt,
+        }),
+      }
     );
 
+    if (!insertTokenRes.ok) {
+      throw new Error(
+        `Erreur création token: ${await insertTokenRes.text()}`
+      );
+    }
+
     const appUrl = getAppUrl(req);
-    const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
+    const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(
+      rawToken
+    )}`;
 
     await sendResetEmail({
       to: user.email,
@@ -138,5 +172,5 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
-  
+      }
+    
