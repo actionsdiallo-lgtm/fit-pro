@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     if (!email) {
       return NextResponse.json(
-        { error: "Veuillez saisir votre adresse Gmail." },
+        { error: "Veuillez saisir votre adresse e-mail." },
         { status: 400 }
       );
     }
@@ -116,5 +116,5 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-      }
-      
+  }
+        
