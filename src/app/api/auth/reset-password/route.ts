@@ -106,7 +106,10 @@ export async function POST(req: NextRequest) {
     const passwordHash = hashPassword(newPassword);
 
     await prisma.user.update({
-      where: { id: user.id },
+      where: {
+        id: user.id,
+        resetPasswordToken: user.resetPasswordToken,
+      },
       data: {
         passwordHash,
         resetPasswordToken: null,
@@ -126,4 +129,5 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-          }
+      }
+        
