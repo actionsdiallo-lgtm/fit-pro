@@ -87,7 +87,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       verified: true,
-      message: "Code vérifié. Vous pouvez maintenant définir votre nouveau mot de passe.",
+      message:
+        "Code vérifié. Vous pouvez maintenant définir votre nouveau mot de passe.",
     });
   } catch (err) {
     console.error("Erreur /api/auth/verify-reset-code:", err);
@@ -96,5 +97,5 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-        }
-    
+}
+  
