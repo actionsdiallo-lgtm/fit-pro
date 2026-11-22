@@ -15,14 +15,20 @@ const credentialsSchema = z.object({
 function verifyPasswordHash(password: string, storedHash: string): boolean {
   if (!password || !storedHash) return false;
 
-  // Format scrypt "salt:derivedKey" utilisé par registerAction
+  // Format scrypt "salt:derivedKey"
   if (storedHash.includes(":")) {
-    const [salt, keyHex] = storedHash.split(":");
-    if (!salt || !keyHex) return false;
-    const keyBuf = Buffer.from(keyHex, "hex");
-    const derivedBuf = crypto.scryptSync(password, salt, 64);
-    if (keyBuf.length !== derivedBuf.length) return false;
-    return crypto.timingSafeEqual(keyBuf, derivedBuf);
+    try {
+      const [salt, keyHex] = storedHash.split(":");
+      if (!salt || !keyHex) return false;
+      const keyBuf = Buffer.from(keyHex, "hex");
+      const derivedBuf = crypto.scryptSync(password, salt, 64);
+      if (keyBuf.length === 0 || keyBuf.length !== derivedBuf.length) {
+        return false;
+      }
+      return crypto.timingSafeEqual(keyBuf, derivedBuf);
+    } catch {
+      return false;
+    }
   }
 
   return false;
