@@ -608,4 +608,12 @@ export default function Entrainement() {
               (t) => t === w.title
             ).length;
 
-      
+                    </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+    }
+                        
