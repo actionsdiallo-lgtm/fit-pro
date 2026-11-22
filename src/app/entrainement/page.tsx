@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 
-export type CategorieNom =
+type CategorieNom =
   | "Tous"
   | "Musculation"
   | "Cardio"
@@ -17,9 +17,9 @@ export type CategorieNom =
   | "Fessiers"
   | "Épaules et dos";
 
-export type NiveauProgramme = "Débutant" | "Intermédiaire" | "Avancé";
+type NiveauProgramme = "Débutant" | "Intermédiaire" | "Avancé";
 
-export type ZoneMuscle =
+type ZoneMuscle =
   | "dos"
   | "pectoraux"
   | "abdos"
@@ -28,7 +28,7 @@ export type ZoneMuscle =
   | "jambes"
   | "fessiers";
 
-export type MouvementAnime2D =
+type MouvementAnime2D =
   | "superman"
   | "pompe"
   | "abdos"
@@ -36,7 +36,7 @@ export type MouvementAnime2D =
   | "bras"
   | "etirement";
 
-export interface ExerciceReel {
+interface ExerciceReel {
   id: string;
   nom: string;
   categorie: Exclude<CategorieNom, "Tous">;
@@ -61,16 +61,7 @@ export interface ExerciceReel {
   };
 }
 
-export interface ProgrammeFitPro {
-  id: string;
-  titre: string;
-  categorie: Exclude<CategorieNom, "Tous">;
-  niveau: NiveauProgramme;
-  objectif: string;
-  exercices: ExerciceReel[];
-}
-
-export interface SeanceEnregistree {
+interface SeanceEnregistree {
   id: string;
   categorie: string;
   programmeTitre: string;
@@ -79,12 +70,10 @@ export interface SeanceEnregistree {
   caloriesEstimees: number;
   exercicesFaits: number;
   totalExercices: number;
-  repetitionsEffectuees?: number;
-  seriesTerminees?: number;
   completedAt: string;
 }
 
-export const CATEGORIES_LISTE: { nom: CategorieNom; slug: string }[] = [
+const CATEGORIES: { nom: CategorieNom; slug: string }[] = [
   { nom: "Tous", slug: "tous" },
   { nom: "Musculation", slug: "musculation" },
   { nom: "Cardio", slug: "cardio" },
@@ -98,14 +87,9 @@ export const CATEGORIES_LISTE: { nom: CategorieNom; slug: string }[] = [
   { nom: "Épaules et dos", slug: "epaules-et-dos" },
 ];
 
-export function categorieToSlug(cat: Exclude<CategorieNom, "Tous">): string {
-  const found = CATEGORIES_LISTE.find((c) => c.nom === cat);
-  return found ? found.slug : "musculation";
-}
-
-export const EXERCICES_REELS: ExerciceReel[] = [
+const EXERCICES: ExerciceReel[] = [
   {
-    id: "ex-dos-superman",
+    id: "ex-dos-1",
     nom: "Extension dorsale au tapis",
     categorie: "Épaules et dos",
     niveau: "Débutant",
@@ -121,30 +105,30 @@ export const EXERCICES_REELS: ExerciceReel[] = [
     zonesCiblees: ["dos", "fessiers"],
     bonnePosture: [
       "Tête neutre alignée avec la colonne vertébrale.",
-      "Sangle abdominale légèrement gainée pour protéger les lombaires.",
+      "Sangle abdominale légèrement gainée.",
     ],
     erreursAEviter: [
       "Casser la nuque en levant trop haut la tête.",
-      "Donner des à-coups rapides au lieu d'un contrôle fluide.",
+      "Donner des à-coups rapides.",
     ],
     etapes: [
       "Allonge-toi sur le ventre sur le tapis, bras et jambes tendus.",
-      "Décolle bras et jambes de quelques centimètres en expirant.",
-      "Maintiens brièvement puis redescends avec contrôle.",
+      "Décolle bras et jambes avec contrôle en expirant.",
+      "Redescends doucement et répète.",
     ],
     vocal: {
-      fr: "Extension dorsale au tapis. Gardez la nuque alignée, levez avec contrôle et évitez les à-coups.",
-      en: "Floor back extension. Keep your neck neutral, lift under control, and avoid jerky movements.",
-      ar: "تمرين تقوية الظهر على الأرض. حافظ على استقامة الرقبة وارفع بتحكم دون اندفاع.",
+      fr: "Extension dorsale au tapis. Gardez la nuque alignée et levez avec contrôle.",
+      en: "Floor back extension. Keep your neck neutral and lift with control.",
+      ar: "تمرين تقوية الظهر على الأرض. حافظ على استقامة الرقبة وارفع بتحكم.",
     },
   },
   {
-    id: "ex-muscu-rowing",
-    nom: "Rowing & gainage haut du corps",
+    id: "ex-muscu-1",
+    nom: "Rowing et gainage haut du corps",
     categorie: "Musculation",
     niveau: "Intermédiaire",
     photoUrl: "/images/exercices/gainage.jpg",
-    photoAlt: "Athlète en séance de musculation haut du corps",
+    photoAlt: "Athlète en musculation haut du corps",
     seriesCibles: 4,
     repetitionsCibles: 12,
     dureeSecondes: 35,
@@ -154,31 +138,31 @@ export const EXERCICES_REELS: ExerciceReel[] = [
     musclesPrincipaux: ["Grand dorsal", "Rhomboïdes", "Biceps"],
     zonesCiblees: ["dos", "bras"],
     bonnePosture: [
-      "Dos plat et épaules abaissées loin des oreilles.",
-      "Coudes tirés vers l'arrière près du buste.",
+      "Dos plat et épaules abaissées.",
+      "Coudes tirés près du buste.",
     ],
     erreursAEviter: [
-      "Arrondir le haut du dos pendant la traction.",
-      "Hausser les épaules à chaque répétition.",
+      "Arrondir le haut du dos.",
+      "Hausser les épaules.",
     ],
     etapes: [
-      "Place-toi en position stable avec le tronc gainé.",
-      "Tire les coudes en arrière en resserrant les omoplates.",
+      "Adopte une posture stable avec le tronc gainé.",
+      "Tire les coudes vers l'arrière en resserrant les omoplates.",
       "Reviens lentement à la position initiale.",
     ],
     vocal: {
-      fr: "Musculation : gardez le dos plat, tirez avec les coudes et contrôlez le retour.",
-      en: "Strength: keep your back flat, pull with your elbows, and control the return.",
-      ar: "تمارين القوة: حافظ على استقامة الظهر واسحب بالمرفقين مع التحكم في العودة.",
+      fr: "Musculation : gardez le dos plat et tirez avec contrôle.",
+      en: "Strength: keep your back flat and pull with control.",
+      ar: "تمارين القوة: حافظ على استقامة الظهر واسحب بتحكم.",
     },
   },
   {
-    id: "ex-cardio-hiit",
-    nom: "Cardio dynamique & endurance",
+    id: "ex-cardio-1",
+    nom: "Cardio dynamique et endurance",
     categorie: "Cardio",
     niveau: "Intermédiaire",
     photoUrl: "/images/exercices/cardio.jpg",
-    photoAlt: "Sportif en séance cardio intensive",
+    photoAlt: "Sportif en séance cardio",
     seriesCibles: 4,
     repetitionsCibles: 20,
     dureeSecondes: 40,
@@ -188,85 +172,85 @@ export const EXERCICES_REELS: ExerciceReel[] = [
     musclesPrincipaux: ["Système cardiovasculaire", "Quadriceps", "Mollets"],
     zonesCiblees: ["jambes", "abdos"],
     bonnePosture: [
-      "Buste légèrement incliné vers l'avant, abdos engagés.",
-      "Réception souple sur l'avant du pied.",
+      "Buste gainé et rythme régulier.",
+      "Appuis souples.",
     ],
     erreursAEviter: [
-      "Bloquer sa respiration pendant l'effort.",
-      "Poser les talons lourdement à chaque appui.",
+      "Bloquer la respiration.",
+      "Poser les talons lourdement.",
     ],
     etapes: [
-      "Démarre sur un rythme fluide et régulier.",
-      "Enchaîne les mouvements en gardant une respiration continue.",
-      "Profite du temps de repos automatique pour récupérer.",
+      "Démarre sur un rythme fluide.",
+      "Enchaîne les répétitions en respirant calmement.",
+      "Récupère pendant le repos automatique.",
     ],
     vocal: {
-      fr: "Cardio : gardez une respiration régulière et un appui souple au sol.",
-      en: "Cardio: keep a steady breath and soft landings on the floor.",
-      ar: "الكارديو: حافظ على تنفس منتظم وهبوط خفيف على الأرض.",
+      fr: "Cardio : gardez une respiration régulière et un rythme fluide.",
+      en: "Cardio: keep a steady breath and smooth pace.",
+      ar: "الكارديو: حافظ على تنفس منتظم وإيقاع ثابت.",
     },
   },
   {
-    id: "ex-flex-mobilite",
+    id: "ex-flex-1",
     nom: "Étirement chaîne postérieure",
     categorie: "Flexibilité",
     niveau: "Débutant",
     photoUrl: "/images/exercices/etirement.jpg",
-    photoAlt: "Athlète réalisant un étirement de souplesse",
+    photoAlt: "Athlète réalisant un étirement",
     seriesCibles: 3,
     repetitionsCibles: 10,
     dureeSecondes: 35,
     reposSecondes: 15,
     metEstime: 3.0,
     mouvement2D: "etirement",
-    musclesPrincipaux: ["Ischio-jambiers", "Mollets", "Bas du dos"],
+    musclesPrincipaux: ["Ischio-jambiers", "Mollets", "Dos"],
     zonesCiblees: ["jambes", "dos"],
     bonnePosture: [
       "Mouvement progressif sans à-coup.",
-      "Respiration lente et profonde.",
+      "Respiration lente.",
     ],
     erreursAEviter: [
       "Rebondir en fin d'étirement.",
-      "Forcer au-delà d'une tension légère.",
+      "Forcer jusqu'à la douleur.",
     ],
     etapes: [
-      "Installe-toi confortablement sur le tapis.",
-      "Allonge le mouvement jusqu'à ressentir une tension douce.",
-      "Maintiens puis relâche lentement.",
+      "Installe-toi sur le tapis.",
+      "Étire en douceur jusqu'à une tension légère.",
+      "Maintiens puis relâche.",
     ],
     vocal: {
-      fr: "Flexibilité : étirez-vous sans rebondir et expirez lentement.",
-      en: "Flexibility: stretch without bouncing and exhale slowly.",
-      ar: "المرونة: قم بالإطالة بهدوء دون ارتداد مع زفير بطيء.",
+      fr: "Flexibilité : étirez-vous en douceur sans rebondir.",
+      en: "Flexibility: stretch gently without bouncing.",
+      ar: "المرونة: قم بالإطالة بلطف دون ارتداد.",
     },
   },
   {
-    id: "ex-abdos-crunch",
-    nom: "Crunch contrôlé & gainage abdos",
+    id: "ex-abdos-1",
+    nom: "Crunch contrôlé et gainage abdos",
     categorie: "Abdos",
     niveau: "Intermédiaire",
     photoUrl: "/images/exercices/crunch.jpg",
-    photoAlt: "Athlète travaillant les abdominaux au sol",
+    photoAlt: "Athlète travaillant les abdominaux",
     seriesCibles: 4,
     repetitionsCibles: 18,
     dureeSecondes: 30,
     reposSecondes: 15,
     metEstime: 5.0,
     mouvement2D: "abdos",
-    musclesPrincipaux: ["Grand droit de l'abdomen", "Obliques", "Transverse"],
+    musclesPrincipaux: ["Grand droit", "Obliques", "Transverse"],
     zonesCiblees: ["abdos"],
     bonnePosture: [
-      "Menton légèrement décollé, sans tirer sur la nuque.",
-      "Contraction continue des abdominaux.",
+      "Menton légèrement décollé.",
+      "Contraction continue des abdos.",
     ],
     erreursAEviter: [
-      "Tirer la tête avec les mains.",
+      "Tirer sur la nuque.",
       "Décoller brutalement le bas du dos.",
     ],
     etapes: [
-      "Allonge-toi sur le dos, genoux fléchis, abdos engagés.",
-      "Enroule le buste en expirant.",
-      "Redescends lentement en gardant la tension.",
+      "Allonge-toi sur le dos, genoux fléchis.",
+      "Contracte les abdos pour relever le buste.",
+      "Redescends lentement.",
     ],
     vocal: {
       fr: "Abdos : contractez la sangle abdominale sans tirer sur la nuque.",
@@ -275,100 +259,100 @@ export const EXERCICES_REELS: ExerciceReel[] = [
     },
   },
   {
-    id: "ex-bras-curl",
-    nom: "Curl & renforcement des bras",
+    id: "ex-bras-1",
+    nom: "Curl et renforcement des bras",
     categorie: "Bras",
     niveau: "Débutant",
     photoUrl: "/images/exercices/curl.jpg",
-    photoAlt: "Athlète réalisant un mouvement pour les bras",
+    photoAlt: "Athlète travaillant les bras",
     seriesCibles: 3,
     repetitionsCibles: 12,
     dureeSecondes: 30,
     reposSecondes: 15,
     metEstime: 4.5,
     mouvement2D: "bras",
-    musclesPrincipaux: ["Biceps brachial", "Brachial antérieur", "Triceps"],
+    musclesPrincipaux: ["Biceps", "Triceps"],
     zonesCiblees: ["bras", "avant-bras"],
     bonnePosture: [
       "Coudes fixes le long du buste.",
-      "Buste stable sans balancier.",
+      "Tronc stable.",
     ],
     erreursAEviter: [
-      "Balancer le buste pour aider la montée.",
-      "Avancer les coudes vers l'avant.",
+      "Balancer le buste.",
+      "Avancer les coudes.",
     ],
     etapes: [
-      "Tiens la charge ou adopte la posture bras le long du corps.",
-      "Fléchis avec contrôle en contractant le biceps.",
-      "Reviens lentement en position de départ.",
+      "Place les bras le long du corps.",
+      "Fléchis avec contrôle.",
+      "Reviens lentement.",
     ],
     vocal: {
-      fr: "Bras : gardez les coudes fixes et évitez de balancer le buste.",
-      en: "Arms: keep your elbows pinned and avoid swinging your torso.",
-      ar: "الذراعين: حافظ على ثبات المرفقين وتجنب تأرجح الجذع.",
+      fr: "Bras : gardez les coudes fixes et contrôlez le mouvement.",
+      en: "Arms: keep elbows pinned and control the movement.",
+      ar: "الذراعين: حافظ على ثبات المرفقين وتحكم في الحركة.",
     },
   },
   {
-    id: "ex-avant-bras-poigne",
-    nom: "Renforcement avant-bras & prise",
+    id: "ex-avant-bras-1",
+    nom: "Renforcement avant-bras et prise",
     categorie: "Avant-bras",
     niveau: "Débutant",
     photoUrl: "/images/exercices/curl.jpg",
-    photoAlt: "Athlète travaillant les avant-bras et la prise",
+    photoAlt: "Athlète travaillant les avant-bras",
     seriesCibles: 3,
     repetitionsCibles: 15,
     dureeSecondes: 30,
     reposSecondes: 15,
     metEstime: 4.0,
     mouvement2D: "bras",
-    musclesPrincipaux: ["Fléchisseurs de l'avant-bras", "Extenseurs", "Poignets"],
+    musclesPrincipaux: ["Avant-bras", "Poignets"],
     zonesCiblees: ["avant-bras"],
     bonnePosture: [
-      "Avant-bras stables et poignets alignés.",
-      "Amplitude régulière sans hyper-extension.",
+      "Avant-bras stables.",
+      "Amplitude régulière.",
     ],
     erreursAEviter: [
-      "Casser brutalement l'articulation du poignet.",
-      "Aller trop vite sans contrôle musculaire.",
+      "Forcer brutalement le poignet.",
+      "Précipiter les répétitions.",
     ],
     etapes: [
-      "Stabilise l'avant-bras et le poignet.",
-      "Exécute la flexion ou l'extension sur toute l'amplitude sûre.",
+      "Stabilise l'avant-bras.",
+      "Exécute la répétition avec contrôle.",
       "Relâche pendant la pause.",
     ],
     vocal: {
-      fr: "Avant-bras : contrôlez l'amplitude du poignet sans forcer l'articulation.",
-      en: "Forearms: control wrist range of motion without straining the joint.",
-      ar: "الساعد: تحكم في مدى حركة المعصم دون إجهاد المفصل.",
+      fr: "Avant-bras : contrôlez l'amplitude sans forcer le poignet.",
+      en: "Forearms: control range without straining the wrist.",
+      ar: "الساعد: تحكم في الحركة دون إجهاد المعصم.",
     },
   },
   {
-    id: "ex-poitrine-pompes",
+    id: "ex-poitrine-1",
     nom: "Pompes contrôlées poitrine",
     categorie: "Poitrine",
     niveau: "Intermédiaire",
     photoUrl: "/images/exercices/pompes.jpg",
-    photoAlt: "Athlète effectuant des pompes pour la poitrine",
+    photoAlt: "Athlète effectuant des pompes",
     seriesCibles: 4,
     repetitionsCibles: 12,
     dureeSecondes: 30,
     reposSecondes: 20,
     metEstime: 6.5,
     mouvement2D: "pompe",
-    musclesPrincipaux: ["Grand pectoral", "Triceps", "Deltoïdes antérieurs"],
+    musclesPrincipaux: ["Grand pectoral", "Triceps", "Épaules"],
     zonesCiblees: ["pectoraux", "bras"],
     bonnePosture: [
-      "Corps aligné de la tête aux pieds ou aux genoux.",
-      "Coudes à environ 45 degrés du buste.",
+      "Corps aligné.",
+      "Coudes à environ 45 degrés.",
     ],
     erreursAEviter: [
-      "Creuser les lombaires ou lever les fessiers trop haut.",
+      "Creuser le bas du dos.",
       "Écarter les coudes à 90 degrés.",
     ],
     etapes: [
-      "Mains placées sous ou légèrement en dehors des épaules.",
-      "Descends le buste en inspirant tout en gainant le tronc.",
-      "Pousse fort en expirant jusqu'à l'extension contrôlée.",
+      "Mains sous ou légèrement en dehors des épaules.",
+      "Descends le buste en gainant.",
+      "Pousse fort pour remonter.",
     ],
     vocal: {
       fr: "Poitrine : gardez le corps gainé et descendez avec contrôle.",
@@ -377,12 +361,12 @@ export const EXERCICES_REELS: ExerciceReel[] = [
     },
   },
   {
-    id: "ex-jambes-squat",
-    nom: "Squat complet & stabilité jambes",
+    id: "ex-jambes-1",
+    nom: "Squat complet et stabilité jambes",
     categorie: "Jambes",
     niveau: "Avancé",
     photoUrl: "/images/exercices/squat.jpg",
-    photoAlt: "Athlète réalisant un squat profond",
+    photoAlt: "Athlète réalisant un squat",
     seriesCibles: 4,
     repetitionsCibles: 15,
     dureeSecondes: 35,
@@ -392,92 +376,61 @@ export const EXERCICES_REELS: ExerciceReel[] = [
     musclesPrincipaux: ["Quadriceps", "Fessiers", "Ischio-jambiers"],
     zonesCiblees: ["jambes", "fessiers"],
     bonnePosture: [
-      "Pieds ancrés au sol, genoux alignés avec les pointes de pieds.",
-      "Dos neutre et buste tonique.",
+      "Talons au sol, genoux alignés.",
+      "Dos neutre.",
     ],
     erreursAEviter: [
-      "Laisser les genoux rentrer vers l'intérieur.",
-      "Décoller les talons du sol.",
+      "Genoux qui rentrent vers l'intérieur.",
+      "Arrondir le dos.",
     ],
     etapes: [
-      "Recule les hanches et fléchis les genoux de façon coordonnée.",
-      "Descends jusqu'à la profondeur confortable et maîtrisée.",
-      "Pousse dans le sol pour remonter.",
+      "Fléchis les hanches et les genoux.",
+      "Descends de façon maîtrisée.",
+      "Remonte en poussant dans les talons.",
     ],
     vocal: {
-      fr: "Jambes : gardez les talons au sol et les genoux dans l'axe des pieds.",
-      en: "Legs: keep heels planted and knees tracking over your toes.",
-      ar: "الأرجل: حافظ على ثبات الكعبين واتجاه الركبتين مع مشط القدم.",
+      fr: "Jambes : gardez les talons au sol et les genoux alignés.",
+      en: "Legs: keep heels planted and knees aligned.",
+      ar: "الأرجل: حافظ على ثبات الكعبين واستقامة الركبتين.",
     },
   },
   {
-    id: "ex-fessiers-extension",
-    nom: "Extension fessiers & fentes",
+    id: "ex-fessiers-1",
+    nom: "Extension fessiers et fentes",
     categorie: "Fessiers",
     niveau: "Intermédiaire",
     photoUrl: "/images/exercices/fessiers.jpg",
-    photoAlt: "Athlète ciblant les fessiers et le bas du corps",
+    photoAlt: "Athlète ciblant les fessiers",
     seriesCibles: 4,
     repetitionsCibles: 15,
     dureeSecondes: 30,
     reposSecondes: 15,
     metEstime: 6.0,
     mouvement2D: "squat",
-    musclesPrincipaux: ["Grand fessier", "Moyen fessier", "Ischio-jambiers"],
+    musclesPrincipaux: ["Grand fessier", "Moyen fessier"],
     zonesCiblees: ["fessiers", "jambes"],
     bonnePosture: [
-      "Bassin stable et contraction volontaire en fin de course.",
-      "Tronc gainé.",
+      "Bassin stable.",
+      "Contraction en fin de course.",
     ],
     erreursAEviter: [
-      "Cambrer excessivement le bas du dos.",
+      "Cambrer excessivement les lombaires.",
       "Précipiter le retour.",
     ],
     etapes: [
-      "Adopte la position de départ avec appuis stables.",
-      "Effectue le mouvement en contractant les fessiers.",
+      "Adopte la position de départ.",
+      "Contracte les fessiers sur l'effort.",
       "Reviens avec contrôle.",
     ],
     vocal: {
-      fr: "Fessiers : contractez le fessier en haut du mouvement sans cambrer le dos.",
-      en: "Glutes: squeeze at the top without arching your lower back.",
-      ar: "المؤخرة: شد العضلة في الأعلى دون تقوس أسفل الظهر.",
+      fr: "Fessiers : contractez le fessier en haut sans cambrer le dos.",
+      en: "Glutes: squeeze at the top without arching your back.",
+      ar: "المؤخرة: شد العضلة في الأعلى دون تقوس الظهر.",
     },
   },
 ];
 
-export function buildProgrammes(categorie: CategorieNom): ProgrammeFitPro[] {
-  const base =
-    categorie === "Tous"
-      ? EXERCICES_REELS
-      : EXERCICES_REELS.filter((e) => e.categorie === categorie);
-
-  return (["Débutant", "Intermédiaire", "Avancé"] as NiveauProgramme[]).map(
-    (niv, idx) => {
-      const matches = base.filter((e) => e.niveau === niv);
-      const exercices = matches.length > 0 ? matches : base.slice(0, 2);
-      const labelCat = categorie === "Tous" ? "FIT PRO Global" : categorie;
-      return {
-        id: `prog-${categorieToSlug(categorie === "Tous" ? "Musculation" : categorie)}-${niv}-${idx}`,
-        titre: `${labelCat} — ${niv}`,
-        categorie: categorie === "Tous" ? "Musculation" : categorie,
-        niveau: niv,
-        objectif:
-          niv === "Débutant"
-            ? "Apprentissage de la posture et régularité"
-            : niv === "Intermédiaire"
-            ? "Progression des répétitions et de l'endurance"
-            : "Volume soutenu et précision technique",
-        exercices,
-      };
-    }
-  );
-}
-
-/**
- * Affiche uniquement de vraies photographies (jamais remplacées par un dessin).
- */
-function PhotoExerciceReelle({
+function PhotoReelle({
   src,
   alt,
   titre,
@@ -486,36 +439,30 @@ function PhotoExerciceReelle({
   alt: string;
   titre: string;
 }) {
-  const [erreurChargement, setErreurChargement] = useState(false);
+  const [erreur, setErreur] = useState(false);
 
   return (
-    <div className="relative h-40 w-full overflow-hidden rounded-2xl border border-green-500/25 bg-[#0a120d]">
-      {!erreurChargement ? (
+    <div className="relative h-36 w-full overflow-hidden rounded-2xl border border-green-500/25 bg-[#0a120d]">
+      {!erreur ? (
         <img
           src={src}
           alt={alt}
-          onError={() => setErreurChargement(true)}
+          onError={() => setErreur(true)}
           className="h-full w-full object-cover"
         />
       ) : (
-        <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-[#0d1f14] via-[#09120c] to-black px-4 text-center">
+        <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-[#0d1f14] via-[#09120c] to-black px-3 text-center">
           <span className="rounded-full border border-green-500/40 bg-green-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase text-green-300">
             Photo réelle · {titre}
           </span>
-          <p className="mt-2 text-xs text-slate-300">
-            Déposez la photo <code className="text-green-400">{src}</code> dans{" "}
-            <code className="text-green-400">public/</code> pour l&apos;afficher.
-          </p>
+          <p className="mt-1.5 text-[11px] text-slate-300">{src}</p>
         </div>
       )}
     </div>
   );
 }
 
-/**
- * Vidéo animée dessinée 2D + mise en évidence anatomique des muscles sollicités.
- */
-function VideoAnimee2D({
+function Animation2D({
   mouvement,
   zones,
   enLecture,
@@ -526,87 +473,171 @@ function VideoAnimee2D({
 }) {
   const animName =
     mouvement === "pompe"
-      ? "animPompe2D 1.6s ease-in-out infinite"
+      ? "fitproPompe 1.6s ease-in-out infinite"
       : mouvement === "abdos"
-      ? "animAbdos2D 1.5s ease-in-out infinite"
+      ? "fitproAbdos 1.5s ease-in-out infinite"
       : mouvement === "squat"
-      ? "animSquat2D 1.4s ease-in-out infinite"
+      ? "fitproSquat 1.4s ease-in-out infinite"
       : mouvement === "bras"
-      ? "animBras2D 1.5s ease-in-out infinite"
+      ? "fitproBras 1.5s ease-in-out infinite"
       : mouvement === "etirement"
-      ? "animEtirement2D 1.8s ease-in-out infinite"
-      : "animSuperman2D 1.6s ease-in-out infinite";
+      ? "fitproEtire 1.8s ease-in-out infinite"
+      : "fitproSuper 1.6s ease-in-out infinite";
 
-  const highlight = (z: ZoneMuscle) => (zones.includes(z) ? "#22c55e" : "#475569");
+  const couleurZone = (z: ZoneMuscle) =>
+    zones.includes(z) ? "#22c55e" : "#475569";
 
   return (
-    <div className="grid grid-cols-12 gap-2 rounded-2xl border border-green-500/30 bg-[#07110b] p-3 items-center">
+    <div className="grid grid-cols-12 gap-2 rounded-2xl border border-green-500/30 bg-[#07110b] p-2.5 items-center">
       <div className="col-span-8 overflow-hidden rounded-xl border border-white/10 bg-[#0d1812] p-2">
         <style>{`
-          @keyframes animSuperman2D {
+          @keyframes fitproSuper {
             0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-7px); }
+            50% { transform: translateY(-6px); }
           }
-          @keyframes animPompe2D {
+          @keyframes fitproPompe {
             0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(8px); }
+            50% { transform: translateY(7px); }
           }
-          @keyframes animAbdos2D {
+          @keyframes fitproAbdos {
             0%, 100% { transform: rotate(0deg); }
             50% { transform: rotate(-6deg); }
           }
-          @keyframes animSquat2D {
+          @keyframes fitproSquat {
             0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(9px); }
+            50% { transform: translateY(8px); }
           }
-          @keyframes animBras2D {
+          @keyframes fitproBras {
             0%, 100% { transform: rotate(0deg); }
-            50% { transform: rotate(-8deg); }
+            50% { transform: rotate(-7deg); }
           }
-          @keyframes animEtirement2D {
+          @keyframes fitproEtire {
             0%, 100% { transform: scaleX(1); }
             50% { transform: scaleX(1.03); }
           }
-          .fitpro-2d-figure {
-            transform-origin: 140px 75px;
+          .fitpro-anim-2d {
+            transform-origin: 140px 72px;
             animation: ${animName};
             animation-play-state: ${enLecture ? "running" : "paused"};
           }
         `}</style>
-        <svg
-          viewBox="0 0 280 120"
-          className="h-28 w-full"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          role="img"
-          aria-label="Animation 2D du mouvement"
-        >
-          <line x1="20" y1="102" x2="260" y2="102" stroke="#1e293b" strokeWidth="3" />
-          <g className="fitpro-2d-figure">
-            <circle cx="195" cy="52" r="10" fill="#e2e8f0" />
-            <path
-              d="M110 66L185 60L186 76L112 82Z"
-              fill={highlight("dos")}
-            />
-            <path
-              d="M110 66L65 54L68 63L112 75Z"
-              fill={highlight("fessiers")}
-            />
-            <path
-              d="M112 76L62 88L64 96L114 84Z"
-              fill={highlight("jambes")}
-            />
-            <path
-              d="M182 62L242 46L244 54L185 70Z"
-              fill={highlight("bras")}
-            />
-            <path
-              d="M182 70L240 78L239 85L181 77Z"
-              fill={highlight("avant-bras")}
-            />
+        <svg viewBox="0 0 280 110" className="h-24 w-full" fill="none">
+          <line x1="20" y1="96" x2="260" y2="96" stroke="#1e293b" strokeWidth="3" />
+          <g className="fitpro-anim-2d">
+            <circle cx="195" cy="48" r="9" fill="#e2e8f0" />
+            <path d="M110 62L185 56L186 70L112 76Z" fill={couleurZone("dos")} />
+            <path d="M110 62L65 50L68 58L112 70Z" fill={couleurZone("fessiers")} />
+            <path d="M112 70L62 82L64 89L114 77Z" fill={couleurZone("jambes")} />
+            <path d="M182 58L240 42L242 50L185 66Z" fill={couleurZone("bras")} />
+            <path d="M182 66L238 74L237 81L181 73Z" fill={couleurZone("avant-bras")} />
           </g>
         </svg>
       </div>
 
-      {/* Schéma anatomique des muscles sollicités */}
-      <div className="col-span-4 flex flex-col items-center justify-center rounded-xl bor
+      <div className="col-span-4 flex flex-col items-center justify-center rounded-xl border border-white/10 bg-[#0d1812] p-1.5">
+        <span className="text-[10px] font-bold uppercase text-green-400">
+          Muscles
+        </span>
+        <svg viewBox="0 0 60 80" className="h-20 w-12" fill="none">
+          <circle cx="30" cy="9" r="5.5" fill="#64748b" />
+          <path
+            d="M18 19C18 16 24 15 30 15C36 15 42 16 42 19L39 39H21L18 19Z"
+            fill={couleurZone("pectoraux")}
+          />
+          <rect
+            x="23"
+            y="29"
+            width="14"
+            height="10"
+            rx="2"
+            fill={couleurZone("abdos")}
+          />
+          <path
+            d="M18 20L10 36L14 38L21 25M42 20L50 36L46 38L39 25"
+            fill={couleurZone("bras")}
+          />
+          <path
+            d="M22 40L19 74H26L29 48M38 40L41 74H34L31 48"
+            fill={couleurZone("jambes")}
+          />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+export default function EntrainementPage() {
+  const { data: session, status } = useSession();
+
+  const [categorieActive, setCategorieActive] = useState<CategorieNom>("Tous");
+  const [niveauActif, setNiveauActif] = useState<NiveauProgramme>("Débutant");
+  const [indexExercice, setIndexExercice] = useState<number>(0);
+
+  const [serieActuelle, setSerieActuelle] = useState<number>(1);
+  const [seriesTerminees, setSeriesTerminees] = useState<number>(0);
+  const [repetitionsFaites, setRepetitionsFaites] = useState<number>(0);
+  const [secondesRestantes, setSecondesRestantes] = useState<number>(30);
+  const [enRepos, setEnRepos] = useState<boolean>(false);
+  const [enLecture, setEnLecture] = useState<boolean>(true);
+  const [dureeReelleSec, setDureeReelleSec] = useState<number>(0);
+  const [exercicesFaits, setExercicesFaits] = useState<Record<string, boolean>>({});
+
+  const [langue, setLangue] = useState<"fr" | "en" | "ar">("fr");
+  const [voixUri, setVoixUri] = useState<string>("");
+  const [voixList, setVoixList] = useState<SpeechSynthesisVoice[]>([]);
+
+  const [historique, setHistorique] = useState<SeanceEnregistree[]>([]);
+  const [messageSync, setMessageSync] = useState<string>("");
+  const sauvegardeFaiteRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    const majVoix = () => setVoixList(window.speechSynthesis.getVoices());
+    majVoix();
+    window.speechSynthesis.onvoiceschanged = majVoix;
+  }, []);
+
+  const chargerHistorique = useCallback(async () => {
+    try {
+      const res = await fetch("/api/entrainement/seances", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.sessions)) {
+        setHistorique(data.sessions);
+      }
+    } catch {
+      // Hors ligne
+    }
+  }, []);
+
+  useEffect(() => {
+    void chargerHistorique();
+  }, [chargerHistorique, status]);
+
+  const exercicesFiltres = useMemo(() => {
+    const parCat =
+      categorieActive === "Tous"
+        ? EXERCICES
+        : EXERCICES.filter((e) => e.categorie === categorieActive);
+    const parNiv = parCat.filter((e) => e.niveau === niveauActif);
+    return parNiv.length > 0 ? parNiv : parCat;
+  }, [categorieActive, niveauActif]);
+
+  const exerciceCourant =
+    exercicesFiltres[indexExercice] ?? exercicesFiltres[0] ?? EXERCICES[0];
+
+  const parler = useCallback(
+    (texteOverride?: string) => {
+      if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+      const texte = texteOverride ?? exerciceCourant.vocal[langue];
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(texte);
+      const mapLang = { fr: "fr-FR", en: "en-US", ar: "ar-SA" };
+      utter.lang = mapLang[langue];
+      if (voixUri) {
+        const trouvée = voixList.find((v) => v.voiceURI === voixUri);
+        if (trouvée) utter.voice = trouvée;
+      }
+      window.speechSynthesis.speak(utter);
+    },
+    [exerciceCou
