@@ -1,5 +1,21 @@
+"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 export default function ActualitesPage() {
+  const { data: session, status } = useSession();
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+
+  function handleNewsletterSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newsletterEmail.trim()) return;
+    setSubscribed(true);
+    setNewsletterEmail("");
+  }
+
   return (
     <>
       <style>{`
@@ -305,16 +321,24 @@ export default function ActualitesPage() {
       <div className="fitpro-page">
         <header className="fitpro-header">
           <div className="fitpro-container fitpro-nav">
-            <a className="fitpro-logo" href="#" aria-label="FIT PRO, accueil">
+            <Link className="fitpro-logo" href="/" aria-label="FIT PRO, accueil">
               FIT PRO
-            </a>
+            </Link>
 
             <nav aria-label="Navigation principale">
               <ul>
-                <li><a href="#">Accueil</a></li>
-                <li><a href="#" aria-current="page">Actualités</a></li>
-                <li><a href="#">Nos programmes</a></li>
-                <li><a href="#">Contact</a></li>
+                <li><Link href="/">Accueil</Link></li>
+                <li><Link href="/actualites" aria-current="page">Actualités</Link></li>
+                <li><Link href="/programs">Nos programmes</Link></li>
+                <li>
+                  <Link href={session?.user ? "/parametres" : "/login"}>
+                    {status === "loading"
+                      ? "Compte"
+                      : session?.user
+                      ? "Mon compte"
+                      : "Connexion"}
+                  </Link>
+                </li>
               </ul>
             </nav>
           </div>
@@ -346,7 +370,7 @@ export default function ActualitesPage() {
               <article className="fitpro-card">
                 <img
                   className="fitpro-card-image"
-                  src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&amp;fit=crop&amp;w=1200&amp;q=85"
+                  src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1200&q=85"
                   alt="Espace d’entraînement avec du matériel de musculation"
                   loading="lazy"
                 />
@@ -360,14 +384,14 @@ export default function ActualitesPage() {
                   </p>
                   <span className="fitpro-meta">12 juin 2025 · 5 min de lecture</span>
                   <br />
-                  <a className="fitpro-read-more" href="#">Lire l’article →</a>
+                  <Link className="fitpro-read-more" href="/entrainement">Lire l’article →</Link>
                 </div>
               </article>
 
               <article className="fitpro-card">
                 <img
                   className="fitpro-card-image"
-                  src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&amp;fit=crop&amp;w=1200&amp;q=85"
+                  src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=1200&q=85"
                   alt="Sportive en plein entraînement"
                   loading="lazy"
                 />
@@ -380,14 +404,14 @@ export default function ActualitesPage() {
                   </p>
                   <span className="fitpro-meta">4 juin 2025 · 4 min de lecture</span>
                   <br />
-                  <a className="fitpro-read-more" href="#">Lire l’article →</a>
+                  <Link className="fitpro-read-more" href="/nutrition">Lire l’article →</Link>
                 </div>
               </article>
 
               <article className="fitpro-card">
                 <img
                   className="fitpro-card-image"
-                  src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&amp;fit=crop&amp;w=1200&amp;q=85"
+                  src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=1200&q=85"
                   alt="Séance de yoga et de mobilité"
                   loading="lazy"
                 />
@@ -400,7 +424,7 @@ export default function ActualitesPage() {
                   </p>
                   <span className="fitpro-meta">28 mai 2025 · 6 min de lecture</span>
                   <br />
-                  <a className="fitpro-read-more" href="#">Lire l’article →</a>
+                  <Link className="fitpro-read-more" href="/progres">Lire l’article →</Link>
                 </div>
               </article>
             </div>
@@ -410,9 +434,14 @@ export default function ActualitesPage() {
             <div>
               <h2 id="newsletter-title">Du nouveau dans votre boîte mail</h2>
               <p>Recevez nos conseils et les actualités FIT PRO.</p>
+              {subscribed && (
+                <p style={{ fontWeight: 700, marginTop: "8px" }}>
+                  Inscription enregistrée pour vos actualités FIT PRO.
+                </p>
+              )}
             </div>
 
-            <form action="#" method="post">
+            <form onSubmit={handleNewsletterSubmit}>
               <label className="fitpro-visually-hidden" htmlFor="email">
                 Votre adresse e-mail
               </label>
@@ -420,6 +449,8 @@ export default function ActualitesPage() {
                 id="email"
                 name="email"
                 type="email"
+                value={newsletterEmail}
+                onChange={(e) => setNewsletterEmail(e.target.value)}
                 placeholder="Votre adresse e-mail"
                 required
               />
@@ -437,5 +468,5 @@ export default function ActualitesPage() {
       </div>
     </>
   );
-}
-
+                  }
+      
