@@ -604,5 +604,130 @@ export default function HomePage() {
               key={item.title}
               href={item.href}
               className="group overflow-hidden rounded-2xl border border-white/10 bg-[#111923]"
+            >              <div className="relative h-48 w-full">
+                <Image
+                  src={item.image}
+                  alt={item.title}
+                  fill
+                  unoptimized
+                  className="object-cover transition group-hover:scale-105"
+                />
+              </div>
+              <div className="p-5">
+                <p className="text-xs text-lime-400 font-semibold">
+                  {item.level} · {item.duration}
+                </p>
+                <h3 className="mt-1 text-lg font-bold">{item.title}</h3>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-6 pb-16">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-black">Nutrition du jour</h2>
+          <Link href="/nutrition" className="text-sm text-lime-400 font-semibold">
+            Voir la nutrition →
+          </Link>
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          {meals.map((meal) => (
+            <div
+              key={meal.name}
+              className="overflow-hidden rounded-2xl border border-white/10 bg-[#111923]"
             >
+              <div className="relative h-48 w-full">
+                <Image
+                  src={meal.image}
+                  alt={meal.name}
+                  fill
+                  unoptimized
+                  className="object-cover"
+                />
+              </div>
+              <div className="p-5">
+                <h3 className="text-lg font-bold">{meal.name}</h3>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {isLogged && recentLogs.length > 0 && (
+          <div className="mt-10 rounded-2xl border border-white/10 bg-[#111923] p-5">
+            <h3 className="text-base font-bold text-lime-400 mb-3">
+              Dernières séances enregistrées
+            </h3>
+            <ul className="space-y-2 text-sm">
+              {recentLogs.map((log) => (
+                <li
+                  key={log.id}
+                  className="flex items-center justify-between rounded-xl bg-[#080d13] px-4 py-2.5 border border-white/5"
+                >
+                  <span>{log.title || "Séance FIT PRO"}</span>
+                  <span className="text-xs text-gray-400">
+                    {log.duration_minutes ? `${log.duration_minutes} min` : ""}
+                    {log.calories_burned ? ` · ${log.calories_burned} kcal` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      <div className="fixed bottom-5 right-5 z-40">
+        {coachOpen ? (
+          <div className="w-80 rounded-2xl border border-white/15 bg-[#111923] p-4 shadow-2xl">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-bold text-lime-400">
+                Coach IA FIT PRO
+              </span>
+              <button
+                type="button"
+                onClick={() => setCoachOpen(false)}
+                className="text-xs text-gray-400 hover:text-white"
+              >
+                Fermer ✕
+              </button>
+            </div>
+            <form onSubmit={handleAskCoach} className="space-y-2">
+              <input
+                type="text"
+                value={coachQuestion}
+                onChange={(e) => setCoachQuestion(e.target.value)}
+                placeholder="Posez une question..."
+                className="w-full rounded-xl bg-[#080d13] border border-white/15 px-3 py-2 text-xs text-white"
+              />
+              <button
+                type="submit"
+                disabled={coachLoading}
+                className="w-full rounded-xl bg-lime-400 py-2 text-xs font-bold text-black"
+              >
+                {coachLoading ? "Réflexion..." : "Envoyer"}
+              </button>
+            </form>
+            {coachError && (
+              <p className="mt-2 text-xs text-red-400">{coachError}</p>
+            )}
+            {coachAnswer && (
+              <p className="mt-2 rounded-xl bg-[#080d13] p-2.5 text-xs text-gray-200">
+                {coachAnswer}
+              </p>
+            )}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setCoachOpen(true)}
+            className="rounded-full bg-lime-400 px-5 py-3 text-sm font-black text-black shadow-lg"
+          >
+            Coach IA
+          </button>
+        )}
+      </div>
+    </main>
+  );
+        }
+
               
