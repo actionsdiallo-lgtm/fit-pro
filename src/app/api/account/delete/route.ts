@@ -1,47 +1,46 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { PrismaClient } from "@prisma/client";
+import { auth } from "@/auth";
 
-export async function POST(request: Request) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const prisma = new PrismaClient();
 
-  if (!supabaseUrl || !serviceRoleKey) {
+export async function POST() {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id && !session?.user?.email) {
+      return NextResponse.json(
+        { error: "Non authentifié." },
+        { status: 401 }
+      );
+    }
+
+    const whereClause = session.user.id
+      ? { id: session.user.id }
+      : { email: session.user.email! };
+
+    const existingUser = await prisma.user.findUnique({
+      where: whereClause,
+      select: { id: true },
+    });
+
+    if (!existingUser) {
+      return NextResponse.json(
+        { error: "Utilisateur introuvable." },
+        { status: 404 }
+      );
+    }
+
+    await prisma.user.delete({
+      where: { id: existingUser.id },
+    });
+
+    return NextResponse.json({ deleted: true });
+  } catch (err) {
+    console.error("Erreur suppression compte:", err);
     return NextResponse.json(
-      {
-        error:
-          "Suppression définitive non configurée côté serveur (SUPABASE_SERVICE_ROLE_KEY manquant).",
-      },
-      { status: 503 }
+      { error: "Impossible de supprimer le compte pour le moment." },
+      { status: 500 }
     );
   }
-
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.replace(/^Bearer\s+/i, "");
-
-  if (!token) {
-    return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
-  }
-
-  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
-  const {
-    data: { user },
-    error: userError,
-  } = await adminClient.auth.getUser(token);
-
-  if (userError || !user) {
-    return NextResponse.json({ error: "Session invalide." }, { status: 401 });
-  }
-
-  const { error: deleteError } = await adminClient.auth.admin.deleteUser(
-    user.id
-  );
-
-  if (deleteError) {
-    return NextResponse.json({ error: deleteError.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ deleted: true });
 }
