@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  // On ne bloque plus personne ici.
-  // La vérification du login se fait dans l'appli elle-même.
-  // Ça corrige le bug qui renvoyait tout le monde au /login en boucle.
+  // La vérification d'authentification est gérée côté application / session.
+  // Aucune donnée utilisateur n'est modifiée ou supprimée ici.
   return NextResponse.next();
 }
 
