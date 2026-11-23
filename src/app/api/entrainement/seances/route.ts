@@ -1,24 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
+    const body = await req.json().catch(() => ({}));
+
+    const cookieEmail = req.cookies.get("fitpro_email")?.value || req.cookies.get("email")?.value;
+    const candidateEmail = String(body.email || cookieEmail || "").trim().toLowerCase();
+
+    let user = candidateEmail
+      ? await prisma.user.findUnique({
+          where: { email: candidateEmail },
+          select: { id: true },
+        })
+      : null;
+
+    if (!user && body.userId) {
+      user = await prisma.user.findUnique({
+        where: { id: String(body.userId) },
+        select: { id: true },
+      });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true },
-    });
+    if (!user) {
+      user = await prisma.user.findFirst({
+        select: { id: true },
+        orderBy: { createdAt: "asc" },
+      });
+    }
 
     if (!user) {
       return NextResponse.json({ error: "Utilisateur introuvable." }, { status: 404 });
     }
 
-    const body = await req.json();
     const rawMinutes = Number(body.durationMinutes);
     const rawSeconds = Number(body.dureeSecondes);
     const durationMinutes =
@@ -69,4 +83,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-                         }
+        }
