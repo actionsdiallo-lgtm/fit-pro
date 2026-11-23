@@ -1,17 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  Flame,
-  Dumbbell,
-  Clock,
-  Scale,
-  Trophy,
-  ChevronLeft,
-  Calendar,
-  CheckCircle2,
-  Circle,
-} from "lucide-react";
 
 type RangeKey = "7d" | "30d" | "3m" | "1y";
 
@@ -135,9 +124,9 @@ export default function ProgressView({
           type="button"
           onClick={onBack}
           aria-label="Retour"
-          className="h-9 w-9 rounded-full border border-emerald-500/40 bg-emerald-950/40 flex items-center justify-center text-emerald-300"
+          className="h-9 w-9 rounded-full border border-emerald-500/40 bg-emerald-950/40 flex items-center justify-center text-emerald-300 text-base font-bold"
         >
-          <ChevronLeft className="h-5 w-5" />
+          ‹
         </button>
 
         <div className="text-center">
@@ -151,9 +140,9 @@ export default function ProgressView({
           type="button"
           onClick={onOpenDetails}
           aria-label="Calendrier"
-          className="h-9 w-9 rounded-lg border border-emerald-500/40 bg-emerald-950/40 flex items-center justify-center text-emerald-300"
+          className="h-9 w-9 rounded-lg border border-emerald-500/40 bg-emerald-950/40 flex items-center justify-center text-emerald-300 text-xs font-bold"
         >
-          <Calendar className="h-4 w-4" />
+          📅
         </button>
       </div>
 
@@ -173,8 +162,8 @@ export default function ProgressView({
               : "Suivi en temps réel de vos séances, objectifs et records."}
           </p>
         </div>
-        <div className="relative z-10 h-12 w-12 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center text-amber-400">
-          <Trophy className="h-6 w-6" />
+        <div className="relative z-10 h-12 w-12 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-center justify-center text-amber-400 text-xl">
+          🏆
         </div>
       </div>
 
@@ -201,7 +190,7 @@ export default function ProgressView({
       <div className="grid grid-cols-2 gap-3 px-4 mt-4">
         <div className="rounded-2xl border border-emerald-500/25 bg-[#0d1912] p-3">
           <div className="flex items-center gap-1.5 text-xs text-emerald-100/80">
-            <Flame className="h-4 w-4 text-orange-400" />
+            <span className="text-orange-400">🔥</span>
             <span>Calories brûlées</span>
           </div>
           <div className="text-xl font-extrabold mt-1">
@@ -214,7 +203,7 @@ export default function ProgressView({
 
         <div className="rounded-2xl border border-emerald-500/25 bg-[#0d1912] p-3">
           <div className="flex items-center gap-1.5 text-xs text-emerald-100/80">
-            <Dumbbell className="h-4 w-4 text-emerald-400" />
+            <span className="text-emerald-400">🏋️</span>
             <span>Entraînements</span>
           </div>
           <div className="text-xl font-extrabold mt-1">
@@ -227,7 +216,7 @@ export default function ProgressView({
 
         <div className="rounded-2xl border border-emerald-500/25 bg-[#0d1912] p-3">
           <div className="flex items-center gap-1.5 text-xs text-emerald-100/80">
-            <Clock className="h-4 w-4 text-lime-400" />
+            <span className="text-lime-400">⏱️</span>
             <span>Temps total</span>
           </div>
           <div className="text-xl font-extrabold mt-1">
@@ -240,7 +229,7 @@ export default function ProgressView({
 
         <div className="rounded-2xl border border-emerald-500/25 bg-[#0d1912] p-3">
           <div className="flex items-center gap-1.5 text-xs text-emerald-100/80">
-            <Scale className="h-4 w-4 text-cyan-400" />
+            <span className="text-cyan-400">⚖️</span>
             <span>Poids actuel</span>
           </div>
           <div className="text-xl font-extrabold mt-1">
@@ -326,11 +315,7 @@ export default function ProgressView({
               ) : (
                 data!.goals.items.map((g) => (
                   <div key={g.id} className="flex items-center gap-1.5">
-                    {g.completed ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-lime-400 shrink-0" />
-                    ) : (
-                      <Circle className="h-3.5 w-3.5 text-emerald-400/60 shrink-0" />
-                    )}
+                    <span className="text-lime-400 shrink-0">{g.completed ? "✓" : "○"}</span>
                     <span className="truncate">{g.title}</span>
                   </div>
                 ))
@@ -389,4 +374,5 @@ export default function ProgressView({
       </div>
     </div>
   );
-  }
+      }
+            
