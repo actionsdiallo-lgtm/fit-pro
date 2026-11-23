@@ -1,62 +1,77 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import {
-  generateSixDigitCode,
-  hashSecret,
-  isEmailInput,
-  normalizeEmail,
-  normalizePhone,
-} from "@/lib/auth-utils";
+import { NextRequest, NextResponse } from "next/server";
+import { PrismaClient, DeliveryChannel, VerificationPurpose } from "@prisma/client";
+import crypto from "crypto";
 
-export async function POST(req: Request) {
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const prisma = globalForPrisma.prisma ?? new PrismaClient();
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+function hashValue(value: string): string {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+function generateSixDigitCode(): string {
+  return crypto.randomInt(100000, 1000000).toString();
+}
+
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const rawIdentifier = String(body?.identifier ?? body?.email ?? "").trim();
 
-    if (!rawIdentifier) {
+    const method = String(body.method ?? "").toUpperCase();
+    const rawTarget = String(body.identifier ?? body.email ?? body.phone ?? "").trim();
+
+    if (!rawTarget) {
+      return NextResponse.json(
+        { error: "Merci d'indiquer ton Gmail ou ton numéro de téléphone." },
+        { status: 400 }
+      );
+    }
+
+    const emailMode = method === "GMAIL" || (method !== "PHONE" && rawTarget.includes("@"));
+    const normalizedEmail = emailMode ? rawTarget.toLowerCase() : null;
+    const normalizedPhone = !emailMode ? rawTarget.replace(/\s+/g, "") : null;
+
+    const user = emailMode
+      ? await prisma.user.findUnique({
+          where: { email: normalizedEmail! },
+          select: { id: true, email: true, phone: true },
+        })
+      : await prisma.user.findUnique({
+          where: { phone: normalizedPhone! },
+          select: { id: true, email: true, phone: true },
+        });
+
+    if (!user) {
       return NextResponse.json({
-        ok: true,
         message: "Si ce compte existe, tu vas recevoir un code.",
       });
     }
 
-    const emailMode = isEmailInput(rawIdentifier);
-    const target = emailMode ? normalizeEmail(rawIdentifier) : normalizePhone(rawIdentifier);
+    const code = generateSixDigitCode();
+    const target = emailMode ? normalizedEmail! : normalizedPhone!;
+    const channel: DeliveryChannel = emailMode ? "EMAIL" : "SMS";
 
-    const user = await prisma.user.findFirst({
-      where: emailMode
-        ? { OR: [{ email: target }, { backupEmail: target }] }
-        : { OR: [{ phone: target }, { backupPhone: target }] },
-      select: { id: true },
+    await prisma.verificationCode.create({
+      data: {
+        userId: user.id,
+        target,
+        channel,
+        purpose: VerificationPurpose.PASSWORD_RESET,
+        codeHash: hashValue(code),
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      },
     });
-
-    if (user) {
-      const code = generateSixDigitCode();
-      await prisma.verificationCode.create({
-        data: {
-          userId: user.id,
-          target,
-          channel: emailMode ? "EMAIL" : "PHONE",
-          purpose: "PASSWORD_RESET",
-          codeHash: hashSecret(code),
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-        },
-      });
-
-      if (process.env.NODE_ENV !== "production") {
-        console.log(`[DEV RESET CODE -> ${target}]: ${code}`);
-      }
-    }
 
     return NextResponse.json({
-      ok: true,
       message: "Si ce compte existe, tu vas recevoir un code.",
+      ...(process.env.NODE_ENV !== "production" ? { devCode: code } : {}),
     });
-  } catch {
+  } catch (error) {
+    console.error("Forgot password error:", error);
     return NextResponse.json(
-      { error: "Erreur lors de l'envoi du code." },
+      { error: "Erreur serveur lors de la demande de récupération." },
       { status: 500 }
     );
   }
-          }
-
+}
