@@ -1,108 +1,101 @@
-import crypto from "crypto";
-import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import prisma from "@/lib/prisma";
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import {
+  AUTH_ERRORS,
+  hashSecret,
+  isEmailInput,
+  normalizeEmail,
+  normalizePhone,
+  resetPasswordSchema,
+  verifySecret,
+} from "@/lib/auth-utils";
 
-function normalizeEmail(value: unknown): string {
-  return typeof value === "string" ? value.trim().toLowerCase() : "";
-}
-
-function normalizeCode(value: unknown): string {
-  return typeof value === "string" ? value.replace(/\D/g, "").trim() : "";
-}
-
-function hashToken(value: string): string {
-  return crypto.createHash("sha256").update(value).digest("hex");
-}
-
-function safeEqualHex(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, "hex");
-  const bufB = Buffer.from(b, "hex");
-  if (bufA.length === 0 || bufA.length !== bufB.length) return false;
-  return crypto.timingSafeEqual(bufA, bufB);
-}
-
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const email = normalizeEmail(body?.email);
-    const code = normalizeCode(body?.code ?? body?.otp ?? body?.token);
-    const newPassword =
-      typeof body?.newPassword === "string"
-        ? body.newPassword
-        : typeof body?.password === "string"
-        ? body.password
-        : "";
+    const body = await req.json();
+    const parsed = resetPasswordSchema.safeParse(body);
 
-    if (!email || !email.includes("@")) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Adresse e-mail invalide." },
+        { error: parsed.error.issues[0]?.message ?? "Données invalides." },
         { status: 400 }
       );
     }
 
-    if (code.length !== 6) {
+    const { target, code, newPassword, confirmPassword } = parsed.data;
+
+    if (newPassword !== confirmPassword) {
       return NextResponse.json(
-        { error: "Le code de vérification est incorrect." },
+        { error: "Les nouveaux mots de passe ne correspondent pas." },
         { status: 400 }
       );
     }
 
-    if (newPassword.length < 6) {
-      return NextResponse.json(
-        { error: "Le nouveau mot de passe doit contenir au moins 6 caractères." },
-        { status: 400 }
-      );
-    }
+    const emailMode = isEmailInput(target);
+    const normalizedTarget = emailMode ? normalizeEmail(target) : normalizePhone(target);
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        resetPasswordToken: true,
-        resetPasswordExpires: true,
+    const record = await prisma.verificationCode.findFirst({
+      where: {
+        target: normalizedTarget,
+        purpose: "PASSWORD_RESET",
+        consumedAt: null,
       },
+      orderBy: { createdAt: "desc" },
     });
 
-    if (!user || !user.resetPasswordToken || !user.resetPasswordExpires) {
+    if (!record) {
+      return NextResponse.json({ error: AUTH_ERRORS.INVALID_CODE }, { status: 400 });
+    }
+
+    if (record.attempts >= 5) {
+      return NextResponse.json({ error: AUTH_ERRORS.TOO_MANY_ATTEMPTS }, { status: 429 });
+    }
+
+    if (new Date() > record.expiresAt) {
+      return NextResponse.json({ error: AUTH_ERRORS.EXPIRED_CODE }, { status: 400 });
+    }
+
+    const validCode = verifySecret(code, record.codeHash);
+    if (!validCode) {
+      const nextAttempts = record.attempts + 1;
+      await prisma.verificationCode.update({
+        where: { id: record.id },
+        data: { attempts: nextAttempts },
+      });
+
       return NextResponse.json(
-        { error: "Le code de vérification est incorrect." },
-        { status: 400 }
+        {
+          error:
+            nextAttempts >= 5
+              ? AUTH_ERRORS.TOO_MANY_ATTEMPTS
+              : AUTH_ERRORS.INVALID_CODE,
+        },
+        { status: nextAttempts >= 5 ? 429 : 400 }
       );
     }
 
-    if (new Date(user.resetPasswordExpires).getTime() < Date.now()) {
-      return NextResponse.json(
-        { error: "Ce code a expiré. Demandez un nouveau code." },
-        { status: 400 }
-      );
-    }
-
-    const providedHash = hashToken(code);
-    if (!safeEqualHex(providedHash, user.resetPasswordToken)) {
-      return NextResponse.json(
-        { error: "Le code de vérification est incorrect." },
-        { status: 400 }
-      );
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        passwordHash: hashedPassword,
-        resetPasswordToken: null,
-        resetPasswordExpires: null,
-      },
+    await prisma.verificationCode.update({
+      where: { id: record.id },
+      data: { consumedAt: new Date() },
     });
+
+    if (record.userId) {
+      await prisma.user.update({
+        where: { id: record.userId },
+        data: {
+          password: hashSecret(newPassword),
+          tokenVersion: { increment: 1 },
+        },
+      });
+    }
+
     return NextResponse.json({
-      success: true,
-      message: "Mot de passe réinitialisé avec succès.",
+      ok: true,
+      message: "Mot de passe changé avec succès. Tu peux te connecter.",
     });
-  } catch (error) {
-    console.error("Reset password route error:", error);
+  } catch {
     return NextResponse.json(
-      { error: "Erreur serveur lors de la réinitialisation du mot de passe." },
+      { error: "Erreur lors de la réinitialisation du mot de passe." },
       { status: 500 }
     );
   }
