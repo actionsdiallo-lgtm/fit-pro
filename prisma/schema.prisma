@@ -51,6 +51,7 @@ model Workout {
   title           String
   category        String?
   durationMinutes Int?
+  distanceKm      Float?
   calories        Int?
   repetitions     Int?
   series          Int?
