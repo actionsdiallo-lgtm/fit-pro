@@ -50,12 +50,12 @@ model User {
   @@index([phone])
 }
 
-        data: {
-          userId: user.id,
-          title: String(body.title ?? "Séance sans équipement").trim(),
-          duration: Number(body.durationMinutes ?? body.duration ?? 0) || 0,
-        },
+model VerificationCode {
+  id     String  @id @default(cuid())
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  target  String
   channel DeliveryChannel
   purpose VerificationPurpose
 
@@ -92,12 +92,16 @@ model Session {
 }
 
 model Workout {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  duration  Int      @default(0)
-  createdAt DateTime @default(now())
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title           String
+  category        String?
+  duration        Int      @default(0)
+  durationMinutes Int?
+  calories        Int?
+  notes           String?
+  createdAt       DateTime @default(now())
 
   @@index([userId])
 }
