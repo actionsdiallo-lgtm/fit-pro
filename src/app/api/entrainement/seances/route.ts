@@ -18,9 +18,9 @@ export async function GET() {
       return NextResponse.json({ sessions: [] }, { status: 200 });
     }
 
-    const workouts = await prisma.workoutSession.findMany({
+    const workouts = await prisma.workout.findMany({
       where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
+      orderBy: { performedAt: "desc" },
       take: 30,
     });
 
@@ -28,12 +28,12 @@ export async function GET() {
       id: w.id,
       programmeTitre: w.title,
       categorie: w.category,
-      niveau: w.level,
-      dureeSecondes: w.durationSeconds,
-      caloriesEstimees: w.calories,
-      repetitions: w.repetitions,
-      series: w.sets,
-      createdAt: w.createdAt.toISOString(),
+      niveau: w.notes || "Séance enregistrée",
+      dureeSecondes: (w.durationMinutes || 0) * 60,
+      caloriesEstimees: w.calories ?? 0,
+      repetitions: 0,
+      series: 1,
+      createdAt: w.performedAt.toISOString(),
     }));
 
     return NextResponse.json({ sessions }, { status: 200 });
@@ -63,17 +63,20 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
+    const dureeSecondes = Math.max(0, Number(body.dureeSecondes) || 0);
+    const durationMinutes = Math.max(
+      1,
+      Number(body.durationMinutes) || Math.round(dureeSecondes / 60) || 1
+    );
 
-    const created = await prisma.workoutSession.create({
+    const created = await prisma.workout.create({
       data: {
         userId: user.id,
         title: String(body.programmeTitre || body.categorie || "Séance d'entraînement"),
         category: String(body.categorie || "Entraînement"),
-        level: String(body.niveau || "Débutant"),
-        durationSeconds: Math.max(0, Number(body.dureeSecondes) || 0),
-        calories: Math.max(0, Number(body.caloriesEstimees) || 0),
-        repetitions: Math.max(0, Number(body.repetitions) || 0),
-        sets: Math.max(1, Number(body.series) || 1),
+        durationMinutes,
+        calories: Math.max(0, Math.round(Number(body.caloriesEstimees) || 0)),
+        notes: body.niveau ? String(body.niveau) : null,
       },
     });
 
@@ -84,12 +87,12 @@ export async function POST(req: Request) {
           id: created.id,
           programmeTitre: created.title,
           categorie: created.category,
-          niveau: created.level,
-          dureeSecondes: created.durationSeconds,
-          caloriesEstimees: created.calories,
-          repetitions: created.repetitions,
-          series: created.sets,
-          createdAt: created.createdAt.toISOString(),
+          niveau: created.notes || "Séance enregistrée",
+          dureeSecondes: created.durationMinutes * 60,
+          caloriesEstimees: created.calories ?? 0,
+          repetitions: Math.max(0, Number(body.repetitions) || 0),
+          series: Math.max(1, Number(body.series) || 1),
+          createdAt: created.performedAt.toISOString(),
         },
       },
       { status: 201 }
@@ -101,4 +104,5 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
+         }
+          
