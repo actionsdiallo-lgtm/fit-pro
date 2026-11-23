@@ -3,132 +3,143 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
+const BREVO_EMAIL_URL = "https://api.brevo.com/v3/smtp/email";
 
 function normalizeEmail(value: unknown): string {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
-function getOtpSecret(): string {
-  return (
-    process.env.AUTH_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    process.env.RESEND_API_KEY ||
-    "fitpro-otp-fallback-secret"
-  );
+function generateSixDigitCode(): string {
+  const num = crypto.randomInt(0, 1000000);
+  return String(num).padStart(6, "0");
 }
 
-function hashOtp(email: string, code: string): string {
-  return crypto
-    .createHmac("sha256", getOtpSecret())
-    .update(`${email}:${code}`)
-    .digest("hex");
+function hashCode(code: string): string {
+  return crypto.createHash("sha256").update(code).digest("hex");
+}
+
+function parseSender(rawFrom: string | undefined): { name: string; email: string } {
+  const fallbackEmail = "actionsdiallo@gmail.com";
+  const fallbackName = "FIT PRO";
+
+  if (!rawFrom || !rawFrom.trim()) {
+    return { name: fallbackName, email: fallbackEmail };
+  }
+
+  const trimmed = rawFrom.trim();
+  const match = trimmed.match(/^(.*)<([^>]+)>$/);
+  if (match) {
+    const parsedName = match[1].trim().replace(/^"|"$/g, "") || fallbackName;
+    const parsedEmail = match[2].trim();
+    return { name: parsedName, email: parsedEmail || fallbackEmail };
+  }
+
+  return { name: fallbackName, email: trimmed };
+}
+
+async function sendBrevoResetEmail(params: {
+  toEmail: string;
+  userName?: string | null;
+  otpCode: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const apiKey = process.env.BREVO_API_KEY?.trim();
+  if (!apiKey) {
+    return { ok: false, error: "BREVO_API_KEY is missing" };
+  }
+
+  const sender = parseSender(process.env.EMAIL_FROM);
+  const greeting = params.userName ? `Bonjour ${params.userName},` : "Bonjour,";
+
+  const response = await fetch(BREVO_EMAIL_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-key": apiKey,
+    },
+    body: JSON.stringify({
+      sender,
+      to: [{ email: params.toEmail }],
+      subject: "FIT PRO — Votre code de vérification (valable 10 minutes)",
+      htmlContent: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111;">
+          <h2>FIT PRO — Code de réinitialisation</h2>
+          <p>${greeting}</p>
+          <p>Voici votre code de vérification à 6 chiffres pour réinitialiser le mot de passe de votre compte <strong>${params.toEmail}</strong> :</p>
+          <p style="font-size: 28px; font-weight: bold; letter-spacing: 6px; margin: 16px 0;">${params.otpCode}</p>
+          <p>Ce code est valable pendant 10 minutes. Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail.</p>
+        </div>
+      `,
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => "");
+    return { ok: false, error: `Brevo error (${response.status}): ${details}` };
+  }
+
+  return { ok: true };
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => null);
+    const body = await req.json().catch(() => ({}));
     const email = normalizeEmail(body?.email);
 
-    if (!email) {
+    if (!email || !email.includes("@")) {
       return NextResponse.json(
-        { error: "Veuillez saisir votre adresse e-mail." },
+        { error: "Veuillez saisir une adresse e-mail valide." },
         { status: 400 }
-      );
-    }
-
-    const apiKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.EMAIL_FROM;
-
-    if (!apiKey || !fromEmail) {
-      console.error("Configuration e-mail manquante: RESEND_API_KEY ou EMAIL_FROM");
-      return NextResponse.json(
-        {
-          error:
-            "Service d'envoi d'e-mails indisponible (RESEND_API_KEY ou EMAIL_FROM manquant).",
-        },
-        { status: 500 }
       );
     }
 
     const user = await prisma.user.findUnique({
       where: { email },
-      select: {
-        id: true,
-        email: true,
-      },
+      select: { id: true, email: true, name: true },
     });
 
+    // Réponse neutre si l'adresse n'existe pas pour éviter l'énumération de comptes
     if (!user) {
-      return NextResponse.json(
-        { error: "Aucun compte FIT PRO n'est associé à cette adresse e-mail." },
-        { status: 404 }
-      );
+      return NextResponse.json({
+        success: true,
+        message: "Si un compte existe avec cette adresse, un code a été envoyé.",
+      });
     }
 
-    const otpCode = String(crypto.randomInt(100000, 1000000));
-    const otpHash = hashOtp(user.email.toLowerCase(), otpCode);
+    const otpCode = generateSixDigitCode();
+    const tokenHash = hashCode(otpCode);
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        resetPasswordToken: otpHash,
-        resetPasswordExpires: expiresAt,
+        resetTokenHash: tokenHash,
+        resetTokenExpiresAt: expiresAt,
       },
     });
 
-    const resendRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: [user.email],
-        subject: "Votre code de vérification FIT PRO (valable 10 minutes)",
-        html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827; max-width: 480px;">
-            <h2 style="margin-bottom: 8px;">FIT PRO — Code de vérification</h2>
-            <p>Voici votre code à 6 chiffres pour réinitialiser le mot de passe de <strong>${user.email}</strong> :</p>
-            <div style="font-size: 28px; font-weight: 700; letter-spacing: 6px; padding: 14px 20px; background: #f3f4f6; border-radius: 8px; text-align: center; margin: 16px 0;">
-              ${otpCode}
-            </div>
-            <p>Ce code expire dans <strong>10 minutes</strong> et est à usage unique.</p>
-            <p>Votre compte ainsi que toutes vos données (profil, entraînements, nutrition, progrès, historique, paramètres et abonnement) restent intactes.</p>
-          </div>
-        `,
-      }),
+    const mailResult = await sendBrevoResetEmail({
+      toEmail: user.email,
+      userName: user.name,
+      otpCode,
     });
 
-    const resendData = await resendRes.json().catch(() => null);
-
-    if (!resendRes.ok || !resendData?.id) {
-      console.error("Échec envoi OTP:", {
-        status: resendRes.status,
-        to: user.email,
-        from: fromEmail,
-        response: resendData,
-      });
+    if (!mailResult.ok) {
+      console.error("Forgot-password Brevo send failed:", mailResult.error);
       return NextResponse.json(
-        {
-          error:
-            "L'envoi du code par e-mail a échoué. Veuillez réessayer dans un instant.",
-        },
-        { status: 502 }
+        { error: "Impossible d'envoyer l'e-mail de vérification pour le moment." },
+        { status: 500 }
       );
     }
 
     return NextResponse.json({
-      ok: true,
-      message: `Un code à 6 chiffres a été envoyé à ${user.email} (valable 10 minutes).`,
+      success: true,
+      message: "Code de vérification envoyé par e-mail.",
     });
-  } catch (err) {
-    console.error("Erreur /api/auth/forgot-password:", err);
+  } catch (error) {
+    console.error("Forgot-password route error:", error);
     return NextResponse.json(
-      { error: "Erreur serveur lors de l'envoi du code." },
+      { error: "Erreur serveur lors de la demande de réinitialisation." },
       { status: 500 }
     );
   }
-      }
-          
+    }
