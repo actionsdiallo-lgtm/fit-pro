@@ -38,7 +38,6 @@ export async function POST(req: Request) {
     await prisma.verificationCode.create({
       data: {
         userId: user.id,
-        email: user.email,
         code,
         expiresAt,
       },
@@ -88,5 +87,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
-  
+        }
