@@ -100,10 +100,10 @@ model Workout {
   title           String?
   category        String?
   notes           String?
-  duration        Int      @default(0)
-  durationMinutes Int      @default(0)
-  distanceKm      Float    @default(0)
-  calories        Int      @default(0)
+  duration        Int?     @default(0)
+  durationMinutes Int?     @default(0)
+  distanceKm      Float?   @default(0)
+  calories        Int?     @default(0)
   performedAt     DateTime @default(now())
   createdAt       DateTime @default(now())
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
