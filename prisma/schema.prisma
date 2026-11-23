@@ -50,12 +50,12 @@ model User {
   @@index([phone])
 }
 
-model VerificationCode {
-  id     String  @id @default(cuid())
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+        data: {
+          userId: user.id,
+          title: String(body.title ?? "Séance sans équipement").trim(),
+          duration: Number(body.durationMinutes ?? body.duration ?? 0) || 0,
+        },
 
-  target  String
   channel DeliveryChannel
   purpose VerificationPurpose
 
