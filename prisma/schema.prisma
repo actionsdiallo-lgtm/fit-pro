@@ -73,6 +73,7 @@ model Workout {
   userId      String
   title       String?
   category    String?
+  notes       String?
   duration    Int      @default(0)
   calories    Int      @default(0)
   performedAt DateTime @default(now())
