@@ -1,12 +1,13 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      return NextResponse.json({ sessions: [] }, { status: 200 });
+      return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -15,68 +16,31 @@ export async function GET() {
     });
 
     if (!user) {
-      return NextResponse.json({ sessions: [] }, { status: 200 });
-    }
-
-    const workouts = await prisma.workout.findMany({
-      where: { userId: user.id },
-      orderBy: { performedAt: "desc" },
-      take: 30,
-    });
-
-    const sessions = workouts.map((w) => ({
-      id: w.id,
-      programmeTitre: w.title,
-      categorie: w.category,
-      niveau: w.notes || "Séance enregistrée",
-      dureeSecondes: (w.durationMinutes || 0) * 60,
-      caloriesEstimees: w.calories ?? 0,
-      repetitions: 0,
-      series: 1,
-      createdAt: w.performedAt.toISOString(),
-    }));
-
-    return NextResponse.json({ sessions }, { status: 200 });
-  } catch (error) {
-    console.error("GET /api/entrainement/seances error:", error);
-    return NextResponse.json({ sessions: [] }, { status: 200 });
-  }
-}
-
-export async function POST(req: Request) {
-  try {
-    const session = await auth();
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: "Connecte-toi pour enregistrer ta séance en base de données." },
-        { status: 401 }
-      );
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "Utilisateur introuvable" }, { status: 404 });
+      return NextResponse.json({ error: "Utilisateur introuvable." }, { status: 404 });
     }
 
     const body = await req.json();
-    const dureeSecondes = Math.max(0, Number(body.dureeSecondes) || 0);
-    const durationMinutes = Math.max(
-      1,
-      Number(body.durationMinutes) || Math.round(dureeSecondes / 60) || 1
-    );
+    const rawMinutes = Number(body.durationMinutes);
+    const rawSeconds = Number(body.dureeSecondes);
+    const durationMinutes = Number.isFinite(rawMinutes) && rawMinutes > 0
+      ? Math.round(rawMinutes)
+      : Number.isFinite(rawSeconds) && rawSeconds > 0
+      ? Math.max(1, Math.round(rawSeconds / 60))
+      : 1;
+
+    const rawCalories = Number(body.calories ?? body.caloriesEstimees);
+    const calories = Number.isFinite(rawCalories) && rawCalories > 0
+      ? Math.round(rawCalories)
+      : 0;
 
     const created = await prisma.workout.create({
       data: {
         userId: user.id,
-        title: String(body.programmeTitre || body.categorie || "Séance d'entraînement"),
-        category: String(body.categorie || "Entraînement"),
+        title: String(body.programmeTitre || body.title || "Séance d'entraînement"),
+        category: String(body.categorie || body.category || "Entraînement"),
         durationMinutes,
-        calories: Math.max(0, Math.round(Number(body.caloriesEstimees) || 0)),
-        notes: body.niveau ? String(body.niveau) : null,
+        calories,
+        notes: body.niveau ? String(body.niveau) : body.notes ? String(body.notes) : null,
       },
     });
 
@@ -88,7 +52,7 @@ export async function POST(req: Request) {
           programmeTitre: created.title,
           categorie: created.category,
           niveau: created.notes || "Séance enregistrée",
-          dureeSecondes: created.durationMinutes * 60,
+          dureeSecondes: (created.durationMinutes ?? 0) * 60,
           caloriesEstimees: created.calories ?? 0,
           repetitions: Math.max(0, Number(body.repetitions) || 0),
           series: Math.max(1, Number(body.series) || 1),
@@ -104,5 +68,5 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-         }
-          
+                               }
+            
