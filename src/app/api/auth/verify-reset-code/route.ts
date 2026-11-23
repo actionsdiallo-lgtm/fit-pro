@@ -1,75 +1,74 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import {
-  AUTH_ERRORS,
-  isEmailInput,
-  normalizeEmail,
-  normalizePhone,
-  verifyCodeSchema,
-  verifySecret,
-} from "@/lib/auth-utils";
+import { NextRequest, NextResponse } from "next/server";
+import { PrismaClient, VerificationPurpose } from "@prisma/client";
+import crypto from "crypto";
 
-export async function POST(req: Request) {
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const prisma = globalForPrisma.prisma ?? new PrismaClient();
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+function hashCode(value: string): string {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const parsed = verifyCodeSchema.safeParse({
-      ...body,
-      purpose: body?.purpose ?? "PASSWORD_RESET",
-    });
 
-    if (!parsed.success) {
-      return NextResponse.json({ error: AUTH_ERRORS.INVALID_CODE }, { status: 400 });
+    const rawTarget = String(
+      body.identifier ?? body.email ?? body.phone ?? ""
+    ).trim();
+    const code = String(body.code ?? "").trim();
+
+    if (!rawTarget || !code) {
+      return NextResponse.json(
+        { error: "Identifiant et code de vérification requis." },
+        { status: 400 }
+      );
     }
 
-    const { target, code, purpose } = parsed.data;
-    const emailMode = isEmailInput(target);
-    const normalizedTarget = emailMode ? normalizeEmail(target) : normalizePhone(target);
+    const normalizedTarget = rawTarget.includes("@")
+      ? rawTarget.toLowerCase()
+      : rawTarget.replace(/\s+/g, "");
 
-    const record = await prisma.verificationCode.findFirst({
+    const verification = await prisma.verificationCode.findFirst({
       where: {
         target: normalizedTarget,
-        purpose,
+        purpose: VerificationPurpose.PASSWORD_RESET,
         consumedAt: null,
       },
       orderBy: { createdAt: "desc" },
     });
 
-    if (!record) {
-      return NextResponse.json({ error: AUTH_ERRORS.INVALID_CODE }, { status: 400 });
-    }
-
-    if (record.attempts >= 5) {
-      return NextResponse.json({ error: AUTH_ERRORS.TOO_MANY_ATTEMPTS }, { status: 429 });
-    }
-
-    if (new Date() > record.expiresAt) {
-      return NextResponse.json({ error: AUTH_ERRORS.EXPIRED_CODE }, { status: 400 });
-    }
-
-    const validCode = verifySecret(code, record.codeHash);
-    if (!validCode) {
-      const nextAttempts = record.attempts + 1;
-      await prisma.verificationCode.update({
-        where: { id: record.id },
-        data: { attempts: nextAttempts },
-      });
-
+    if (!verification) {
       return NextResponse.json(
-        {
-          error:
-            nextAttempts >= 5
-              ? AUTH_ERRORS.TOO_MANY_ATTEMPTS
-              : AUTH_ERRORS.INVALID_CODE,
-        },
-        { status: nextAttempts >= 5 ? 429 : 400 }
+        { error: "Aucun code actif trouvé pour cet identifiant." },
+        { status: 400 }
+      );
+    }
+
+    if (verification.expiresAt < new Date()) {
+      return NextResponse.json(
+        { error: "Ce code a expiré. Demande un nouveau code." },
+        { status: 400 }
+      );
+    }
+
+    if (verification.codeHash !== hashCode(code)) {
+      return NextResponse.json(
+        { error: "Code de vérification incorrect." },
+        { status: 400 }
       );
     }
 
     return NextResponse.json({
-      ok: true,
-      target: normalizedTarget,
+      verified: true,
+      message: "Code vérifié avec succès.",
     });
-  } catch {
-    return NextResponse.json({ error: AUTH_ERRORS.INVALID_CODE }, { status: 500 });
+  } catch (error) {
+    console.error("Verify reset code error:", error);
+    return NextResponse.json(
+      { error: "Erreur serveur lors de la vérification du code." },
+      { status: 500 }
+    );
   }
 }
