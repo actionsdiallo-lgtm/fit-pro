@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
     }
@@ -22,16 +21,18 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const rawMinutes = Number(body.durationMinutes);
     const rawSeconds = Number(body.dureeSecondes);
-    const durationMinutes = Number.isFinite(rawMinutes) && rawMinutes > 0
-      ? Math.round(rawMinutes)
-      : Number.isFinite(rawSeconds) && rawSeconds > 0
-      ? Math.max(1, Math.round(rawSeconds / 60))
-      : 1;
+    const durationMinutes =
+      Number.isFinite(rawMinutes) && rawMinutes > 0
+        ? Math.round(rawMinutes)
+        : Number.isFinite(rawSeconds) && rawSeconds > 0
+        ? Math.max(1, Math.round(rawSeconds / 60))
+        : 1;
 
     const rawCalories = Number(body.calories ?? body.caloriesEstimees);
-    const calories = Number.isFinite(rawCalories) && rawCalories > 0
-      ? Math.round(rawCalories)
-      : 0;
+    const calories =
+      Number.isFinite(rawCalories) && rawCalories > 0
+        ? Math.round(rawCalories)
+        : 0;
 
     const created = await prisma.workout.create({
       data: {
@@ -68,5 +69,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-                               }
-            
+                         }
