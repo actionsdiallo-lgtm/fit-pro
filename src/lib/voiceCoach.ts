@@ -1,8 +1,24 @@
+export type CoachLanguage = "fr" | "en" | "es" | "pt" | "ar";
+
 export interface VoiceCoachOptions {
-  lang?: string;
+  lang?: CoachLanguage | string;
   rate?: number;
   pitch?: number;
   volume?: number;
+}
+
+const LOCALE_MAP: Record<string, string> = {
+  fr: "fr-FR",
+  en: "en-US",
+  es: "es-ES",
+  pt: "pt-PT",
+  ar: "ar-SA",
+};
+
+export function resolveCoachLocale(lang?: string): string {
+  if (!lang) return "fr-FR";
+  const normalized = lang.toLowerCase();
+  return LOCALE_MAP[normalized] ?? lang;
 }
 
 export function isVoiceCoachSupported(): boolean {
@@ -23,17 +39,19 @@ export function speakCoachMessage(
   window.speechSynthesis.cancel();
 
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = options.lang ?? "fr-FR";
+  const locale = resolveCoachLocale(options.lang);
+  utterance.lang = locale;
   utterance.rate = options.rate ?? 1;
   utterance.pitch = options.pitch ?? 1;
   utterance.volume = options.volume ?? 1;
 
   const voices = window.speechSynthesis.getVoices();
-  const frenchVoice = voices.find((v) =>
-    v.lang.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase())
+  const prefix = locale.slice(0, 2).toLowerCase();
+  const matchedVoice = voices.find((v) =>
+    v.lang.toLowerCase().startsWith(prefix)
   );
-  if (frenchVoice) {
-    utterance.voice = frenchVoice;
+  if (matchedVoice) {
+    utterance.voice = matchedVoice;
   }
 
   window.speechSynthesis.speak(utterance);
