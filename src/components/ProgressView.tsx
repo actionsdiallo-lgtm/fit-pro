@@ -181,7 +181,6 @@ export default function ProgressView({
 
   return (
     <div className="relative min-h-screen bg-[#050a07] text-white pb-24 overflow-x-hidden">
-      {/* Photo d'arrière-plan commerciale */}
       <img
         src={bgSrc}
         alt=""
@@ -198,7 +197,6 @@ export default function ProgressView({
       />
 
       <div className="relative z-10">
-        {/* Barre supérieure */}
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <button
             type="button"
@@ -229,7 +227,6 @@ export default function ProgressView({
           </button>
         </div>
 
-        {/* Bannière héro */}
         <div className="mx-4 mt-2 relative overflow-hidden rounded-2xl border border-emerald-500/40 bg-[#09180f]/90 min-h-[136px] flex items-center justify-between px-4 py-3">
           <img
             src={heroSrc}
@@ -259,7 +256,6 @@ export default function ProgressView({
           </div>
         </div>
 
-        {/* Sélecteur de période */}
         <div className="grid grid-cols-4 gap-2 px-4 mt-4">
           {RANGES.map((item) => {
             const isActive = range === item.key;
@@ -280,7 +276,6 @@ export default function ProgressView({
           })}
         </div>
 
-        {/* 4 cartes statistiques */}
         <div className="grid grid-cols-2 gap-3 px-4 mt-4">
           <div className="rounded-2xl border border-emerald-500/35 bg-[#0a160f]/90 p-3">
             <div className="flex items-center gap-1.5 text-xs text-emerald-100/85">
@@ -355,7 +350,6 @@ export default function ProgressView({
           </div>
         </div>
 
-        {/* Graphique d'évolution */}
         <div className="mx-4 mt-4 rounded-2xl border border-emerald-500/35 bg-[#0a160f]/90 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -450,7 +444,6 @@ export default function ProgressView({
           </div>
         </div>
 
-        {/* Objectifs et Records côte à côte */}
         <div className="grid grid-cols-2 gap-3 px-4 mt-4">
           <div className="rounded-2xl border border-emerald-500/35 bg-[#0a160f]/90 p-3 flex flex-col justify-between">
             <div>
@@ -537,7 +530,6 @@ export default function ProgressView({
           </div>
         </div>
 
-        {/* Bannière du bas */}
         <div className="mx-4 mt-4 relative overflow-hidden rounded-2xl border border-emerald-500/35 bg-[#0a160f]/90 p-4 flex items-center justify-between gap-3">
           <img
             src={effortSrc}
@@ -551,4 +543,10 @@ export default function ProgressView({
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#06110a]/90 via-[#091b10]/70 to-[#06110a]/85" />
 
-          <div className="relative z-10 flex items-ce
+          <div className="relative z-10 flex items-center gap-3">
+            <span className="inline-block h-6 w-6 rounded-md bg-[#39ff49] shrink-0" />
+            <div>
+              <div className="text-sm font-extrabold text-white">
+                Chaque effort compte !
+              </div>
+              <div className="text-xs text-emerald-100/85 mt
