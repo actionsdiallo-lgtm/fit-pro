@@ -549,4 +549,15 @@ export default function ProgressView({
               <div className="text-sm font-extrabold text-white">
                 Chaque effort compte !
               </div>
-              <div className="text-xs text-emerald-100/85 mt
+                            <div className="text-xs text-emerald-100/85 mt-0.5">
+                {data?.isEmpty
+                  ? "Ajoutez vos séances réelles pour suivre l'évolution de vos chiffres."
+                  : "Continuez à vous entraîner pour atteindre vos objectifs."}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
