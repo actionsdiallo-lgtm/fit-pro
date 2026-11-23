@@ -1,19 +1,34 @@
-import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { NextRequest, NextResponse } from "next/server";
+import { PrismaClient, VerificationPurpose } from "@prisma/client";
 import crypto from "crypto";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 const prisma = globalForPrisma.prisma ?? new PrismaClient();
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
-export async function POST(req: Request) {
+function hashCode(value: string): string {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const rawIdentifier = String(body?.email ?? body?.identifier ?? "")
-      .trim()
-      .toLowerCase();
+    const rawTarget = String(
+      body?.identifier ?? body?.email ?? body?.phone ?? ""
+    ).trim();
 
-    if (!rawIdentifier || !rawIdentifier.includes("@")) {
+    if (!rawTarget) {
+      return NextResponse.json(
+        { error: "Veuillez saisir une adresse e-mail valide." },
+        { status: 400 }
+      );
+    }
+
+    const normalizedTarget = rawTarget.includes("@")
+      ? rawTarget.toLowerCase()
+      : rawTarget.replace(/\s+/g, "");
+
+    if (!normalizedTarget.includes("@")) {
       return NextResponse.json(
         { error: "Veuillez saisir une adresse e-mail valide." },
         { status: 400 }
@@ -21,7 +36,7 @@ export async function POST(req: Request) {
     }
 
     const user = await prisma.user.findUnique({
-      where: { email: rawIdentifier },
+      where: { email: normalizedTarget },
       select: { id: true, email: true, firstName: true },
     });
 
@@ -38,7 +53,9 @@ export async function POST(req: Request) {
     await prisma.verificationCode.create({
       data: {
         userId: user.id,
-        code,
+        target: normalizedTarget,
+        purpose: VerificationPurpose.PASSWORD_RESET,
+        codeHash: hashCode(code),
         expiresAt,
       },
     });
@@ -87,4 +104,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-        }
+}
