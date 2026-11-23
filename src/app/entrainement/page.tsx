@@ -12,6 +12,18 @@ import {
   SeanceEnregistree,
   ZoneMuscle,
 } from "@/lib/entrainement-data";
+import { CoachLanguage, speakCoachCue, stopVoiceCoach } from "@/lib/voiceCoach";
+
+const LANGUES_COACH: { code: CoachLanguage; label: string }[] = [
+  { code: "fr", label: "FR" },
+  { code: "en", label: "EN" },
+  { code: "es", label: "ES" },
+  { code: "de", label: "DE" },
+  { code: "it", label: "IT" },
+  { code: "pt", label: "PT" },
+  { code: "ar", label: "AR" },
+  { code: "wo", label: "WO" },
+];
 
 function PhotoExercice({ src, alt, titre }: { src: string; alt: string; titre: string }) {
   const [erreur, setErreur] = useState(false);
@@ -95,20 +107,18 @@ export default function EntrainementPage() {
   const [secRestantes, setSecRestantes] = useState(30);
   const [enRepos, setEnRepos] = useState(false);
   const [lecture, setLecture] = useState(true);
+  const [voixActive, setVoixActive] = useState(true);
   const [dureeSec, setDureeSec] = useState(0);
   const [faits, setFaits] = useState<Record<string, boolean>>({});
-  const [langue, setLangue] = useState<"fr" | "en" | "ar">("fr");
-  const [voixUri, setVoixUri] = useState("");
-  const [voixList, setVoixList] = useState<SpeechSynthesisVoice[]>([]);
+  const [langue, setLangue] = useState<CoachLanguage>("fr");
   const [historique, setHistorique] = useState<SeanceEnregistree[]>([]);
   const [msg, setMsg] = useState("");
   const sauveRef = useRef(false);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    const maj = () => setVoixList(window.speechSynthesis.getVoices());
-    maj();
-    window.speechSynthesis.onvoiceschanged = maj;
+    return () => {
+      stopVoiceCoach();
+    };
   }, []);
 
   const chargerHistorique = useCallback(async () => {
@@ -133,15 +143,25 @@ export default function EntrainementPage() {
   const courant = liste[idx] ?? liste[0] ?? EXERCICES_REELS[0];
   const calories = useMemo(() => Math.max(0, Math.round((dureeSec / 60) * courant.metEstime)), [dureeSec, courant.metEstime]);
 
-  const parler = useCallback(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(courant.vocal[langue]);
-    u.lang = { fr: "fr-FR", en: "en-US", ar: "ar-SA" }[langue];
-    const v = voixList.find((item) => item.voiceURI === voixUri);
-    if (v) u.voice = v;
-    window.speechSynthesis.speak(u);
-  }, [courant, langue, voixList, voixUri]);
+  const parler = useCallback(
+    (event: "start_exercise" | "phase_tip" | "rest" | "next_exercise" | "complete" = "start_exercise", nextName?: string) => {
+      const tip =
+        langue === "fr" || langue === "en" || langue === "ar"
+          ? courant.vocal[langue]
+          : courant.etapes[0] || courant.bonnePosture[0];
+      speakCoachCue(
+        {
+          language: langue,
+          event,
+          exerciseName: nextName || courant.nom,
+          phaseText: tip,
+          secondsRemaining: courant.reposSecondes,
+        },
+        { enabled: voixActive }
+      );
+    },
+    [courant, langue, voixActive]
+  );
 
   const enregistrer = useCallback(async () => {
     if (sauveRef.current || (dureeSec < 5 && repsFaites === 0)) return;
@@ -175,16 +195,19 @@ export default function EntrainementPage() {
   const suivant = useCallback(() => {
     setFaits((p) => ({ ...p, [courant.id]: true }));
     if (idx + 1 < liste.length) {
+      const prochain = liste[idx + 1];
       setIdx(idx + 1);
       setSerie(1);
       setEnRepos(false);
-      setSecRestantes(liste[idx + 1].dureeSecondes);
+      setSecRestantes(prochain.dureeSecondes);
       setLecture(true);
+      parler("next_exercise", prochain.nom);
     } else {
       setLecture(false);
+      parler("complete");
       void enregistrer();
     }
-  }, [courant.id, enregistrer, idx, liste]);
+  }, [courant.id, enregistrer, idx, liste, parler]);
 
   useEffect(() => {
     if (!lecture) return;
@@ -197,6 +220,7 @@ export default function EntrainementPage() {
           setSeriesFaites((s) => s + 1);
           if (serie < courant.seriesCibles) {
             setEnRepos(true);
+            parler("rest");
             return courant.reposSecondes;
           }
           window.setTimeout(() => suivant(), 0);
@@ -204,11 +228,12 @@ export default function EntrainementPage() {
         }
         setEnRepos(false);
         setSerie((s) => s + 1);
+        parler("start_exercise");
         return courant.dureeSecondes;
       });
     }, 1000);
     return () => window.clearInterval(t);
-  }, [courant.dureeSecondes, courant.reposSecondes, courant.seriesCibles, enRepos, lecture, serie, suivant]);
+  }, [courant.dureeSecondes, courant.reposSecondes, courant.seriesCibles, enRepos, lecture, parler, serie, suivant]);
 
   return (
     <main className="min-h-screen bg-black text-white pb-24">
@@ -256,6 +281,7 @@ export default function EntrainementPage() {
                 setIdx(0);
                 setSerie(1);
                 setEnRepos(false);
+                sauveRef.current = false;
               }}
               className={`rounded-xl border py-2 text-xs font-black ${
                 n === niveau ? "border-green-400 bg-green-500 text-black" : "border-white/15 bg-[#0e1511] text-slate-200"
@@ -295,7 +321,7 @@ export default function EntrainementPage() {
                 setEnRepos(false);
                 setSecRestantes(courant.dureeSecondes);
                 setLecture(true);
-                parler();
+                parler("start_exercise");
               }}
               className="rounded-xl border border-green-400/40 bg-green-500/10 py-2 text-xs font-bold text-green-300"
             >
@@ -304,37 +330,42 @@ export default function EntrainementPage() {
             <button type="button" onClick={suivant} className="rounded-xl border border-white/15 py-2 text-xs font-bold">
               Suivant →
             </button>
-            <button type="button" onClick={parler} className="rounded-xl border border-green-400/40 bg-[#122017] py-2 text-xs font-bold text-green-300">
-              Voix
+            <button
+              type="button"
+              onClick={() => {
+                setVoixActive((v) => {
+                  const next = !v;
+                  if (!next) stopVoiceCoach();
+                  return next;
+                });
+                if (!voixActive) parler("phase_tip");
+              }}
+              className="rounded-xl border border-green-400/40 bg-[#122017] py-2 text-xs font-bold text-green-300"
+            >
+              {voixActive ? "Voix ON" : "Voix OFF"}
             </button>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-            <div className="flex gap-1.5">
-              {(["fr", "en", "ar"] as const).map((lg) => (
+            <div className="flex flex-wrap gap-1">
+              {LANGUES_COACH.map((lg) => (
                 <button
-                  key={lg}
+                  key={lg.code}
                   type="button"
-                  onClick={() => setLangue(lg)}
-                  className={`rounded-md px-2 py-0.5 font-bold uppercase ${langue === lg ? "bg-green-500 text-black" : "bg-white/10"}`}
+                  onClick={() => setLangue(lg.code)}
+                  className={`rounded-md px-2 py-0.5 font-bold ${langue === lg.code ? "bg-green-500 text-black" : "bg-white/10"}`}
                 >
-                  {lg}
+                  {lg.label}
                 </button>
               ))}
             </div>
-            {voixList.length > 0 && (
-              <select
-                value={voixUri}
-                onChange={(e) => setVoixUri(e.target.value)}
-                aria-label="Voix"
-                className="max-w-[180px] rounded-lg border border-white/15 bg-[#0e1511] px-2 py-1 text-[11px]"
-              >
-                <option value="">Voix par défaut</option>
-                {voixList.map((v) => (
-                  <option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>
-                ))}
-              </select>
-            )}
+            <button
+              type="button"
+              onClick={() => parler("phase_tip")}
+              className="rounded-lg border border-white/15 bg-[#0e1511] px-2.5 py-1 text-[11px] font-bold text-green-300"
+            >
+              Lire conseil
+            </button>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2 text-xs">
@@ -396,5 +427,5 @@ export default function EntrainementPage() {
       </div>
     </main>
   );
-                                }
+                     }
           
