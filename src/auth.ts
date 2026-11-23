@@ -14,41 +14,46 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       credentials: {
-        identifier: { label: "Email ou Téléphone", type: "text" },
+        identifier: { label: "Email", type: "text" },
+        email: { label: "Email", type: "text" },
         password: { label: "Mot de passe", type: "password" },
       },
       async authorize(credentials) {
-        const rawIdentifier = String(credentials?.identifier ?? "").trim();
-        const password = String(credentials?.password ?? "");
+        try {
+          const rawLogin = String(
+            credentials?.identifier ?? credentials?.email ?? ""
+          )
+            .trim()
+            .toLowerCase();
+          const password = String(credentials?.password ?? "");
 
-        if (!rawIdentifier || !password) {
+          if (!rawLogin || !password) {
+            return null;
+          }
+
+          const user = await prisma.user.findUnique({
+            where: { email: rawLogin },
+          });
+
+          if (!user || !user.passwordHash) {
+            return null;
+          }
+
+          const isValid = await bcrypt.compare(password, user.passwordHash);
+          if (!isValid) {
+            return null;
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.firstName,
+            image: null,
+          };
+        } catch (error) {
+          console.error("Authorize error:", error);
           return null;
         }
-
-        const isEmail = rawIdentifier.includes("@");
-        const user = isEmail
-          ? await prisma.user.findUnique({
-              where: { email: rawIdentifier.toLowerCase() },
-            })
-          : await prisma.user.findUnique({
-              where: { phone: rawIdentifier.replace(/\s+/g, "") },
-            });
-
-        if (!user || !user.passwordHash) {
-          return null;
-        }
-
-        const isValid = await bcrypt.compare(password, user.passwordHash);
-        if (!isValid) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.firstName,
-          image: null,
-        };
       },
     }),
   ],
@@ -69,4 +74,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
-                                 
+          
