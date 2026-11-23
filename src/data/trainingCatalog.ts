@@ -449,4 +449,14 @@ export const EXERCISES_CATALOG: ExerciseItem[] = [
     caloriesPerSet: 10,
     equipment: ["Haltères légers"],
     goodPosture: "Buste droit, coudes légèrement fléchis, épaules basses.",
-    mi
+        mistakesToAvoid: ["Monter les épaules vers les oreilles", "Balancer le buste", "Lever les bras au-dessus de l'horizontale"],
+    steps: [
+      "Tenez-vous droit avec un haltère dans chaque main, bras le long du corps.",
+      "Levez les bras sur les côtés jusqu'à hauteur d'épaules en gardant une légère flexion des coudes.",
+      "Redescendez lentement et de façon contrôlée jusqu'à la position de départ."
+    ],
+    breathingTip: "Expirez en montant les bras, inspirez en redescendant.",
+    safetyTip: "Gardez les poignets neutres et évitez de hausser les épaules."
+  }
+];
+
