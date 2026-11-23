@@ -44,6 +44,7 @@ model User {
 
   verificationCodes VerificationCode[]
   sessions          Session[]
+  workouts          Workout[]
 
   @@index([email])
   @@index([phone])
@@ -86,6 +87,17 @@ model Session {
   revokedAt    DateTime?
   lastActiveAt DateTime  @default(now())
   createdAt    DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Workout {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  duration  Int      @default(0)
+  createdAt DateTime @default(now())
 
   @@index([userId])
 }
