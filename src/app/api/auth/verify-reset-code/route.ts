@@ -1,89 +1,75 @@
-import crypto from "crypto";
-import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import {
+  AUTH_ERRORS,
+  isEmailInput,
+  normalizeEmail,
+  normalizePhone,
+  verifyCodeSchema,
+  verifySecret,
+} from "@/lib/auth-utils";
 
-function normalizeEmail(value: unknown): string {
-  return typeof value === "string" ? value.trim().toLowerCase() : "";
-}
-
-function normalizeCode(value: unknown): string {
-  return typeof value === "string" ? value.replace(/\D/g, "").trim() : "";
-}
-
-function hashToken(value: string): string {
-  return crypto.createHash("sha256").update(value).digest("hex");
-}
-
-function safeEqualHex(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, "hex");
-  const bufB = Buffer.from(b, "hex");
-  if (bufA.length === 0 || bufA.length !== bufB.length) return false;
-  return crypto.timingSafeEqual(bufA, bufB);
-}
-
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const email = normalizeEmail(body?.email);
-    const code = normalizeCode(body?.code ?? body?.otp ?? body?.token);
-
-    if (!email || !email.includes("@")) {
-      return NextResponse.json(
-        { error: "Adresse e-mail invalide." },
-        { status: 400 }
-      );
-    }
-
-    if (code.length !== 6) {
-      return NextResponse.json(
-        { error: "Le code de vérification est incorrect." },
-        { status: 400 }
-      );
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        resetPasswordToken: true,
-        resetPasswordExpires: true,
-      },
+    const body = await req.json();
+    const parsed = verifyCodeSchema.safeParse({
+      ...body,
+      purpose: body?.purpose ?? "PASSWORD_RESET",
     });
 
-    if (!user || !user.resetPasswordToken || !user.resetPasswordExpires) {
-      return NextResponse.json(
-        { error: "Le code de vérification est incorrect." },
-        { status: 400 }
-      );
+    if (!parsed.success) {
+      return NextResponse.json({ error: AUTH_ERRORS.INVALID_CODE }, { status: 400 });
     }
 
-    if (new Date(user.resetPasswordExpires).getTime() < Date.now()) {
-      return NextResponse.json(
-        { error: "Ce code a expiré. Demandez un nouveau code." },
-        { status: 400 }
-      );
+    const { target, code, purpose } = parsed.data;
+    const emailMode = isEmailInput(target);
+    const normalizedTarget = emailMode ? normalizeEmail(target) : normalizePhone(target);
+
+    const record = await prisma.verificationCode.findFirst({
+      where: {
+        target: normalizedTarget,
+        purpose,
+        consumedAt: null,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!record) {
+      return NextResponse.json({ error: AUTH_ERRORS.INVALID_CODE }, { status: 400 });
     }
 
-    const providedHash = hashToken(code);
-    const isValid = safeEqualHex(providedHash, user.resetPasswordToken);
+    if (record.attempts >= 5) {
+      return NextResponse.json({ error: AUTH_ERRORS.TOO_MANY_ATTEMPTS }, { status: 429 });
+    }
 
-    if (!isValid) {
+    if (new Date() > record.expiresAt) {
+      return NextResponse.json({ error: AUTH_ERRORS.EXPIRED_CODE }, { status: 400 });
+    }
+
+    const validCode = verifySecret(code, record.codeHash);
+    if (!validCode) {
+      const nextAttempts = record.attempts + 1;
+      await prisma.verificationCode.update({
+        where: { id: record.id },
+        data: { attempts: nextAttempts },
+      });
+
       return NextResponse.json(
-        { error: "Le code de vérification est incorrect." },
-        { status: 400 }
+        {
+          error:
+            nextAttempts >= 5
+              ? AUTH_ERRORS.TOO_MANY_ATTEMPTS
+              : AUTH_ERRORS.INVALID_CODE,
+        },
+        { status: nextAttempts >= 5 ? 429 : 400 }
       );
     }
 
     return NextResponse.json({
-      success: true,
-      verified: true,
-      message: "Code vérifié avec succès.",
+      ok: true,
+      target: normalizedTarget,
     });
-  } catch (error) {
-    console.error("Verify reset code error:", error);
-    return NextResponse.json(
-      { error: "Erreur serveur lors de la vérification du code." },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ error: AUTH_ERRORS.INVALID_CODE }, { status: 500 });
   }
 }
