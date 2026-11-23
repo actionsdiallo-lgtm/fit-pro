@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const method = String(body.method ?? "").toUpperCase();
+        const method = String(body.method ?? "").toUpperCase();
     const rawTarget = String(
       body.identifier ?? body.email ?? body.phone ?? ""
     ).trim();
@@ -39,6 +39,16 @@ export async function POST(req: NextRequest) {
     const normalizedEmail = emailMode ? rawTarget.toLowerCase() : null;
     const normalizedPhone = !emailMode ? rawTarget.replace(/\s+/g, "") : null;
 
+    const user = emailMode
+      ? await prisma.user.findUnique({
+          where: { email: normalizedEmail! },
+          select: { id: true, email: true, phone: true },
+        })
+      : await prisma.user.findUnique({
+          where: { phone: normalizedPhone! },
+          select: { id: true, email: true, phone: true },
+        });
+                   
     const user = emailMode
       ? await prisma.user.findUnique({
           where: { email: normalizedEmail! },
