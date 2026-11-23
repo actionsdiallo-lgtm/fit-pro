@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import prisma from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession();
-    const email = session?.user?.email;
+    const { searchParams } = new URL(req.url);
+    const range = searchParams.get("range") ?? "30d";
+    const email =
+      req.headers.get("x-user-email")?.trim().toLowerCase() ||
+      searchParams.get("email")?.trim().toLowerCase() ||
+      "";
+
     if (!email) {
       return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
     }
 
-    const range = new URL(req.url).searchParams.get("range") ?? "30d";
     const user = await prisma.user.findUnique({
       where: { email },
       select: {
@@ -69,4 +72,4 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
-      }
+                                          }
