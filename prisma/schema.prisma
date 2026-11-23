@@ -1,1 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AuthMethod {
+  GMAIL
+  PHONE
+}
+
+enum VerificationPurpose {
+  REGISTER_PRIMARY
+  ADD_BACKUP
+  PASSWORD_RESET
+  CHANGE_EMAIL
+  CHANGE_PHONE
+}
+
+enum DeliveryChannel {
+  EMAIL
+  SMS
+}
+
+model User {
+  id               String     @id @default(cuid())
+  firstName        String
+  email            String?    @unique
+  emailVerified    Boolean    @default(false)
+  phone            String?    @unique
+  phoneVerified    Boolean    @default(false)
+  passwordHash     String
+  birthDate        DateTime
+  healthAccepted   Boolean    @default(false)
+  healthAcceptedAt DateTime?
+  primaryMethod    AuthMethod
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  verificationCodes VerificationCode[]
+  sessions          Session[]
+
+  @@index([email])
+  @@index([phone])
+}
+
+model VerificationCode {
+  id     String  @id @default(cuid())
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  target  String
+  channel DeliveryChannel
+  purpose VerificationPurpose
+
+  codeHash String
+
+  attempts    Int       @default(0)
+  lockedUntil DateTime?
+
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([target, purpose])
+  @@index([userId])
+}
+
+model Session {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash  String  @unique
+  deviceName String?
+  userAgent  String?
+  ipAddress  String?
+
+  rememberMe   Boolean   @default(false)
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  lastActiveAt DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+
+  @@index([userId])
+}
 
