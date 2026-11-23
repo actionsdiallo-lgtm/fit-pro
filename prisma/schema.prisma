@@ -92,16 +92,19 @@ model Session {
 }
 
 model Workout {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   title           String
   category        String?
-  duration        Int      @default(0)
+  duration        Int       @default(0)
   durationMinutes Int?
   calories        Int?
+  repetitions     Int?
+  series          Int?
   notes           String?
-  createdAt       DateTime @default(now())
+  performedAt     DateTime?
+  createdAt       DateTime  @default(now())
 
   @@index([userId])
 }
