@@ -14,8 +14,8 @@ function generateSixDigitCode(): string {
   return String(num).padStart(6, "0");
 }
 
-function hashCode(code: string): string {
-  return crypto.createHash("sha256").update(code).digest("hex");
+function hashToken(value: string): string {
+  return crypto.createHash("sha256").update(value).digest("hex");
 }
 
 function parseSender(rawFrom: string | undefined): { name: string; email: string } {
@@ -105,8 +105,16 @@ export async function POST(req: NextRequest) {
     }
 
     const otpCode = generateSixDigitCode();
-    const _tokenHash = hashCode(otpCode);
-    const _expiresAt = new Date(Date.now() + OTP_TTL_MS);
+    const tokenHash = hashToken(otpCode);
+    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetPasswordToken: tokenHash,
+        resetPasswordExpires: expiresAt,
+      },
+    });
 
     const mailResult = await sendBrevoResetEmail({
       toEmail: user.email,
@@ -134,4 +142,3 @@ export async function POST(req: NextRequest) {
     );
   }
       }
-        
