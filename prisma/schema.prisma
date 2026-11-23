@@ -7,106 +7,84 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AuthMethod {
+  EMAIL
+  PHONE
+}
+
+enum CodePurpose {
+  REGISTER
+  PASSWORD_RESET
+  CHANGE_EMAIL
+  CHANGE_PHONE
+  ADD_BACKUP
+}
+
 model User {
-  id                   String                   @id @default(cuid())
-  email                String                   @unique
-  name                 String?
-  passwordHash         String?
-  resetPasswordToken   String?
-  resetPasswordExpires DateTime?
-  resetPasswordExpiry  DateTime?
-  createdAt            DateTime                 @default(now())
-  updatedAt            DateTime                 @updatedAt
-  profile              Profile?
-  goals                Goal[]
-  voicePreference      TrainingVoicePreference?
-  trainingPrograms     TrainingProgram[]
-  workoutLogs          WorkoutSessionLog[]
-  workouts             Workout[]
+  id                String     @id @default(cuid())
+  firstName         String?
+  email             String?    @unique
+  phone             String?    @unique
+  emailVerified     DateTime?
+  phoneVerified     DateTime?
+  password          String?
+  birthDate         DateTime?
+  healthAcceptedAt  DateTime?
+  primaryMethod     AuthMethod @default(EMAIL)
+  backupEmail       String?
+  backupPhone       String?
+  backupVerifiedAt  DateTime?
+  isGuest           Boolean    @default(false)
+  tokenVersion      Int        @default(0)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  verificationCodes VerificationCode[]
+  accounts          Account[]
+  sessions          Session[]
 }
 
-model Profile {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  weightKg  Float?
-  heightCm  Float?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+model VerificationCode {
+  id         String      @id @default(cuid())
+  userId     String?
+  target     String
+  channel    AuthMethod
+  purpose    CodePurpose
+  codeHash   String
+  attempts   Int         @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime    @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([target, purpose])
 }
 
-model Goal {
-  id          String    @id @default(cuid())
-  userId      String
-  title       String
-  target      Float     @default(0)
-  current     Float     @default(0)
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
-  @@index([userId, createdAt])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
 }
 
-model TrainingVoicePreference {
+model Session {
   id           String   @id @default(cuid())
-  userId       String   @unique
-  languageCode String   @default("fr-FR")
-  voiceGender  String   @default("female")
-  voiceName    String?
-  volume       Float    @default(1.0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
 
-model TrainingProgram {
-  id              String   @id @default(cuid())
-  userId          String
-  title           String
-  description     String?
-  level           String   @default("intermediate")
-  durationMinutes Int      @default(30)
-  equipment       String[]
-  exerciseSlugs   String[]
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, isActive])
-}
-
-model WorkoutSessionLog {
-  id              String   @id @default(cuid())
-  userId          String
-  categorySlug    String?
-  exerciseSlug    String
-  exerciseName    String
-  setsCompleted   Int      @default(1)
-  repsCompleted   Int      @default(0)
-  durationSeconds Int      @default(0)
-  caloriesBurned  Int      @default(0)
-  completedAt     DateTime @default(now())
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, completedAt])
-}
-
-model Workout {
-  id              String   @id @default(cuid())
-  userId          String
-  title           String?
-  category        String?
-  notes           String?
-  duration        Int?     @default(0)
-  durationMinutes Int?     @default(0)
-  distanceKm      Float?   @default(0)
-  calories        Int?     @default(0)
-  performedAt     DateTime @default(now())
-  createdAt       DateTime @default(now())
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, performedAt])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
