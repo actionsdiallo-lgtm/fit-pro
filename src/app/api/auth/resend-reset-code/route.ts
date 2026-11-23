@@ -1,118 +1,62 @@
-import crypto from "crypto";
-import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import {
+  generateSixDigitCode,
+  hashSecret,
+  isEmailInput,
+  normalizeEmail,
+  normalizePhone,
+} from "@/lib/auth-utils";
 
-const OTP_TTL_MS = 10 * 60 * 1000;
-
-function normalizeEmail(value: unknown): string {
-  return typeof value === "string" ? value.trim().toLowerCase() : "";
-}
-
-function hashOtp(email: string, code: string): string {
-  return crypto
-    .createHash("sha256")
-    .update(`${email}:${code}`)
-    .digest("hex");
-}
-
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => null);
-    const email = normalizeEmail(body?.email);
+    const body = await req.json();
+    const rawIdentifier = String(body?.identifier ?? body?.email ?? "").trim();
 
-    if (!email) {
-      return NextResponse.json(
-        { error: "Veuillez saisir votre adresse e-mail." },
-        { status: 400 }
-      );
+    if (!rawIdentifier) {
+      return NextResponse.json({
+        ok: true,
+        message: "Si ce compte existe, tu vas recevoir un code.",
+      });
     }
 
-    const apiKey = process.env.RESEND_API_KEY;
-    const fromEmail = process.env.EMAIL_FROM;
+    const emailMode = isEmailInput(rawIdentifier);
+    const target = emailMode ? normalizeEmail(rawIdentifier) : normalizePhone(rawIdentifier);
 
-    if (!apiKey || !fromEmail) {
-      return NextResponse.json(
-        {
-          error:
-            "Service d'envoi d'e-mails indisponible (RESEND_API_KEY ou EMAIL_FROM manquant).",
+    const user = await prisma.user.findFirst({
+      where: emailMode
+        ? { OR: [{ email: target }, { backupEmail: target }] }
+        : { OR: [{ phone: target }, { backupPhone: target }] },
+      select: { id: true, email: true, phone: true },
+    });
+
+    if (user) {
+      const resolvedTarget = emailMode ? user.email ?? target : user.phone ?? target;
+      const code = generateSixDigitCode();
+
+      await prisma.verificationCode.create({
+        data: {
+          userId: user.id,
+          target: resolvedTarget,
+          channel: emailMode ? "EMAIL" : "PHONE",
+          purpose: "PASSWORD_RESET",
+          codeHash: hashSecret(code),
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
         },
-        { status: 500 }
-      );
-    }
+      });
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        email: true,
-      },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Aucun compte FIT PRO n'est associé à cette adresse e-mail." },
-        { status: 404 }
-      );
-    }
-
-    const otpCode = String(crypto.randomInt(100000, 1000000));
-    const otpHash = hashOtp(user.email.toLowerCase(), otpCode);
-    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        resetPasswordToken: otpHash,
-        resetPasswordExpires: expiresAt,
-      },
-    });
-
-    const resendRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: [user.email],
-        subject: "Nouveau code de vérification FIT PRO (valable 10 minutes)",
-        html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827; max-width: 480px;">
-            <h2 style="margin-bottom: 8px;">FIT PRO — Nouveau code de réinitialisation</h2>
-            <p>Voici votre nouveau code de vérification à 6 chiffres pour réinitialiser le mot de passe de votre compte <strong>${user.email}</strong> :</p>
-            <div style="font-size: 28px; font-weight: 700; letter-spacing: 6px; padding: 14px 20px; background: #f3f4f6; border-radius: 8px; text-align: center; margin: 16px 0;">
-              ${otpCode}
-            </div>
-            <p>Ce code expire dans <strong>10 minutes</strong> et ne peut être utilisé qu'une seule fois.</p>
-            <p>Votre compte ainsi que toutes vos données (profil, entraînements, nutrition, poids, progrès, historique, paramètres et abonnement) sont conservés.</p>
-            <p style="font-size: 12px; color: #6b7280;">Si vous n'avez pas demandé ce code, ignorez cet e-mail.</p>
-          </div>
-        `,
-      }),
-    });
-
-    const resendData = await resendRes.json().catch(() => null);
-
-    if (!resendRes.ok || !resendData?.id) {
-      console.error("Erreur renvoi OTP Resend:", resendRes.status, resendData);
-      return NextResponse.json(
-        {
-          error:
-            "Le renvoi du code par e-mail a échoué. Veuillez réessayer dans un instant.",
-        },
-        { status: 502 }
-      );
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`[DEV RESEND RESET CODE -> ${resolvedTarget}]: ${code}`);
+      }
     }
 
     return NextResponse.json({
       ok: true,
-      message: `Un nouveau code à 6 chiffres a été envoyé à ${user.email} (valable 10 minutes).`,
+      message: "Si ce compte existe, tu vas recevoir un code.",
     });
-  } catch (err) {
-    console.error("Erreur /api/auth/resend-reset-code:", err);
+  } catch {
     return NextResponse.json(
-      { error: "Erreur serveur lors du renvoi du code." },
+      { error: "Erreur lors du renvoi du code." },
       { status: 500 }
     );
   }
