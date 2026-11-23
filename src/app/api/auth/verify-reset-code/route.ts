@@ -7,34 +7,36 @@ function normalizeEmail(value: unknown): string {
 }
 
 function normalizeCode(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
+  return typeof value === "string" ? value.replace(/\D/g, "").trim() : "";
 }
 
-function getOtpSecret(): string {
-  return (
-    process.env.AUTH_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    process.env.RESEND_API_KEY ||
-    "fitpro-otp-fallback-secret"
-  );
+function hashToken(value: string): string {
+  return crypto.createHash("sha256").update(value).digest("hex");
 }
 
-function hashOtp(email: string, code: string): string {
-  return crypto
-    .createHmac("sha256", getOtpSecret())
-    .update(`${email}:${code}`)
-    .digest("hex");
+function safeEqualHex(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, "hex");
+  const bufB = Buffer.from(b, "hex");
+  if (bufA.length === 0 || bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json().catch(() => null);
+    const body = await req.json().catch(() => ({}));
     const email = normalizeEmail(body?.email);
-    const code = normalizeCode(body?.code);
+    const code = normalizeCode(body?.code ?? body?.otp ?? body?.token);
 
-    if (!email || !/^\d{6}$/.test(code)) {
+    if (!email || !email.includes("@")) {
       return NextResponse.json(
-        { error: "Adresse e-mail ou code à 6 chiffres invalide." },
+        { error: "Adresse e-mail invalide." },
+        { status: 400 }
+      );
+    }
+
+    if (code.length !== 6) {
+      return NextResponse.json(
+        { error: "Le code de vérification est incorrect." },
         { status: 400 }
       );
     }
@@ -43,32 +45,29 @@ export async function POST(req: NextRequest) {
       where: { email },
       select: {
         id: true,
-        email: true,
         resetPasswordToken: true,
         resetPasswordExpires: true,
       },
     });
 
-    if (
-      !user ||
-      !user.resetPasswordToken ||
-      !user.resetPasswordExpires ||
-      user.resetPasswordExpires.getTime() < Date.now()
-    ) {
+    if (!user || !user.resetPasswordToken || !user.resetPasswordExpires) {
       return NextResponse.json(
-        { error: "Code invalide ou expiré. Demandez un nouveau code." },
+        { error: "Le code de vérification est incorrect." },
         { status: 400 }
       );
     }
 
-    const expectedHash = hashOtp(user.email.toLowerCase(), code);
-    const actualBuf = Buffer.from(user.resetPasswordToken, "utf8");
-    const expectedBuf = Buffer.from(expectedHash, "utf8");
+    if (new Date(user.resetPasswordExpires).getTime() < Date.now()) {
+      return NextResponse.json(
+        { error: "Ce code a expiré. Demandez un nouveau code." },
+        { status: 400 }
+      );
+    }
 
-    if (
-      actualBuf.length !== expectedBuf.length ||
-      !crypto.timingSafeEqual(actualBuf, expectedBuf)
-    ) {
+    const providedHash = hashToken(code);
+    const isValid = safeEqualHex(providedHash, user.resetPasswordToken);
+
+    if (!isValid) {
       return NextResponse.json(
         { error: "Le code de vérification est incorrect." },
         { status: 400 }
@@ -76,12 +75,12 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      ok: true,
+      success: true,
       verified: true,
-      message: "Code vérifié. Vous pouvez maintenant définir votre nouveau mot de passe.",
+      message: "Code vérifié avec succès.",
     });
-  } catch (err) {
-    console.error("Erreur /api/auth/verify-reset-code:", err);
+  } catch (error) {
+    console.error("Verify reset code error:", error);
     return NextResponse.json(
       { error: "Erreur serveur lors de la vérification du code." },
       { status: 500 }
