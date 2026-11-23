@@ -29,10 +29,13 @@ export async function POST(req: NextRequest) {
     const password = String(body.password ?? "");
     const birthDateRaw = body.birthDate;
     const healthAccepted = Boolean(body.healthAccepted);
+    const rawMethod = String(body.primaryMethod ?? "").toUpperCase();
     const requestedMethod: AuthMethod | undefined =
-      body.primaryMethod === "PHONE" || body.primaryMethod === "GMAIL"
-        ? body.primaryMethod
-        : undefined;
+      rawMethod === "PHONE"
+        ? AuthMethod.PHONE
+        : rawMethod === "GMAIL" || rawMethod === "EMAIL"
+          ? AuthMethod.GMAIL
+          : undefined;
 
     if (!firstName || !rawIdentifier || !password) {
       return NextResponse.json(
@@ -61,16 +64,17 @@ export async function POST(req: NextRequest) {
     }
 
     const isEmail = rawIdentifier.includes("@");
-    const primaryMethod: AuthMethod = requestedMethod ?? (isEmail ? "GMAIL" : "PHONE");
+    const primaryMethod: AuthMethod =
+      requestedMethod ?? (isEmail ? AuthMethod.GMAIL : AuthMethod.PHONE);
 
     const email = isEmail ? rawIdentifier.toLowerCase() : null;
     const phone = !isEmail ? rawIdentifier.replace(/\s+/g, "") : null;
 
-    if (primaryMethod === "GMAIL" && !email) {
+    if (primaryMethod === AuthMethod.GMAIL && !email) {
       return NextResponse.json({ error: "Adresse Gmail invalide." }, { status: 400 });
     }
 
-    if (primaryMethod === "PHONE" && !phone) {
+    if (primaryMethod === AuthMethod.PHONE && !phone) {
       return NextResponse.json({ error: "Numéro de téléphone invalide." }, { status: 400 });
     }
 
@@ -127,8 +131,9 @@ export async function POST(req: NextRequest) {
         });
 
     const code = generateCode();
-    const target = primaryMethod === "GMAIL" ? email! : phone!;
-    const channel: DeliveryChannel = primaryMethod === "GMAIL" ? "EMAIL" : "SMS";
+    const target = primaryMethod === AuthMethod.GMAIL ? email! : phone!;
+    const channel: DeliveryChannel =
+      primaryMethod === AuthMethod.GMAIL ? DeliveryChannel.EMAIL : DeliveryChannel.SMS;
 
     await prisma.verificationCode.create({
       data: {
@@ -157,4 +162,5 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-      }
+        }
+            
