@@ -63,3 +63,17 @@ model WorkoutSessionLog {
 
   @@index([userId, completedAt])
 }
+
+model Workout {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String?
+  category    String?
+  duration    Int      @default(0)
+  calories    Int      @default(0)
+  performedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, performedAt])
+}
