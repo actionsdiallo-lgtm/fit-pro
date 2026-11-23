@@ -37,6 +37,39 @@ function parseSender(rawFrom: string | undefined): { name: string; email: string
   return { name: fallbackName, email: trimmed };
 }
 
+async function persistResetCode(params: {
+  userId: string;
+  email: string;
+  tokenHash: string;
+  expiresAt: Date;
+}): Promise<void> {
+  // Adapte ce bloc aux champs réels de ton modèle Prisma si nécessaire
+  // (par exemple un modèle dédié ou des colonnes spécifiques sur `user`).
+  const db = prisma as unknown as Record<string, any>;
+
+  if (db.passwordResetToken?.create) {
+    await db.passwordResetToken.create({
+      data: {
+        userId: params.userId,
+        email: params.email,
+        tokenHash: params.tokenHash,
+        expiresAt: params.expiresAt,
+      },
+    });
+    return;
+  }
+
+  if (db.verificationToken?.create) {
+    await db.verificationToken.create({
+      data: {
+        identifier: params.email,
+        token: params.tokenHash,
+        expires: params.expiresAt,
+      },
+    });
+  }
+}
+
 async function sendBrevoResetEmail(params: {
   toEmail: string;
   userName?: string | null;
@@ -97,7 +130,6 @@ export async function POST(req: NextRequest) {
       select: { id: true, email: true, name: true },
     });
 
-    // Réponse neutre si l'adresse n'existe pas pour éviter l'énumération de comptes
     if (!user) {
       return NextResponse.json({
         success: true,
@@ -109,12 +141,11 @@ export async function POST(req: NextRequest) {
     const tokenHash = hashCode(otpCode);
     const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        resetTokenHash: tokenHash,
-        resetTokenExpiresAt: expiresAt,
-      },
+    await persistResetCode({
+      userId: user.id,
+      email: user.email,
+      tokenHash,
+      expiresAt,
     });
 
     const mailResult = await sendBrevoResetEmail({
@@ -142,4 +173,5 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-    }
+}
+  
