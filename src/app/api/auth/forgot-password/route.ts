@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
       data: {
         userId: user.id,
         target: normalizedTarget,
+        channel: "EMAIL",
         purpose: VerificationPurpose.PASSWORD_RESET,
         codeHash: hashCode(code),
         expiresAt,
