@@ -363,4 +363,4 @@ export const EXERCICES_REELS: ExerciceReel[] = [
     },
   },
 ];
-      
+  
