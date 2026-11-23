@@ -71,7 +71,7 @@ model VerificationCode {
   @@index([target, purpose])
   @@index([userId])
 }
-createdAt: (created.performedAt ?? created.createdAt).toISOString(),
+
 model Session {
   id     String @id @default(cuid())
   userId String
