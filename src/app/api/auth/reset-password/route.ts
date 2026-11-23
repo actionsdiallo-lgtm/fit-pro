@@ -87,16 +87,14 @@ export async function POST(req: NextRequest) {
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         resetPasswordToken: null,
         resetPasswordExpires: null,
       },
     });
-
     return NextResponse.json({
       success: true,
       message: "Mot de passe réinitialisé avec succès.",
