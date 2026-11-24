@@ -49,15 +49,16 @@ model User {
 }
 
 model VerificationCode {
-  id        String            @id @default(cuid())
-  userId    String?
-  target    String
-  channel   String
-  purpose   VerificationPurpose
-  codeHash  String
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime          @default(now())
+  id         String            @id @default(cuid())
+  userId     String?
+  target     String
+  channel    String
+  purpose    VerificationPurpose
+  codeHash   String
+  expiresAt  DateTime
+  usedAt     DateTime?
+  consumedAt DateTime?
+  createdAt  DateTime          @default(now())
 
   @@index([target, purpose])
   @@map("verification_codes")
