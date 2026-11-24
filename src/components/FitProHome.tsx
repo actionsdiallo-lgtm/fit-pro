@@ -72,7 +72,13 @@ interface SessionLog {
   durationSec: number;
 }
 
-function NavySilhouette({ isRunning, stepIndex }: { isRunning: boolean; stepIndex: number }) {
+function NavySilhouette({
+  isRunning,
+  stepIndex,
+}: {
+  isRunning: boolean;
+  stepIndex: number;
+}) {
   const armAngle = isRunning ? (stepIndex % 2 === 0 ? -24 : 24) : -8;
   const legAngle = isRunning ? (stepIndex % 2 === 0 ? 18 : -18) : 6;
 
@@ -85,22 +91,14 @@ function NavySilhouette({ isRunning, stepIndex }: { isRunning: boolean; stepInde
         xmlns="http://www.w3.org/2000/svg"
         aria-label="Silhouette minimaliste bleu marine"
       >
-        {/* Tête */}
         <circle cx="60" cy="22" r="9" fill="currentColor" />
-        {/* Buste */}
-        <path
-          d="M52 35H68L71 64H49L52 35Z"
-          fill="currentColor"
-        />
-        {/* Bras animé */}
+        <path d="M52 35H68L71 64H49L52 35Z" fill="currentColor" />
         <g transform={`translate(60, 40) rotate(${armAngle})`}>
           <rect x="-3" y="0" width="6" height="24" rx="3" fill="currentColor" />
         </g>
-        {/* Jambe animée */}
         <g transform={`translate(60, 64) rotate(${legAngle})`}>
           <rect x="-4" y="0" width="8" height="32" rx="4" fill="currentColor" />
         </g>
-        {/* Sol minimaliste */}
         <line
           x1="22"
           y1="100"
@@ -131,7 +129,6 @@ export default function FitProHome() {
   const [savingPref, setSavingPref] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Charger l'historique local au démarrage
   useEffect(() => {
     try {
       const savedHistory = localStorage.getItem(CACHE_KEY_HISTORY);
@@ -150,7 +147,10 @@ export default function FitProHome() {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         workoutTitle: wkTitle,
         exerciseName: exName,
-        completedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        completedAt: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
         durationSec,
       };
       setHistory((prev) => {
@@ -542,7 +542,6 @@ export default function FitProHome() {
         </section>
       )}
 
-      {/* Récupération & Historique récent */}
       <section className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h2 className="text-base font-bold text-[#0B1F3A]">Récupération &amp; Historique</h2>
@@ -559,4 +558,7 @@ export default function FitProHome() {
             {history.map((item) => (
               <li key={item.id} className="py-2 flex items-center justify-between">
                 <div>
-            
+                  <span className="font-semibold text-[#0B1F3A]">{item.exerciseName}</span>
+                  <span className="text-slate-500"> — {item.workoutTitle}</span>
+                </div>
+                <span classN
