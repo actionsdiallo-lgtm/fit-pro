@@ -15,6 +15,10 @@ const LANGS = [
 
 type LangCode = (typeof LANGS)[number]["code"];
 
+const CACHE_KEY_WORKOUTS = "fit_pro_vert_workouts_v1";
+const CACHE_KEY_PREFS = "fit_pro_vert_prefs_v1";
+const CACHE_KEY_HISTORY = "fit_pro_vert_history_v1";
+
 interface ExerciseItem {
   idExercice: string;
   idWorkout: string;
@@ -60,6 +64,57 @@ interface UserPreferenceData {
   avertissementSanteAccepte: boolean;
 }
 
+interface SessionLog {
+  id: string;
+  workoutTitle: string;
+  exerciseName: string;
+  completedAt: string;
+  durationSec: number;
+}
+
+function NavySilhouette({ isRunning, stepIndex }: { isRunning: boolean; stepIndex: number }) {
+  const armAngle = isRunning ? (stepIndex % 2 === 0 ? -24 : 24) : -8;
+  const legAngle = isRunning ? (stepIndex % 2 === 0 ? 18 : -18) : 6;
+
+  return (
+    <div className="w-28 h-28 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+      <svg
+        viewBox="0 0 120 120"
+        className="w-24 h-24 text-[#0B1F3A]"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-label="Silhouette minimaliste bleu marine"
+      >
+        {/* Tête */}
+        <circle cx="60" cy="22" r="9" fill="currentColor" />
+        {/* Buste */}
+        <path
+          d="M52 35H68L71 64H49L52 35Z"
+          fill="currentColor"
+        />
+        {/* Bras animé */}
+        <g transform={`translate(60, 40) rotate(${armAngle})`}>
+          <rect x="-3" y="0" width="6" height="24" rx="3" fill="currentColor" />
+        </g>
+        {/* Jambe animée */}
+        <g transform={`translate(60, 64) rotate(${legAngle})`}>
+          <rect x="-4" y="0" width="8" height="32" rx="4" fill="currentColor" />
+        </g>
+        {/* Sol minimaliste */}
+        <line
+          x1="22"
+          y1="100"
+          x2="98"
+          y2="100"
+          stroke="#10B981"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+      </svg>
+    </div>
+  );
+}
+
 export default function FitProHome() {
   const [lang, setLang] = useState<LangCode>("fr");
   const [onlySansSaut, setOnlySansSaut] = useState<boolean>(false);
@@ -68,15 +123,53 @@ export default function FitProHome() {
   const [activeExerciseIndex, setActiveExerciseIndex] = useState<number>(0);
   const [secondsLeft, setSecondsLeft] = useState<number>(30);
   const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [animTick, setAnimTick] = useState<number>(0);
   const [preferences, setPreferences] = useState<UserPreferenceData | null>(null);
+  const [history, setHistory] = useState<SessionLog[]>([]);
+  const [offlineMode, setOfflineMode] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [savingPref, setSavingPref] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // Charger l'historique local au démarrage
+  useEffect(() => {
+    try {
+      const savedHistory = localStorage.getItem(CACHE_KEY_HISTORY);
+      if (savedHistory) {
+        const parsed = JSON.parse(savedHistory);
+        if (Array.isArray(parsed)) setHistory(parsed);
+      }
+    } catch {
+      // Ignorer si localStorage indisponible
+    }
+  }, []);
+
+  const recordCompletedExercise = useCallback(
+    (wkTitle: string, exName: string, durationSec: number) => {
+      const entry: SessionLog = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        workoutTitle: wkTitle,
+        exerciseName: exName,
+        completedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        durationSec,
+      };
+      setHistory((prev) => {
+        const next = [entry, ...prev].slice(0, 12);
+        try {
+          localStorage.setItem(CACHE_KEY_HISTORY, JSON.stringify(next));
+        } catch {
+          // Ignorer
+        }
+        return next;
+      });
+    },
+    []
+  );
+
   const loadPreferences = useCallback(async () => {
     try {
       const res = await fetch("/api/preferences", { cache: "no-store" });
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("pref fetch failed");
       const data = await res.json();
       if (data?.preferences) {
         setPreferences(data.preferences);
@@ -84,15 +177,30 @@ export default function FitProHome() {
         if (LANGS.some((l) => l.code === prefLang)) {
           setLang(prefLang);
         }
+        try {
+          localStorage.setItem(CACHE_KEY_PREFS, JSON.stringify(data.preferences));
+        } catch {
+          // Ignorer
+        }
       }
     } catch {
-      // Silencieux en cas de premier chargement hors ligne
+      try {
+        const cached = localStorage.getItem(CACHE_KEY_PREFS);
+        if (cached) {
+          const parsed = JSON.parse(cached) as UserPreferenceData;
+          setPreferences(parsed);
+          setOfflineMode(true);
+        }
+      } catch {
+        // Ignorer
+      }
     }
   }, []);
 
   const loadWorkouts = useCallback(async (targetLang: LangCode, sansSaut: boolean) => {
     setLoading(true);
     setErrorMsg(null);
+    const cacheSlot = `${CACHE_KEY_WORKOUTS}_${targetLang}_${sansSaut ? "noskip" : "all"}`;
     try {
       const params = new URLSearchParams({
         lang: targetLang,
@@ -107,6 +215,12 @@ export default function FitProHome() {
       const data = await res.json();
       const list: WorkoutItem[] = Array.isArray(data?.workouts) ? data.workouts : [];
       setWorkouts(list);
+      setOfflineMode(false);
+      try {
+        localStorage.setItem(cacheSlot, JSON.stringify(list));
+      } catch {
+        // Ignorer
+      }
       if (list.length > 0) {
         setSelectedWorkout((prev) => {
           if (!prev) return list[0];
@@ -117,6 +231,18 @@ export default function FitProHome() {
         setSelectedWorkout(null);
       }
     } catch (err) {
+      try {
+        const cached = localStorage.getItem(cacheSlot);
+        if (cached) {
+          const list = JSON.parse(cached) as WorkoutItem[];
+          setWorkouts(list);
+          setSelectedWorkout((prev) => prev ?? list[0] ?? null);
+          setOfflineMode(true);
+          return;
+        }
+      } catch {
+        // Ignorer
+      }
       setErrorMsg(err instanceof Error ? err.message : "Erreur de chargement");
     } finally {
       setLoading(false);
@@ -134,16 +260,23 @@ export default function FitProHome() {
   useEffect(() => {
     if (!isRunning) return;
     const timer = setInterval(() => {
+      setAnimTick((t) => t + 1);
       setSecondsLeft((prev) => {
         if (prev <= 1) {
           setIsRunning(false);
+          const wkTitle = selectedWorkout?.titreLocalise ?? "Séance";
+          const exName =
+            selectedWorkout?.exercises?.[activeExerciseIndex]?.nomLocalise ?? "Exercice";
+          const dur =
+            selectedWorkout?.exercises?.[activeExerciseIndex]?.dureeSecondes ?? 30;
+          recordCompletedExercise(wkTitle, exName, dur || 30);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [isRunning]);
+  }, [isRunning, selectedWorkout, activeExerciseIndex, recordCompletedExercise]);
 
   const handleSelectLang = async (nextLang: LangCode) => {
     setLang(nextLang);
@@ -158,6 +291,8 @@ export default function FitProHome() {
         const data = await res.json();
         if (data?.preferences) setPreferences(data.preferences);
       }
+    } catch {
+      setOfflineMode(true);
     } finally {
       setSavingPref(false);
     }
@@ -168,7 +303,13 @@ export default function FitProHome() {
   ) => {
     if (!preferences) return;
     const nextVal = !preferences[key];
-    setPreferences({ ...preferences, [key]: nextVal });
+    const nextPrefs = { ...preferences, [key]: nextVal };
+    setPreferences(nextPrefs);
+    try {
+      localStorage.setItem(CACHE_KEY_PREFS, JSON.stringify(nextPrefs));
+    } catch {
+      // Ignorer
+    }
     setSavingPref(true);
     try {
       const res = await fetch("/api/preferences", {
@@ -180,6 +321,8 @@ export default function FitProHome() {
         const data = await res.json();
         if (data?.preferences) setPreferences(data.preferences);
       }
+    } catch {
+      setOfflineMode(true);
     } finally {
       setSavingPref(false);
     }
@@ -195,6 +338,13 @@ export default function FitProHome() {
     setIsRunning(true);
   };
 
+  const recoveryStatus =
+    history.length === 0
+      ? "Prêt pour une première séance"
+      : history.length >= 4
+      ? "Récupération conseillée (charge élevée)"
+      : "Bonne récupération — prêt à s'entraîner";
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 p-4 max-w-4xl mx-auto space-y-6">
       <header className="bg-[#0B1F3A] text-white rounded-2xl p-5 shadow-sm flex flex-col gap-4">
@@ -207,17 +357,24 @@ export default function FitProHome() {
               Programmes &amp; Exercices ({workouts.length})
             </h1>
           </div>
-          <button
-            type="button"
-            onClick={() => setOnlySansSaut((v) => !v)}
-            className={`px-3 py-2 rounded-xl text-sm font-medium border transition ${
-              onlySansSaut
-                ? "bg-emerald-500 text-slate-950 border-emerald-400"
-                : "bg-slate-900/60 text-white border-slate-700"
-            }`}
-          >
-            {onlySansSaut ? "Sans saut : ACTIF" : "Sans saut : TOUS"}
-          </button>
+          <div className="flex items-center gap-2">
+            {offlineMode && (
+              <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-400/20 text-amber-200 border border-amber-400/40">
+                Mode hors ligne
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setOnlySansSaut((v) => !v)}
+              className={`px-3 py-2 rounded-xl text-sm font-medium border transition ${
+                onlySansSaut
+                  ? "bg-emerald-500 text-slate-950 border-emerald-400"
+                  : "bg-slate-900/60 text-white border-slate-700"
+              }`}
+            >
+              {onlySansSaut ? "Sans saut : ACTIF" : "Sans saut : TOUS"}
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -323,32 +480,35 @@ export default function FitProHome() {
           </div>
 
           {currentExercise && (
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase text-[#0B1F3A]">
-                  Exercice actif #{currentExercise.ordreExercice}
-                </span>
-                {currentExercise.muscleCible && (
-                  <span className="text-xs text-slate-500">{currentExercise.muscleCible}</span>
-                )}
-              </div>
-              <p className="text-lg font-bold text-[#0B1F3A]">
-                {currentExercise.nomLocalise}
-              </p>
-              {currentExercise.instructionsExecution && (
-                <p className="text-sm text-slate-700">
-                  {currentExercise.instructionsExecution}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row gap-4 items-start">
+              <NavySilhouette isRunning={isRunning} stepIndex={animTick} />
+              <div className="space-y-2 flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase text-[#0B1F3A]">
+                    Exercice actif #{currentExercise.ordreExercice}
+                  </span>
+                  {currentExercise.muscleCible && (
+                    <span className="text-xs text-slate-500">{currentExercise.muscleCible}</span>
+                  )}
+                </div>
+                <p className="text-lg font-bold text-[#0B1F3A]">
+                  {currentExercise.nomLocalise}
                 </p>
-              )}
-              <div className="text-xs text-slate-600 flex flex-wrap gap-3 pt-1">
-                {currentExercise.repetitionsCible ? (
-                  <span>Cible : {currentExercise.repetitionsCible} reps</span>
-                ) : (
-                  <span>Durée : {currentExercise.dureeSecondes ?? 30}s</span>
+                {currentExercise.instructionsExecution && (
+                  <p className="text-sm text-slate-700">
+                    {currentExercise.instructionsExecution}
+                  </p>
                 )}
-                {currentExercise.respiration && (
-                  <span>Respiration : {currentExercise.respiration}</span>
-                )}
+                <div className="text-xs text-slate-600 flex flex-wrap gap-3 pt-1">
+                  {currentExercise.repetitionsCible ? (
+                    <span>Cible : {currentExercise.repetitionsCible} reps</span>
+                  ) : (
+                    <span>Durée : {currentExercise.dureeSecondes ?? 30}s</span>
+                  )}
+                  {currentExercise.respiration && (
+                    <span>Respiration : {currentExercise.respiration}</span>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -382,58 +542,21 @@ export default function FitProHome() {
         </section>
       )}
 
-      {preferences && (
-        <section className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
-          <h2 className="text-base font-bold text-[#0B1F3A]">Préférences &amp; Sécurité</h2>
-          <div className="flex flex-wrap gap-3 text-xs">
-            <button
-              type="button"
-              onClick={() => handleTogglePreference("bipActif")}
-              className={`px-3 py-2 rounded-lg border font-medium ${
-                preferences.bipActif
-                  ? "bg-[#0B1F3A] text-white border-[#0B1F3A]"
-                  : "bg-slate-50 text-slate-700 border-slate-200"
-              }`}
-            >
-              Bip sonore : {preferences.bipActif ? "ON" : "OFF"}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTogglePreference("vibrationActive")}
-              className={`px-3 py-2 rounded-lg border font-medium ${
-                preferences.vibrationActive
-                  ? "bg-[#0B1F3A] text-white border-[#0B1F3A]"
-                  : "bg-slate-50 text-slate-700 border-slate-200"
-              }`}
-            >
-              Vibration : {preferences.vibrationActive ? "ON" : "OFF"}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTogglePreference("garderEcranAllume")}
-              className={`px-3 py-2 rounded-lg border font-medium ${
-                preferences.garderEcranAllume
-                  ? "bg-[#0B1F3A] text-white border-[#0B1F3A]"
-                  : "bg-slate-50 text-slate-700 border-slate-200"
-              }`}
-            >
-              Écran allumé : {preferences.garderEcranAllume ? "ON" : "OFF"}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTogglePreference("avertissementSanteAccepte")}
-              className={`px-3 py-2 rounded-lg border font-medium ${
-                preferences.avertissementSanteAccepte
-                  ? "bg-emerald-600 text-white border-emerald-600"
-                  : "bg-slate-50 text-slate-700 border-slate-200"
-              }`}
-            >
-              Santé acceptée : {preferences.avertissementSanteAccepte ? "OUI" : "NON"}
-            </button>
-          </div>
-        </section>
-      )}
-    </div>
-  );
-  }
-    
+      {/* Récupération & Historique récent */}
+      <section className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h2 className="text-base font-bold text-[#0B1F3A]">Récupération &amp; Historique</h2>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800">
+            {recoveryStatus}
+          </span>
+        </div>
+        {history.length === 0 ? (
+          <p className="text-xs text-slate-500">
+            Lance un timer d&apos;exercice et laisse-le arriver à 0s pour enregistrer ton historique local.
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-100 text-xs">
+            {history.map((item) => (
+              <li key={item.id} className="py-2 flex items-center justify-between">
+                <div>
+            
