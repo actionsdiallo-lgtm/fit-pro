@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum VerificationPurpose {
+  PASSWORD_RESET
+  ACCOUNT_VERIFICATION
+  LOGIN
+}
+
 // MODÈLE UTILISATEUR (AUTHENTIFICATION & COMPTE)
 model User {
   id            String    @id @default(cuid())
@@ -18,6 +24,21 @@ model User {
   image         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
+
+model VerificationCode {
+  id        String            @id @default(cuid())
+  userId    String?
+  target    String
+  channel   String
+  purpose   VerificationPurpose
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime          @default(now())
+
+  @@index([target, purpose])
+  @@map("verification_codes")
 }
 
 // 1. LES 10 PROGRAMMES D'ENTRAÎNEMENT
