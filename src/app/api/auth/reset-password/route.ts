@@ -6,6 +6,8 @@ const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 const prisma = globalForPrisma.prisma ?? new PrismaClient();
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
+const MAX_ATTEMPTS = 5;
+
 function hashValue(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
@@ -23,9 +25,7 @@ export async function POST(req: NextRequest) {
       body.identifier ?? body.email ?? body.phone ?? body.target ?? ""
     ).trim();
     const code = String(body.code ?? body.resetCode ?? "").trim();
-    const newPassword = String(
-      body.newPassword ?? body.password ?? ""
-    );
+    const newPassword = String(body.newPassword ?? body.password ?? "");
 
     if (!rawIdentifier || !code || !newPassword) {
       return NextResponse.json(
@@ -79,15 +79,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (record.lockedUntil && record.lockedUntil > now) {
+    const lockedUntil = (record as { lockedUntil?: Date | null }).lockedUntil;
+    if (lockedUntil && lockedUntil > now) {
       return NextResponse.json(
         { error: "Trop de tentatives. Réessaie dans quelques minutes." },
         { status: 429 }
       );
     }
 
-    const maxAttempts = record.maxAttempts ?? 5;
-    if (record.attempts >= maxAttempts) {
+    const currentAttempts = (record as { attempts?: number }).attempts ?? 0;
+    if (currentAttempts >= MAX_ATTEMPTS) {
       await prisma.verificationCode.update({
         where: { id: record.id },
         data: { lockedUntil: new Date(Date.now() + 10 * 60 * 1000) },
@@ -100,12 +101,12 @@ export async function POST(req: NextRequest) {
 
     const expectedHash = hashValue(code);
     if (record.codeHash !== expectedHash) {
-      const nextAttempts = record.attempts + 1;
+      const nextAttempts = currentAttempts + 1;
       await prisma.verificationCode.update({
         where: { id: record.id },
         data: {
           attempts: nextAttempts,
-          ...(nextAttempts >= maxAttempts
+          ...(nextAttempts >= MAX_ATTEMPTS
             ? { lockedUntil: new Date(Date.now() + 10 * 60 * 1000) }
             : {}),
         },
@@ -139,5 +140,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-  }
-      
+}
