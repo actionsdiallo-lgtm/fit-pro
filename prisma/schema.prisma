@@ -7,6 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// MODÈLE UTILISATEUR (AUTHENTIFICATION & COMPTE)
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  phone         String?   @unique
+  passwordHash  String?
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
 // 1. LES 10 PROGRAMMES D'ENTRAÎNEMENT
 model Workout {
   idWorkout           String   @id @map("id_workout")
