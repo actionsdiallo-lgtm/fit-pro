@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 
 const LANGS = ["fr", "en", "es", "ar", "pt", "de", "it", "wo"] as const;
 type LangCode = (typeof LANGS)[number];
@@ -66,6 +66,30 @@ function fallbackWorkouts(l: LangCode): WorkoutItem[] {
   }];
 }
 
+function buildAllLangsPack(): Record<LangCode, WorkoutItem[]> {
+  return LANGS.reduce((acc, l) => {
+    acc[l] = fallbackWorkouts(l);
+    return acc;
+  }, {} as Record<LangCode, WorkoutItem[]>);
+}
+
+function playCompletionBeep() {
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.25);
+  } catch {}
+}
+
 function NavySilhouette({ isRunning, tick }: { isRunning: boolean; tick: number }) {
   const arm = isRunning ? (tick % 2 === 0 ? -24 : 24) : -8;
   const leg = isRunning ? (tick % 2 === 0 ? 18 : -18) : 6;
@@ -91,71 +115,208 @@ export default function FitProHome() {
   const [secondsLeft, setSecondsLeft] = useState(30);
   const [isRunning, setIsRunning] = useState(false);
   const [tick, setTick] = useState(0);
-  const [prefs, setPrefs] = useState<UserPreferenceData | null>(null);
+  const [prefs, setPrefs] = useState<UserPreferenceData>({
+    id: 1,
+    langue: "fr",
+    bipActif: true,
+    vibrationActive: true,
+    garderEcranAllume: true,
+    avertissementSanteAccepte: true,
+  });
   const [history, setHistory] = useState<SessionLog[]>([]);
   const [offlineMode, setOfflineMode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const wakeLockRef = useRef<{ release?: () => Promise<void> } | null>(null);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem("fpv_history");
-      if (raw) setHistory(JSON.parse(raw));
+      const rawHistory = localStorage.getItem("fpv_history");
+      if (rawHistory) setHistory(JSON.parse(rawHistory));
+      const rawPrefs = localStorage.getItem("fpv_prefs");
+      if (rawPrefs) setPrefs(JSON.parse(rawPrefs));
+      const rawPack = localStorage.getItem("fpv_all_langs_pack");
+      if (!rawPack) {
+        localStorage.setItem("fpv_all_langs_pack", JSON.stringify(buildAllLangsPack()));
+      }
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js").catch(() => {});
+      }
     } catch {}
   }, []);
 
-  const addHistory = useCallback((workoutTitle: string, exerciseName: string, durationSec: number) => {
-    const entry: SessionLog = {
-      id: `${Date.now()}`,
-      workoutTitle,
-      exerciseName,
-      completedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      durationSec,
+  useEffect(() => {
+    const syncWakeLock = async () => {
+      try {
+        if (prefs.garderEcranAllume && isRunning && "wakeLock" in navigator) {
+          const wlApi = navigator as unknown as { wakeLock?: { request?: (t: string) => Promise<{ release?: () => Promise<void> }> } };
+          if (!wakeLockRef.current && wlApi.wakeLock?.request) {
+            wakeLockRef.current = await wlApi.wakeLock.request("screen");
+          }
+        } else if (wakeLockRef.current?.release) {
+          await wakeLockRef.current.release();
+          wakeLockRef.current = null;
+        }
+      } catch {}
     };
-    setHistory((prev) => {
-      const next = [entry, ...prev].slice(0, 10);
-      try { localStorage.setItem("fpv_history", JSON.stringify(next)); } catch {}
-      return next;
-    });
+    syncWakeLock();
+  }, [prefs.garderEcranAllume, isRunning]);
+
+  const syncPendingData = useCallback(async () => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+    try {
+      const rawPrefs = localStorage.getItem("fpv_pending_prefs");
+      if (rawPrefs) {
+        const patch = JSON.parse(rawPrefs);
+        const res = await fetch("/api/preferences", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+        if (res.ok) localStorage.removeItem("fpv_pending_prefs");
+      }
+      const rawHist = localStorage.getItem("fpv_pending_history");
+      if (rawHist) {
+        const items = JSON.parse(rawHist);
+        if (Array.isArray(items) && items.length > 0) {
+          const res = await fetch("/api/history", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ logs: items }),
+          });
+          if (res.ok) localStorage.removeItem("fpv_pending_history");
+        }
+      }
+      setOfflineMode(false);
+    } catch {}
+  }, []);
+
+  const addHistory = useCallback(
+    async (workoutTitle: string, exerciseName: string, durationSec: number) => {
+      const entry: SessionLog = {
+        id: `${Date.now()}`,
+        workoutTitle,
+        exerciseName,
+        completedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        durationSec,
+      };
+      setHistory((prev) => {
+        const next = [entry, ...prev].slice(0, 15);
+        try { localStorage.setItem("fpv_history", JSON.stringify(next)); } catch {}
+        return next;
+      });
+      if (prefs.bipActif) playCompletionBeep();
+      if (prefs.vibrationActive && typeof navigator !== "undefined" && "vibrate" in navigator) {
+        try { navigator.vibrate([180, 80, 180]); } catch {}
+      }
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        setOfflineMode(true);
+        try {
+          const cur = JSON.parse(localStorage.getItem("fpv_pending_history") || "[]");
+          cur.push(entry);
+          localStorage.setItem("fpv_pending_history", JSON.stringify(cur));
+        } catch {}
+        return;
+      }
+      try {
+        await fetch("/api/history", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(entry),
+        });
+      } catch {
+        try {
+          const cur = JSON.parse(localStorage.getItem("fpv_pending_history") || "[]");
+          cur.push(entry);
+          localStorage.setItem("fpv_pending_history", JSON.stringify(cur));
+        } catch {}
+      }
+    },
+    [prefs.bipActif, prefs.vibrationActive]
+  );
+
+  const readOfflineFallback = useCallback((targetLang: LangCode, cacheKey: string): WorkoutItem[] => {
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      const packRaw = localStorage.getItem("fpv_all_langs_pack");
+      if (packRaw) {
+        const pack = JSON.parse(packRaw) as Record<string, WorkoutItem[]>;
+        if (Array.isArray(pack[targetLang]) && pack[targetLang].length > 0) return pack[targetLang];
+      }
+    } catch {}
+    return fallbackWorkouts(targetLang);
   }, []);
 
   const loadData = useCallback(async (targetLang: LangCode, sansSaut: boolean) => {
     setLoading(true);
     const cacheKey = `fpv_wk_${targetLang}_${sansSaut ? "1" : "0"}`;
+    const isBrowserOffline = typeof navigator !== "undefined" && !navigator.onLine;
+
+    if (isBrowserOffline) {
+      const list = readOfflineFallback(targetLang, cacheKey);
+      setWorkouts(list);
+      setSelectedWorkout((prev) => list.find((w) => w.idWorkout === prev?.idWorkout) ?? list[0] ?? null);
+      setOfflineMode(true);
+      setLoading(false);
+      return;
+    }
+
     try {
       const pRes = await fetch("/api/preferences", { cache: "no-store" });
       if (pRes.ok) {
         const pData = await pRes.json();
-        if (pData?.preferences) setPrefs(pData.preferences);
+        if (pData?.preferences) {
+          setPrefs(pData.preferences);
+          try { localStorage.setItem("fpv_prefs", JSON.stringify(pData.preferences)); } catch {}
+        }
       }
       const wRes = await fetch(`/api/workouts?lang=${targetLang}${sansSaut ? "&sansSaut=true" : ""}`, { cache: "no-store" });
       if (!wRes.ok) throw new Error("workouts");
       const wData = await wRes.json();
       const apiList: WorkoutItem[] = Array.isArray(wData?.workouts) ? wData.workouts : [];
-      const finalList = apiList.length > 0 ? apiList : fallbackWorkouts(targetLang);
+      const finalList = apiList.length > 0 ? apiList : readOfflineFallback(targetLang, cacheKey);
       setWorkouts(finalList);
       setOfflineMode(false);
-      try { localStorage.setItem(cacheKey, JSON.stringify(finalList)); } catch {}
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(finalList));
+        const packRaw = localStorage.getItem("fpv_all_langs_pack");
+        const pack = packRaw ? JSON.parse(packRaw) : buildAllLangsPack();
+        pack[targetLang] = finalList;
+        localStorage.setItem("fpv_all_langs_pack", JSON.stringify(pack));
+      } catch {}
       setSelectedWorkout((prev) => finalList.find((w) => w.idWorkout === prev?.idWorkout) ?? finalList[0] ?? null);
       setActiveIdx(0);
     } catch {
-      try {
-        const cached = localStorage.getItem(cacheKey);
-        const list: WorkoutItem[] = cached ? JSON.parse(cached) : fallbackWorkouts(targetLang);
-        setWorkouts(list);
-        setSelectedWorkout((prev) => list.find((w) => w.idWorkout === prev?.idWorkout) ?? list[0] ?? null);
-        setOfflineMode(true);
-      } catch {
-        const fb = fallbackWorkouts(targetLang);
-        setWorkouts(fb);
-        setSelectedWorkout(fb[0]);
-        setOfflineMode(true);
-      }
+      const list = readOfflineFallback(targetLang, cacheKey);
+      setWorkouts(list);
+      setSelectedWorkout((prev) => list.find((w) => w.idWorkout === prev?.idWorkout) ?? list[0] ?? null);
+      setOfflineMode(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [readOfflineFallback]);
 
-  useEffect(() => { loadData(lang, onlySansSaut); }, [lang, onlySansSaut, loadData]);
+  useEffect(() => {
+    loadData(lang, onlySansSaut);
+  }, [lang, onlySansSaut, loadData]);
+
+  useEffect(() => {
+    const onOnline = () => {
+      setOfflineMode(false);
+      syncPendingData();
+      loadData(lang, onlySansSaut);
+    };
+    const onOffline = () => setOfflineMode(true);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, [lang, onlySansSaut, loadData, syncPendingData]);
 
   useEffect(() => {
     if (!isRunning) return;
@@ -176,21 +337,30 @@ export default function FitProHome() {
   }, [isRunning, selectedWorkout, activeIdx, addHistory]);
 
   const updatePref = async (key: "bipActif" | "vibrationActive" | "garderEcranAllume" | "avertissementSanteAccepte") => {
-    if (!prefs) return;
     const next = { ...prefs, [key]: !prefs[key] };
     setPrefs(next);
+    try { localStorage.setItem("fpv_prefs", JSON.stringify(next)); } catch {}
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setOfflineMode(true);
+      try { localStorage.setItem("fpv_pending_prefs", JSON.stringify({ [key]: next[key] })); } catch {}
+      return;
+    }
     try {
-      await fetch("/api/preferences", {
+      const res = await fetch("/api/preferences", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [key]: next[key] }),
       });
-    } catch {}
+      if (!res.ok) throw new Error("pref");
+    } catch {
+      setOfflineMode(true);
+      try { localStorage.setItem("fpv_pending_prefs", JSON.stringify({ [key]: next[key] })); } catch {}
+    }
   };
 
   const exercises = selectedWorkout?.exercises ?? [];
   const currentEx = exercises[activeIdx] ?? null;
-    return (
+         return (
     <div dir={lang === "ar" ? "rtl" : "ltr"} className="min-h-screen bg-slate-50 text-slate-900 p-4 max-w-4xl mx-auto space-y-6">
       <header className="bg-[#0B1F3A] text-white rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
@@ -213,6 +383,15 @@ export default function FitProHome() {
           ))}
         </div>
       </header>
+
+      {!prefs.avertissementSanteAccepte && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-950 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs">
+          <span>Échauffez-vous et adaptez l&apos;intensité à votre condition physique avant chaque séance.</span>
+          <button type="button" onClick={() => updatePref("avertissementSanteAccepte")} className="px-3 py-1.5 rounded-lg bg-amber-600 text-white font-bold shrink-0">
+            Accepter
+          </button>
+        </div>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold text-[#0B1F3A]">Programmes</h2>
@@ -283,15 +462,13 @@ export default function FitProHome() {
         )}
       </section>
 
-      {prefs && (
-        <section className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-wrap gap-2 text-xs">
-          <button type="button" onClick={() => updatePref("bipActif")} className={`px-3 py-2 rounded-lg border ${prefs.bipActif ? "bg-[#0B1F3A] text-white" : "bg-slate-50"}`}>Bip : {prefs.bipActif ? "ON" : "OFF"}</button>
-          <button type="button" onClick={() => updatePref("vibrationActive")} className={`px-3 py-2 rounded-lg border ${prefs.vibrationActive ? "bg-[#0B1F3A] text-white" : "bg-slate-50"}`}>Vibration : {prefs.vibrationActive ? "ON" : "OFF"}</button>
-          <button type="button" onClick={() => updatePref("garderEcranAllume")} className={`px-3 py-2 rounded-lg border ${prefs.garderEcranAllume ? "bg-[#0B1F3A] text-white" : "bg-slate-50"}`}>Écran : {prefs.garderEcranAllume ? "ON" : "OFF"}</button>
-          <button type="button" onClick={() => updatePref("avertissementSanteAccepte")} className={`px-3 py-2 rounded-lg border ${prefs.avertissementSanteAccepte ? "bg-emerald-600 text-white" : "bg-slate-50"}`}>Santé : {prefs.avertissementSanteAccepte ? "OUI" : "NON"}</button>
-        </section>
-      )}
+      <section className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-wrap gap-2 text-xs">
+        <button type="button" onClick={() => updatePref("bipActif")} className={`px-3 py-2 rounded-lg border ${prefs.bipActif ? "bg-[#0B1F3A] text-white" : "bg-slate-50"}`}>Bip : {prefs.bipActif ? "ON" : "OFF"}</button>
+        <button type="button" onClick={() => updatePref("vibrationActive")} className={`px-3 py-2 rounded-lg border ${prefs.vibrationActive ? "bg-[#0B1F3A] text-white" : "bg-slate-50"}`}>Vibration : {prefs.vibrationActive ? "ON" : "OFF"}</button>
+        <button type="button" onClick={() => updatePref("garderEcranAllume")} className={`px-3 py-2 rounded-lg border ${prefs.garderEcranAllume ? "bg-[#0B1F3A] text-white" : "bg-slate-50"}`}>Écran : {prefs.garderEcranAllume ? "ON" : "OFF"}</button>
+        <button type="button" onClick={() => updatePref("avertissementSanteAccepte")} className={`px-3 py-2 rounded-lg border ${prefs.avertissementSanteAccepte ? "bg-emerald-600 text-white" : "bg-slate-50"}`}>Santé : {prefs.avertissementSanteAccepte ? "OUI" : "NON"}</button>
+      </section>
     </div>
   );
-  }
-          
+        }
+    
