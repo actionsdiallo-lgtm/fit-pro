@@ -1,16 +1,69 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function WelcomePage() {
   const router = useRouter();
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    async function checkAccess() {
+      const isGuest =
+        typeof window !== "undefined" &&
+        window.localStorage.getItem("fitpro_guest_mode") === "true";
+
+      if (isGuest) {
+        router.replace("/dashboard");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/auth/session", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.user) {
+            if (typeof window !== "undefined") {
+              window.localStorage.removeItem("fitpro_guest_mode");
+            }
+            router.replace("/dashboard");
+            return;
+          }
+        }
+      } catch {
+        // En cas d'erreur réseau, on laisse l'utilisateur choisir sur l'écran d'accueil
+      }
+
+      if (active) {
+        setCheckingSession(false);
+      }
+    }
+
+    checkAccess();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   function handleContinueAsGuest() {
     if (typeof window !== "undefined") {
-      localStorage.setItem("fitpro_guest_mode", "true");
+      window.localStorage.setItem("fitpro_guest_mode", "true");
     }
-    router.push("/dashboard");
+    router.replace("/dashboard");
+  }
+
+  if (checkingSession) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-slate-950 text-white px-6">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900 px-6 py-4 text-sm text-slate-300">
+          Chargement de ton espace...
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -46,4 +99,4 @@ export default function WelcomePage() {
       </div>
     </main>
   );
-}
+        }
