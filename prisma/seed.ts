@@ -70,6 +70,26 @@ type ExerciseSeedInput = {
   dureeEstimeeSec: number;
 };
 
+type ExerciseTemplateInput = {
+  nom: LangFields;
+  description: LangFields;
+  positionDepart: string;
+  instructionsExecution: string;
+  respiration: string;
+  erreursAEviter: string;
+  consignesSecurite: string;
+  varianteDebutant: string;
+  varianteAvancee: string;
+  modeMesure: "reps" | "temps";
+  repetitionsCible?: number;
+  dureeCibleSec?: number;
+  parCoteOuJambe?: boolean;
+  muscleCible: string;
+  isSansSaut: boolean;
+  isEchauffement?: boolean;
+  isRetourCalme?: boolean;
+};
+
 const WORKOUTS: WorkoutSeedInput[] = [
   {
     idWorkout: "wk-01",
@@ -433,26 +453,7 @@ const WORKOUTS: WorkoutSeedInput[] = [
   },
 ];
 
-// 48 exercices répartis sur les 10 programmes (5 exercices sur wk-01..wk-08, 4 exercices sur wk-09..wk-10)
-const EXERCISE_TEMPLATES: Array<{
-  nom: LangFields;
-  description: LangFields;
-  positionDepart: string;
-  instructionsExecution: string;
-  respiration: string;
-  erreursAEviter: string;
-  consignesSecurite: string;
-  varianteDebutant: string;
-  varianteAvancee: string;
-  modeMesure: "reps" | "temps";
-  repetitionsCible?: number;
-  dureeCibleSec?: number;
-  parCoteOuJambe?: boolean;
-  muscleCible: string;
-  isSansSaut: boolean;
-  isEchauffement?: boolean;
-  isRetourCalme?: boolean;
-}> = [
+const EXERCISE_TEMPLATES: ExerciseTemplateInput[] = [
   {
     nom: {
       fr: "Squat Poids du Corps",
@@ -569,4 +570,5 @@ const EXERCISE_TEMPLATES: Array<{
       en: "Bodyweight strengthening for chest, triceps, and shoulders.",
       es: "Fortalecimiento de pecho, tríceps y hombros.",
       ar: "تقوية الصدر والترايسبس والكتفين بوزن الجسم.",
-      pt: "Fortaleci
+      pt: "Fortalecimento de peitoral, tríceps e ombros.",
+      de: "Kräftigung
