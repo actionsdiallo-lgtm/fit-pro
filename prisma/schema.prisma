@@ -3,109 +3,191 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-enum AuthMethod {
-  GMAIL
-  PHONE
-}
-
-enum VerificationPurpose {
-  REGISTER_PRIMARY
-  ADD_BACKUP
-  PASSWORD_RESET
-  CHANGE_EMAIL
-  CHANGE_PHONE
-}
-
-enum DeliveryChannel {
-  EMAIL
-  SMS
-}
-
-model User {
-  id               String     @id @default(cuid())
-  firstName        String
-  email            String?    @unique
-  emailVerified    Boolean    @default(false)
-  phone            String?    @unique
-  phoneVerified    Boolean    @default(false)
-  passwordHash     String
-  birthDate        DateTime
-  healthAccepted   Boolean    @default(false)
-  healthAcceptedAt DateTime?
-  primaryMethod    AuthMethod
-  isGuest          Boolean    @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  verificationCodes VerificationCode[]
-  sessions          Session[]
-  workouts          Workout[]
-
-  @@index([email])
-  @@index([phone])
-}
-
-model VerificationCode {
-  id     String  @id @default(cuid())
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  target  String
-  channel DeliveryChannel
-  purpose VerificationPurpose
-
-  codeHash String
-
-  attempts    Int       @default(0)
-  lockedUntil DateTime?
-
-  expiresAt  DateTime
-  consumedAt DateTime?
-  createdAt  DateTime  @default(now())
-
-  @@index([target, purpose])
-  @@index([userId])
-}
-
-model Session {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  tokenHash  String  @unique
-  deviceName String?
-  userAgent  String?
-  ipAddress  String?
-
-  rememberMe   Boolean   @default(false)
-  expiresAt    DateTime
-  revokedAt    DateTime?
-  lastActiveAt DateTime  @default(now())
-  createdAt    DateTime  @default(now())
-
-  @@index([userId])
-}
-
+// 1. LES 10 PROGRAMMES D'ENTRAÎNEMENT
 model Workout {
-  id              String    @id @default(cuid())
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title           String
-  category        String?
-  duration        Int       @default(0)
-  durationMinutes Int?
-  distanceKm      Float?
-  calories        Int?
-  repetitions     Int?
-  series          Int?
-  notes           String?
-  performedAt     DateTime?
-  createdAt       DateTime  @default(now())
+  idWorkout           String   @id @map("id_workout")
+  slug                String   @unique
+  titreFr             String   @map("titre_fr")
+  titreEn             String   @map("titre_en")
+  titreEs             String   @map("titre_es")
+  titreAr             String   @map("titre_ar")
+  titrePt             String   @map("titre_pt")
+  titreDe             String   @map("titre_de")
+  titreIt             String   @map("titre_it")
+  titreWo             String   @map("titre_wo")
+  descriptionFr       String   @map("description_fr")
+  descriptionEn       String   @map("description_en")
+  descriptionEs       String   @map("description_es")
+  descriptionAr       String   @map("description_ar")
+  descriptionPt       String   @map("description_pt")
+  descriptionDe       String   @map("description_de")
+  descriptionIt       String   @map("description_it")
+  descriptionWo       String   @map("description_wo")
+  dureeIndicativeMin  Int      @map("duree_indicative_min")
+  dureeCalculeeSec    Int      @map("duree_calculee_sec")
+  niveau              String
+  materiel            String
+  zoneCorps           String   @map("zone_corps")
+  typeSeance          String   @map("type_seance")
+  isSansSaut          Boolean  @default(false) @map("is_sans_saut")
+  isAvecSaut          Boolean  @default(false) @map("is_avec_saut")
+  photoUrl            String   @map("photo_url")
+  caloriesMin         Int      @map("calories_min")
+  caloriesMax         Int      @map("calories_max")
+  isFavorite          Boolean  @default(false) @map("is_favorite")
+  actif               Boolean  @default(true)
+  ordreAffichage      Int      @map("ordre_affichage")
 
-  @@index([userId])
+  exercises           Exercise[]
+  activeSessions      ActiveSessionState[]
+  history             WorkoutHistory[]
+
+  @@index([actif, niveau, materiel, zoneCorps, isSansSaut, isAvecSaut, isFavorite])
+  @@map("workouts")
+}
+
+// 2. LES 48 EXERCICES
+model Exercise {
+  idExercice             String   @id @map("id_exercice")
+  idWorkout              String   @map("id_workout")
+  ordreExercice          Int      @map("ordre_exercice")
+
+  // Noms en 8 langues
+  nomFr                  String   @map("nom_fr")
+  nomEn                  String   @map("nom_en")
+  nomEs                  String   @map("nom_es")
+  nomAr                  String   @map("nom_ar")
+  nomPt                  String   @map("nom_pt")
+  nomDe                  String   @map("nom_de")
+  nomIt                  String   @map("nom_it")
+  nomWo                  String   @map("nom_wo")
+
+  // Descriptions en 8 langues
+  descriptionFr          String   @map("description_fr")
+  descriptionEn          String   @map("description_en")
+  descriptionEs          String   @map("description_es")
+  descriptionAr          String   @map("description_ar")
+  descriptionPt          String   @map("description_pt")
+  descriptionDe          String   @map("description_de")
+  descriptionIt          String   @map("description_it")
+  descriptionWo          String   @map("description_wo")
+
+  // Animations 2D et photos
+  animation2dUrl         String   @map("animation_2d_url")
+  animation2dApercuUrl   String   @map("animation_2d_apercu_url")
+  animationDureeSec      Float    @map("animation_duree_sec")
+  animationTailleMo      Float    @map("animation_taille_mo")
+  animationVue           String   @map("animation_vue")
+  animationVersion       String   @default("1.0") @map("animation_version")
+  photoEntrainementUrl   String   @map("photo_entrainement_url")
+
+  // Consignes pédagogiques et variantes
+  positionDepart         String   @map("position_depart")
+  instructionsExecution  String   @map("instructions_execution")
+  respiration            String
+  erreursAEviter         String   @map("erreurs_a_eviter")
+  consignesSecurite      String   @map("consignes_securite")
+  varianteDebutant       String?  @map("variante_debutant")
+  varianteAvancee        String?  @map("variante_avancee")
+
+  // Paramètres sportifs
+  series                 Int
+  modeMesure             String   @map("mode_mesure")
+  repetitionsCible       Int?     @map("repetitions_cible")
+  dureeCibleSec          Int?     @map("duree_cible_sec")
+  parCoteOuJambe         Boolean  @default(false) @map("par_cote_ou_jambe")
+  reposApresSerieSec     Int      @default(30) @map("repos_apres_serie_sec")
+  reposApresExerciceSec  Int      @default(30) @map("repos_apres_exercice_sec")
+  niveau                 String
+  materiel               String
+  muscleCible            String   @map("muscle_cible")
+  isSansSaut             Boolean  @default(true) @map("is_sans_saut")
+  isEchauffement         Boolean  @default(false) @map("is_echauffement")
+  isRetourCalme          Boolean  @default(false) @map("is_retour_calme")
+
+  // Estimations et métadonnées
+  caloriesEstimationMin  Int?     @map("calories_estimation_min")
+  caloriesEstimationMax  Int?     @map("calories_estimation_max")
+  dureeEstimeeSec        Int      @map("duree_estimee_sec")
+  actif                  Boolean  @default(true)
+  dateCreation           DateTime @default(now()) @map("date_creation")
+  dateModification       DateTime @updatedAt @map("date_modification")
+
+  workout                Workout  @relation(fields: [idWorkout], references: [idWorkout], onDelete: Cascade)
+  offlineAnimation       OfflineAnimation?
+
+  @@index([idWorkout, ordreExercice])
+  @@map("exercises")
+}
+
+// 3. REPRISE DE SÉANCE EN COURS
+model ActiveSessionState {
+  id                       Int      @id @default(1)
+  idWorkout                String   @map("id_workout")
+  phase                    String
+  exerciseIndex            Int      @default(0) @map("exercise_index")
+  setIndex                 Int      @default(1) @map("set_index")
+  repsCompleted            Int      @default(0) @map("reps_completed")
+  elapsedSec               Int      @default(0) @map("elapsed_sec")
+  remainingRestSec         Int      @default(0) @map("remaining_rest_sec")
+  elapsedTotalWorkoutSec   Int      @default(0) @map("elapsed_total_workout_sec")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  workout                  Workout  @relation(fields: [idWorkout], references: [idWorkout])
+
+  @@map("active_session_state")
+}
+
+// 4. HISTORIQUE DES SÉANCES
+model WorkoutHistory {
+  idSession              String   @id @default(cuid()) @map("id_session")
+  idWorkout              String   @map("id_workout")
+  workoutTitleSnapshot   String   @map("workout_title_snapshot")
+  dateSession            DateTime @default(now()) @map("date_session")
+  dureeReelleSec         Int      @map("duree_reelle_sec")
+  exercicesTermines      Int      @map("exercices_termines")
+  exercicesTotal         Int      @map("exercices_total")
+  seriesTerminees        Int      @map("series_terminees")
+  caloriesEstimeesMin    Int      @map("calories_estimees_min")
+  caloriesEstimeesMax    Int      @map("calories_estimees_max")
+  statut                 String
+
+  workout                Workout  @relation(fields: [idWorkout], references: [idWorkout])
+
+  @@index([dateSession, statut])
+  @@map("workout_history")
+}
+
+// 5. ANIMATIONS TÉLÉCHARGÉES HORS LIGNE
+model OfflineAnimation {
+  idExercice          String   @id @map("id_exercice")
+  localFilePath       String   @map("local_file_path")
+  tailleMo            Float    @map("taille_mo")
+  versionTelechargee  String   @map("version_telechargee")
+  downloadedAt        DateTime @default(now()) @map("downloaded_at")
+
+  exercise            Exercise @relation(fields: [idExercice], references: [idExercice], onDelete: Cascade)
+
+  @@map("offline_animations")
+}
+
+// 6. PRÉFÉRENCES UTILISATEUR
+model UserPreference {
+  id                        Int     @id @default(1)
+  langue                    String  @default("fr")
+  unitePoids                String  @default("kg") @map("unite_poids")
+  uniteTaille               String  @default("cm") @map("unite_taille")
+  theme                     String  @default("clair")
+  tailleTexteEchelle        Float   @default(1.0) @map("taille_texte_echelle")
+  bipActif                  Boolean @default(false) @map("bip_actif")
+  vibrationActive           Boolean @default(false) @map("vibration_active")
+  compteAReboursSonore      Boolean @default(false) @map("compte_a_rebours_sonore")
+  garderEcranAllume         Boolean @default(true) @map("garder_ecran_allume")
+  avertissementSanteAccepte Boolean @default(false) @map("avertissement_sante_accepte")
+
+  @@map("user_preferences")
 }
