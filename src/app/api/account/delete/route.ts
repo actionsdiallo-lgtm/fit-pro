@@ -1,27 +1,22 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { auth } from "@/auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
-
-export async function POST() {
+export async function DELETE() {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
 
-    if (!session?.user?.id && !session?.user?.email) {
+    if (!session || !session.user || !session.user.email) {
       return NextResponse.json(
         { error: "Non authentifié." },
         { status: 401 }
       );
     }
 
-    const whereClause = session.user.id
-      ? { id: session.user.id }
-      : { email: session.user.email! };
-
     const existingUser = await prisma.user.findUnique({
-      where: whereClause,
-      select: { id: true },
+      where: { email: session.user.email },
+      select: { id: true, email: true },
     });
 
     if (!existingUser) {
@@ -35,11 +30,14 @@ export async function POST() {
       where: { id: existingUser.id },
     });
 
-    return NextResponse.json({ deleted: true });
-  } catch (err) {
-    console.error("Erreur suppression compte:", err);
     return NextResponse.json(
-      { error: "Impossible de supprimer le compte pour le moment." },
+      { message: "Compte supprimé avec succès." },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Erreur suppression compte:", error);
+    return NextResponse.json(
+      { error: "Impossible de supprimer le compte." },
       { status: 500 }
     );
   }
