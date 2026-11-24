@@ -7,6 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AuthMethod {
+  EMAIL
+  PHONE
+  GUEST
+}
+
+enum DeliveryChannel {
+  EMAIL
+  SMS
+}
+
 enum VerificationPurpose {
   PASSWORD_RESET
   ACCOUNT_VERIFICATION
