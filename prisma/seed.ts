@@ -578,5 +578,32 @@ const WORKOUTS: WorkoutSeedInput[] = [
       ar: "جسر المؤخرة",
       pt: "Ponte de Glúteos",
       de: "Beckenheben",
-      it:
+          it: "Glute Bridge",
+      wo: "Yëkkati Ndigg Ci Suuf",
+    },
+    description: {
+      fr: "Extension de hanche allongé sur le dos pour activer la chaîne postérieure.",
+      en: "Hip extension lying on your back to activate posterior chain.",
+      es: "Extensión de cadera boca arriba para activar glúteos.",
+      ar: "رفع الحوض من الاستلقاء لتفعيل عضلات المؤخرة وأسفل الظهر.",
+      pt: "Elevação de quadril deitado para ativar glúteos.",
+      de: "Hüftstreckung in Rückenlage für Gesäß und hintere Kette.",
+      it: "Estensione d'anca supina per glutei e catena posteriore.",
+      wo: "Yëkkati ndigg bi nga tëdd ci gannaaw ngir tànk yi.",
+    },
+    positionDepart: "Allongé sur le dos, genoux fléchis, pieds à plat largeur hanches.",
+    instructionsExecution:
+      "Décolle le bassin en contractant les fessiers jusqu'à aligner genoux, hanches et épaules.",
+    respiration: "Expire en montant le bassin, inspire en redescendant.",
+    erreursAEviter: "Cambrer excessivement le bas du dos en haut.",
+    consignesSecurite: "Appuie bien sur l'ensemble du pied sans forcer sur la nuque.",
+    varianteDebutant: "Maintien statique en haut pendant 15 secondes.",
+    varianteAvancee: "Pont unipodal (une jambe tendue).",
+    modeMesure: "reps" as const,
+    repetitionsCible: 14,
+    muscleCible: "Fessiers & Ischio-jambiers",
+    isSansSaut: true,
+  },
+];
+
       
