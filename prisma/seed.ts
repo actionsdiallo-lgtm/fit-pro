@@ -70,26 +70,6 @@ type ExerciseSeedInput = {
   dureeEstimeeSec: number;
 };
 
-type ExerciseTemplateInput = {
-  nom: LangFields;
-  description: LangFields;
-  positionDepart: string;
-  instructionsExecution: string;
-  respiration: string;
-  erreursAEviter: string;
-  consignesSecurite: string;
-  varianteDebutant: string;
-  varianteAvancee: string;
-  modeMesure: "reps" | "temps";
-  repetitionsCible?: number;
-  dureeCibleSec?: number;
-  parCoteOuJambe?: boolean;
-  muscleCible: string;
-  isSansSaut: boolean;
-  isEchauffement?: boolean;
-  isRetourCalme?: boolean;
-};
-
 const WORKOUTS: WorkoutSeedInput[] = [
   {
     idWorkout: "wk-01",
@@ -453,7 +433,7 @@ const WORKOUTS: WorkoutSeedInput[] = [
   },
 ];
 
-const EXERCISE_TEMPLATES: ExerciseTemplateInput[] = [
+const EXERCISE_TEMPLATES = [
   {
     nom: {
       fr: "Squat Poids du Corps",
@@ -476,13 +456,14 @@ const EXERCISE_TEMPLATES: ExerciseTemplateInput[] = [
       wo: "Wàññi ndigg ak óom yi te gannaaw bi wér.",
     },
     positionDepart: "Pieds largeur épaules, orteils légèrement ouverts.",
-    instructionsExecution: "Pousse les hanches vers l'arrière, descends jusqu'à la parallèle puis remonte en poussant sur les talons.",
+    instructionsExecution:
+      "Pousse les hanches vers l'arrière, descends jusqu'à la parallèle puis remonte en poussant sur les talons.",
     respiration: "Inspire à la descente, expire à la remontée.",
     erreursAEviter: "Genoux qui rentrent vers l'intérieur ou talons qui décollent.",
     consignesSecurite: "Garde le dos neutre et le regard vers l'avant.",
     varianteDebutant: "Amplitude réduite ou appui léger sur un dossier de chaise.",
     varianteAvancee: "Pause de 2 secondes en bas du mouvement.",
-    modeMesure: "reps",
+    modeMesure: "reps" as const,
     repetitionsCible: 12,
     muscleCible: "Quadriceps & Fessiers",
     isSansSaut: true,
@@ -509,13 +490,14 @@ const EXERCISE_TEMPLATES: ExerciseTemplateInput[] = [
       wo: "Taxaw ci biir te yaram wi tàlliku lu jub.",
     },
     positionDepart: "Avant-bras au sol, coudes sous les épaules, jambes tendues.",
-    instructionsExecution: "Contracte les abdos et les fessiers sans creuser les lombaires ni lever excessivement le bassin.",
+    instructionsExecution:
+      "Contracte les abdos et les fessiers sans creuser les lombaires ni lever excessivement le bassin.",
     respiration: "Respiration régulière et calme sans bloquer le souffle.",
     erreursAEviter: "Reins creusés ou fessiers trop hauts.",
     consignesSecurite: "Arrête la série dès que le bassin s'affaisse.",
     varianteDebutant: "Genoux posés au sol en gardant l'alignement.",
     varianteAvancee: "Maintien sur les mains en position planche haute.",
-    modeMesure: "temps",
+    modeMesure: "temps" as const,
     dureeCibleSec: 30,
     muscleCible: "Sangle abdominale",
     isSansSaut: true,
@@ -542,13 +524,14 @@ const EXERCISE_TEMPLATES: ExerciseTemplateInput[] = [
       wo: "Jéggi ci ginnaaw ndank ngir liggéeyal tànk ak lëg yi.",
     },
     positionDepart: "Debout, pieds joints, mains sur les hanches.",
-    instructionsExecution: "Recule un pied, fléchis les deux genoux à 90°, puis pousse sur le pied avant pour revenir.",
+    instructionsExecution:
+      "Recule un pied, fléchis les deux genoux à 90°, puis pousse sur le pied avant pour revenir.",
     respiration: "Inspire en reculant, expire en revenant debout.",
     erreursAEviter: "Genou avant qui dépasse largement la pointe du pied.",
     consignesSecurite: "Garde le buste vertical et le pas assez long.",
     varianteDebutant: "Amplitude courte sans toucher le sol du genou arrière.",
     varianteAvancee: "Enchaînement fluide sans poser le pied arrière au retour.",
-    modeMesure: "reps",
+    modeMesure: "reps" as const,
     repetitionsCible: 10,
     parCoteOuJambe: true,
     muscleCible: "Fessiers & Quadriceps",
@@ -571,4 +554,12 @@ const EXERCISE_TEMPLATES: ExerciseTemplateInput[] = [
       es: "Fortalecimiento de pecho, tríceps y hombros.",
       ar: "تقوية الصدر والترايسبس والكتفين بوزن الجسم.",
       pt: "Fortalecimento de peitoral, tríceps e ombros.",
-      de: "Kräftigung
+      de: "Kräftigung von Brust, Trizeps und Schultern.",
+      it: "Rinforzo di petto, tricipiti e spalle a corpo libero.",
+      wo: "Dëgëral dënn, loxo ak mbagg yi ci sa yaram.",
+    },
+    positionDepart: "Mains légèrement plus larges que les épaules, corps gainé.",
+    instructionsExecution:
+      "Fléchis les coudes à environ 45° jusqu'à frôler le sol puis repousse fort.",
+    respiration: "Inspire à la descente, expire à la poussée.",
+    erreursAEviter: "Bassin qui tombe ou têt
