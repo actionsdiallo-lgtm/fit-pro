@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient, AuthMethod, DeliveryChannel, VerificationPurpose } from "@prisma/client";
+import { PrismaClient, VerificationPurpose } from "@prisma/client";
 import crypto from "crypto";
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
@@ -10,128 +10,134 @@ function hashValue(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
-function generateSixDigitCode(): string {
-  return crypto.randomInt(100000, 1000000).toString();
+function hashPassword(password: string): string {
+  const salt = crypto.randomBytes(16).toString("hex");
+  return `${salt}:${crypto.scryptSync(password, salt, 64).toString("hex")}`;
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const firstName = String(body.firstName ?? body.name ?? "").trim();
-    const rawIdentifier = String(body.identifier ?? body.email ?? body.phone ?? "").trim();
-    const password = String(body.password ?? "");
-    const birthDateRaw = body.birthDate;
-    const healthAccepted = Boolean(body.healthAccepted);
-    const requestedMethod: AuthMethod | undefined =
-      body.primaryMethod === "PHONE" || body.primaryMethod === "GMAIL"
-        ? body.primaryMethod
-        : undefined;
+    const rawIdentifier = String(
+      body.identifier ?? body.email ?? body.phone ?? body.target ?? ""
+    ).trim();
+    const code = String(body.code ?? body.resetCode ?? "").trim();
+    const newPassword = String(
+      body.newPassword ?? body.password ?? ""
+    );
 
-    if (!firstName || !rawIdentifier || !password) {
+    if (!rawIdentifier || !code || !newPassword) {
       return NextResponse.json(
-        { error: "Prénom, Gmail ou numéro de téléphone, et mot de passe sont requis." },
+        { error: "Identifiant, code à 6 chiffres et nouveau mot de passe sont requis." },
         { status: 400 }
       );
     }
 
-    if (password.length < 8) {
+    if (newPassword.length < 8) {
       return NextResponse.json(
         { error: "Le mot de passe doit contenir au moins 8 caractères." },
         { status: 400 }
       );
     }
 
-    if (!healthAccepted) {
+    const isEmail = rawIdentifier.includes("@");
+    const normalizedTarget = isEmail
+      ? rawIdentifier.toLowerCase()
+      : rawIdentifier.replace(/\s+/g, "");
+
+    const user = await prisma.user.findFirst({
+      where: isEmail
+        ? { email: normalizedTarget }
+        : { phone: normalizedTarget },
+      select: { id: true },
+    });
+
+    if (!user) {
       return NextResponse.json(
-        { error: "Tu dois confirmer l'avertissement santé et les conditions." },
+        { error: "Code invalide ou expiré." },
         { status: 400 }
       );
     }
 
-    const parsedBirthDate = birthDateRaw ? new Date(birthDateRaw) : new Date("2000-01-01");
-    if (Number.isNaN(parsedBirthDate.getTime())) {
-      return NextResponse.json({ error: "Date de naissance invalide." }, { status: 400 });
-    }
-
-    const isEmail = rawIdentifier.includes("@");
-    const primaryMethod: AuthMethod = requestedMethod ?? (isEmail ? "GMAIL" : "PHONE");
-
-    const normalizedEmail = isEmail ? rawIdentifier.toLowerCase() : null;
-    const normalizedPhone = !isEmail ? rawIdentifier.replace(/\s+/g, "") : null;
-
-    if (primaryMethod === "GMAIL" && !normalizedEmail) {
-      return NextResponse.json({ error: "Adresse Gmail invalide." }, { status: 400 });
-    }
-
-    if (primaryMethod === "PHONE" && !normalizedPhone) {
-      return NextResponse.json({ error: "Numéro de téléphone invalide." }, { status: 400 });
-    }
-
-    const existingUser = await prisma.user.findFirst({
+    const now = new Date();
+    const record = await prisma.verificationCode.findFirst({
       where: {
-        OR: [
-          ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
-          ...(normalizedPhone ? [{ phone: normalizedPhone }] : []),
-        ],
+        userId: user.id,
+        target: normalizedTarget,
+        purpose: VerificationPurpose.PASSWORD_RESET,
+        consumedAt: null,
+        expiresAt: { gt: now },
       },
-      select: { id: true },
+      orderBy: { createdAt: "desc" },
     });
 
-    if (existingUser) {
+    if (!record) {
       return NextResponse.json(
-        { error: "Un compte existe déjà avec cet identifiant." },
-        { status: 409 }
+        { error: "Code invalide ou expiré." },
+        { status: 400 }
       );
     }
 
-    const salt = crypto.randomBytes(16).toString("hex");
-    const passwordHash = `${salt}:${crypto.scryptSync(password, salt, 64).toString("hex")}`;
+    if (record.lockedUntil && record.lockedUntil > now) {
+      return NextResponse.json(
+        { error: "Trop de tentatives. Réessaie dans quelques minutes." },
+        { status: 429 }
+      );
+    }
 
-    const user = await prisma.user.create({
-      data: {
-        firstName,
-        email: normalizedEmail,
-        emailVerified: false,
-        phone: normalizedPhone,
-        phoneVerified: false,
-        passwordHash,
-        birthDate: parsedBirthDate,
-        healthAccepted: true,
-        healthAcceptedAt: new Date(),
-        primaryMethod,
-      },
+    const maxAttempts = record.maxAttempts ?? 5;
+    if (record.attempts >= maxAttempts) {
+      await prisma.verificationCode.update({
+        where: { id: record.id },
+        data: { lockedUntil: new Date(Date.now() + 10 * 60 * 1000) },
+      });
+      return NextResponse.json(
+        { error: "Nombre maximal de tentatives atteint." },
+        { status: 429 }
+      );
+    }
+
+    const expectedHash = hashValue(code);
+    if (record.codeHash !== expectedHash) {
+      const nextAttempts = record.attempts + 1;
+      await prisma.verificationCode.update({
+        where: { id: record.id },
+        data: {
+          attempts: nextAttempts,
+          ...(nextAttempts >= maxAttempts
+            ? { lockedUntil: new Date(Date.now() + 10 * 60 * 1000) }
+            : {}),
+        },
+      });
+      return NextResponse.json(
+        { error: "Code de vérification incorrect." },
+        { status: 400 }
+      );
+    }
+
+    const passwordHash = hashPassword(newPassword);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash },
+      }),
+      prisma.verificationCode.update({
+        where: { id: record.id },
+        data: { consumedAt: now },
+      }),
+    ]);
+
+    return NextResponse.json({
+      message: "Mot de passe mis à jour avec succès.",
     });
-
-    const code = generateSixDigitCode();
-    const target = primaryMethod === "GMAIL" ? normalizedEmail! : normalizedPhone!;
-    const channel: DeliveryChannel = primaryMethod === "GMAIL" ? "EMAIL" : "SMS";
-
-    await prisma.verificationCode.create({
-      data: {
-        userId: user.id,
-        target,
-        channel,
-        purpose: VerificationPurpose.REGISTER_PRIMARY,
-        codeHash: hashValue(code),
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-      },
-    });
-
-    return NextResponse.json(
-      {
-        message: "Compte créé. Code de vérification envoyé.",
-        userId: user.id,
-        primaryMethod,
-        ...(process.env.NODE_ENV !== "production" ? { devCode: code } : {}),
-      },
-      { status: 201 }
-    );
   } catch (error) {
-    console.error("Register error:", error);
+    console.error("Reset password error:", error);
     return NextResponse.json(
-      { error: "Erreur serveur lors de la création du compte." },
+      { error: "Erreur serveur lors de la réinitialisation du mot de passe." },
       { status: 500 }
     );
   }
-}
+  }
+      
