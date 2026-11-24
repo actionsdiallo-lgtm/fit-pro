@@ -20,6 +20,7 @@ enum DeliveryChannel {
 }
 
 enum VerificationPurpose {
+  REGISTER_PRIMARY
   PASSWORD_RESET
   ACCOUNT_VERIFICATION
   LOGIN
@@ -27,15 +28,24 @@ enum VerificationPurpose {
 
 // MODÈLE UTILISATEUR (AUTHENTIFICATION & COMPTE)
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  phone         String?   @unique
-  passwordHash  String?
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id               String      @id @default(cuid())
+  firstName        String?     @map("first_name")
+  name             String?
+  email            String?     @unique
+  emailVerified    Boolean     @default(false) @map("email_verified")
+  phone            String?     @unique
+  phoneVerified    Boolean     @default(false) @map("phone_verified")
+  passwordHash     String?     @map("password_hash")
+  birthDate        DateTime?   @map("birth_date")
+  healthAccepted   Boolean     @default(false) @map("health_accepted")
+  healthAcceptedAt DateTime?   @map("health_accepted_at")
+  primaryMethod    AuthMethod? @map("primary_method")
+  isGuest          Boolean     @default(false) @map("is_guest")
+  image            String?
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  @@map("users")
 }
 
 model VerificationCode {
