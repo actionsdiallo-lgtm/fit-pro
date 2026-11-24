@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { email: normalizedTarget },
-      select: { id: true, email: true, firstName: true },
+      select: { id: true, email: true },
     });
 
     if (!user?.email) {
@@ -79,9 +79,9 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         sender: { name: "FIT PRO", email: senderEmail },
-        to: [{ email: user.email, name: user.firstName || "Utilisateur" }],
+        to: [{ email: user.email, name: "Utilisateur" }],
         subject: "FIT PRO — Code de récupération à 6 chiffres",
-        htmlContent: `<p>Bonjour ${user.firstName || ""},</p><p>Votre code de vérification à 6 chiffres est : <strong>${code}</strong>. Il est valable 10 minutes.</p>`,
+        htmlContent: `<p>Bonjour,</p><p>Votre code de vérification à 6 chiffres est : <strong>${code}</strong>. Il est valable 10 minutes.</p>`,
       }),
     });
 
@@ -105,5 +105,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-                                                }
-  
+}
