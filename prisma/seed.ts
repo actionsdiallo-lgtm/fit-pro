@@ -432,8 +432,7 @@ const WORKOUTS: WorkoutSeedInput[] = [
     ordreAffichage: 10,
   },
 ];
-
-const EXERCISE_TEMPLATES = [
+  const EXERCISE_TEMPLATES = [
   {
     nom: {
       fr: "Squat Poids du Corps",
@@ -562,4 +561,22 @@ const EXERCISE_TEMPLATES = [
     instructionsExecution:
       "Fléchis les coudes à environ 45° jusqu'à frôler le sol puis repousse fort.",
     respiration: "Inspire à la descente, expire à la poussée.",
-    erreursAEviter: "Bassin qui tombe ou têt
+    erreursAEviter: "Bassin qui tombe ou tête qui pousse vers l'avant.",
+    consignesSecurite: "Garde le tronc gainé du début à la fin.",
+    varianteDebutant: "Genoux au sol ou mains sur une surface surélevée.",
+    varianteAvancee: "Descente lente en 3 secondes.",
+    modeMesure: "reps" as const,
+    repetitionsCible: 8,
+    muscleCible: "Pectoraux & Triceps",
+    isSansSaut: true,
+  },
+  {
+    nom: {
+      fr: "Pont Fessier au Sol",
+      en: "Glute Bridge",
+      es: "Puente de Glúteos",
+      ar: "جسر المؤخرة",
+      pt: "Ponte de Glúteos",
+      de: "Beckenheben",
+      it:
+      
