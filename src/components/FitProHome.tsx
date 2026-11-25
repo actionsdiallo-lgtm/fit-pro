@@ -656,7 +656,7 @@ export default function FitProHome() {
 
   const [restSeconds, setRestSeconds] = useState(0);
   const [sessionStarted, setSessionStarted] = useState(false);
-
+const [workoutHistory, setWorkoutHistory] = useState<WorkoutRecord[]>([]);
   const [showFavoritesOnly, setShowFavoritesOnly] =
     useState(false);
 
