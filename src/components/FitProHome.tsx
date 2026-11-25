@@ -449,8 +449,18 @@ function buildTenPrograms(lang: LangCode): WorkoutSpec[] {
     return en;
   };
 function buildMorePrograms(lang: LangCode): WorkoutSpec[] {
-      return en;
+  const tr = (fr: string, en: string, ar: string, wo: string, es?: string, pt?: string, de?: string, it?: string) => {
+    if (lang === "fr") return fr;
+    if (lang === "en") return en;
+    if (lang === "ar") return ar;
+    if (lang === "wo") return wo;
+    if (lang === "es") return es ?? en;
+    if (lang === "pt") return pt ?? en;
+    if (lang === "de") return de ?? en;
+    if (lang === "it") return it ?? en;
+    return en;
   };
+  
 
   return [
     {
