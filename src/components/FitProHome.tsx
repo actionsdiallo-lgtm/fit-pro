@@ -42,7 +42,15 @@ type Tab =
   | "nutrition"
   | "progress"
   | "settings";
-
+type WorkoutRecord = {
+  id: string;
+  workoutId: number;
+  workoutTitle: string;
+  date: string;
+  durationSeconds: number;
+  calories: number;
+  exercisesCompleted: number;
+};
 type View =
   | "home"
   | "workouts"
