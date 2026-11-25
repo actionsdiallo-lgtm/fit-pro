@@ -428,11 +428,19 @@ function buildTenPrograms(lang: LangCode): WorkoutSpec[] {
         tr("Évite de hausser les épaules vers les oreilles.", "Avoid shrugging shoulders up toward your ears.", "تجنب رفع الكتفين نحو الأذنين.", "Bul yékkati mbaam yi ba ci nopp yi."),
       ],
       exercises: [
-        { id: "e-03-1", name: tr("Pompes classiques", "Classic Push-Ups", "ضغط كلاسيكي", "Pompe bu wóor"), muscle: "Pectoraux", motion: "push", sets: 4, repsOrSec: "10 reps", durationSec: 35, restSec: 20, hasJump: false, instructions: tr("Mains légèrement plus larges que les épaules, coudes à 45°.", "Hands slightly wider than shoulders, elbows at 45°.", "اليدان أوسع قليلاً من الكتفين بزاوية 45 درجة.", "Loxo yi yaatu nañu tuutifunction buildMorePrograms(lang: LangCode): WorkoutSpec[] {
+        function buildMorePrograms(lang: LangCode): WorkoutSpec[] {
   const tr = (fr: string, en: string, ar: string, wo: string, es?: string, pt?: string, de?: string, it?: string) => {
     if (lang === "fr") return fr;
     if (lang === "en") return en;
     if (lang === "ar") return ar;
+    if (lang === "wo") return wo;
+    if (lang === "es") return es ?? en;
+    if (lang === "pt") return pt ?? en;
+    if (lang === "de") return de ?? en;
+    if (lang === "it") return it ?? en;
+    return en;
+  };
+    
     if (lang === "wo") return wo;
     if (lang === "es") return es ?? en;
     if (lang === "pt") return pt ?? en;
