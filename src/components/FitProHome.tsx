@@ -449,7 +449,11 @@ function buildTenPrograms(lang: LangCode): WorkoutSpec[] {
     return en;
   };
 function buildMorePrograms(lang: LangCode): WorkoutSpec[] {
-  const tr = (fr: string, en: string, ar: string, wo: string, es?: string, pt?: string, de?: string, it?: string) => {
+      return en;
+  };
+
+  return [
+    {
       
   return [
     {
