@@ -448,7 +448,9 @@ function buildTenPrograms(lang: LangCode): WorkoutSpec[] {
     if (lang === "it") return it ?? en;
     return en;
   };
-
+function buildMorePrograms(lang: LangCode): WorkoutSpec[] {
+  const tr = (fr: string, en: string, ar: string, wo: string, es?: string, pt?: string, de?: string, it?: string) => {
+      
   return [
     {
       id: "wk-06",
