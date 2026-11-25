@@ -1,1290 +1,1280 @@
+
 "use client";
 
-import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
-const LANGS = ["fr", "en", "es", "ar", "pt", "de", "it", "wo"] as const;
-type LangCode = (typeof LANGS)[number];
-type MotionKind = "squat" | "push" | "jack" | "core" | "stretch" | "hinge";
-type TabKey = "home" | "workouts" | "progress" | "settings";
-
-interface ExerciseSpec {
+type Exercise = {
   id: string;
   name: string;
-  muscle: string;
-  motion: MotionKind;
   sets: number;
-  repsOrSec: string;
-  durationSec: number;
-  restSec: number;
-  hasJump: boolean;
+  reps: number;
+  rest: number;
+  duration?: number;
+  level: string;
+  equipment: string;
+  muscle: string;
+  animationUrl?: string;
+  photoUrl?: string;
   instructions: string;
-}
-
-interface WorkoutSpec {
-  id: string;
-  title: string;
-  description: string;
-  photoUrl: string;
-  photoFallback: string;
-  durationMin: number;
-  level: "Débutant" | "Intermédiaire" | "Tous niveaux";
-  equipment: "Aucun" | "Tapis" | "Chaise / Mur";
-  bodyZone: "Full Body" | "Haut du corps" | "Jambes & Fessiers" | "Abdos" | "Cardio" | "Mobilité & Dos";
-  caloriesEst: number;
-  hasJump: boolean;
-  safetyNotes: string[];
-  exercises: ExerciseSpec[];
-}
-
-interface UserPreferenceData {
-  id: number;
-  langue: string;
-  bipActif: boolean;
-  vibrationActive: boolean;
-  garderEcranAllume: boolean;
-  avertissementSanteAccepte: boolean;
-}
-
-interface SessionLog {
-  id: string;
-  workoutTitle: string;
-  exerciseName: string;
-  completedAt: string;
-  durationSec: number;
-}
-
-const UI_TEXT: Record<
-  LangCode,
-  {
-    greeting: string;
-    heroTitle: string;
-    heroSub: string;
-    weeklyGoal: string;
-    weeklyDesc: string;
-    todayPlan: string;
-    popularTitle: string;
-    progressTitle: string;
-    workoutsPageTitle: string;
-    searchPlaceholder: string;
-    allOption: string;
-    durationLabel: string;
-    levelLabel: string;
-    equipmentLabel: string;
-    zoneLabel: string;
-    jumpFilterLabel: string;
-    withJump: string;
-    withoutJump: string;
-    seeProgram: string;
-    startBtn: string;
-    backToList: string;
-    exercisesCount: string;
-    setsLabel: string;
-    restLabel: string;
-    safetyTitle: string;
-    tabHome: string;
-    tabWorkouts: string;
-    tabProgress: string;
-    tabSettings: string;
-  }
-> = {
-  fr: {
-    greeting: "Bonjour, Athlète",
-    heroTitle: "Forge ta discipline. Dépasse tes limites.",
-    heroSub: "Entraînements complets, suivi intelligent et mode hors ligne sur tous vos écrans.",
-    weeklyGoal: "OBJECTIF HEBDOMADAIRE",
-    weeklyDesc: "Restez régulier pour progresser durablement.",
-    todayPlan: "Programme du jour",
-    popularTitle: "Programmes populaires",
-    progressTitle: "Statistiques & Progression",
-    workoutsPageTitle: "Entraînement • 10 Programmes",
-    searchPlaceholder: "Rechercher un programme ou un exercice...",
-    allOption: "Tous",
-    durationLabel: "Durée",
-    levelLabel: "Niveau",
-    equipmentLabel: "Matériel",
-    zoneLabel: "Zone du corps",
-    jumpFilterLabel: "Sauts",
-    withJump: "Avec saut",
-    withoutJump: "Sans saut",
-    seeProgram: "Voir le programme",
-    startBtn: "Commencer",
-    backToList: "Retour aux programmes",
-    exercisesCount: "exercices",
-    setsLabel: "Séries",
-    restLabel: "Repos",
-    safetyTitle: "Consignes de sécurité",
-    tabHome: "Accueil",
-    tabWorkouts: "Entraînement",
-    tabProgress: "Progression",
-    tabSettings: "Réglages",
-  },
-  en: {
-    greeting: "Hello, Athlete",
-    heroTitle: "Build Discipline. Be Unstoppable.",
-    heroSub: "Structured workouts, live tracking, and offline support across every screen.",
-    weeklyGoal: "WEEKLY GOAL",
-    weeklyDesc: "Stay consistent to achieve lasting progress.",
-    todayPlan: "Today's Plan",
-    popularTitle: "Popular Workouts",
-    progressTitle: "Stats & Progress",
-    workoutsPageTitle: "Workouts • 10 Programs",
-    searchPlaceholder: "Search a program or exercise...",
-    allOption: "All",
-    durationLabel: "Duration",
-    levelLabel: "Level",
-    equipmentLabel: "Equipment",
-    zoneLabel: "Body zone",
-    jumpFilterLabel: "Jumps",
-    withJump: "With jump",
-    withoutJump: "No jump",
-    seeProgram: "View program",
-    startBtn: "Start",
-    backToList: "Back to programs",
-    exercisesCount: "exercises",
-    setsLabel: "Sets",
-    restLabel: "Rest",
-    safetyTitle: "Safety guidelines",
-    tabHome: "Home",
-    tabWorkouts: "Workouts",
-    tabProgress: "Progress",
-    tabSettings: "Settings",
-  },
-  es: {
-    greeting: "Hola, Atleta",
-    heroTitle: "Crea disciplina. Sé imparable.",
-    heroSub: "Rutinas completas, progreso real y modo sin conexión en todos tus dispositivos.",
-    weeklyGoal: "OBJETIVO SEMANAL",
-    weeklyDesc: "Mantén la constancia para avanzar cada semana.",
-    todayPlan: "Plan de hoy",
-    popularTitle: "Programas populares",
-    progressTitle: "Estadísticas y progreso",
-    workoutsPageTitle: "Entrenamiento • 10 Programas",
-    searchPlaceholder: "Buscar programa o ejercicio...",
-    allOption: "Todos",
-    durationLabel: "Duración",
-    levelLabel: "Nivel",
-    equipmentLabel: "Material",
-    zoneLabel: "Zona corporal",
-    jumpFilterLabel: "Saltos",
-    withJump: "Con salto",
-    withoutJump: "Sin salto",
-    seeProgram: "Ver programa",
-    startBtn: "Empezar",
-    backToList: "Volver a programas",
-    exercisesCount: "ejercicios",
-    setsLabel: "Series",
-    restLabel: "Descanso",
-    safetyTitle: "Pautas de seguridad",
-    tabHome: "Inicio",
-    tabWorkouts: "Entrenar",
-    tabProgress: "Progreso",
-    tabSettings: "Ajustes",
-  },
-  ar: {
-    greeting: "مرحباً، أيها الرياضي",
-    heroTitle: "اصنع انضباطك. كن لا يُقهر.",
-    heroSub: "حصص تدريبية متكاملة وتتبع مباشر وعمل دون إنترنت على جميع الأجهزة.",
-    weeklyGoal: "الهدف الأسبوعي",
-    weeklyDesc: "حافظ على الاستمرارية لتحقيق تقدم مستمر.",
-    todayPlan: "برنامج اليوم",
-    popularTitle: "البرامج الشائعة",
-    progressTitle: "الإحصائيات والتقدم",
-    workoutsPageTitle: "التدريب • 10 برامج",
-    searchPlaceholder: "ابحث عن برنامج أو تمرين...",
-    allOption: "الكل",
-    durationLabel: "المدة",
-    levelLabel: "المستوى",
-    equipmentLabel: "المعدات",
-    zoneLabel: "منطقة الجسم",
-    jumpFilterLabel: "القفز",
-    withJump: "مع قفز",
-    withoutJump: "بدون قفز",
-    seeProgram: "عرض البرنامج",
-    startBtn: "ابدأ",
-    backToList: "العودة إلى البرامج",
-    exercisesCount: "تمارين",
-    setsLabel: "المجموعات",
-    restLabel: "الراحة",
-    safetyTitle: "إرشادات السلامة",
-    tabHome: "الرئيسية",
-    tabWorkouts: "التدريب",
-    tabProgress: "التقدم",
-    tabSettings: "الإعدادات",
-  },
-  pt: {
-    greeting: "Olá, Atleta",
-    heroTitle: "Crie disciplina. Seja imparável.",
-    heroSub: "Treinos completos, acompanhamento e modo offline em qualquer tela.",
-    weeklyGoal: "META SEMANAL",
-    weeklyDesc: "Mantenha a constância para evoluir sempre.",
-    todayPlan: "Plano de hoje",
-    popularTitle: "Treinos populares",
-    progressTitle: "Estatísticas e progresso",
-    workoutsPageTitle: "Treinos • 10 Programas",
-    searchPlaceholder: "Buscar programa ou exercício...",
-    allOption: "Todos",
-    durationLabel: "Duração",
-    levelLabel: "Nível",
-    equipmentLabel: "Equipamento",
-    zoneLabel: "Zona do corpo",
-    jumpFilterLabel: "Saltos",
-    withJump: "Com salto",
-    withoutJump: "Sem salto",
-    seeProgram: "Ver programa",
-    startBtn: "Começar",
-    backToList: "Voltar aos programas",
-    exercisesCount: "exercícios",
-    setsLabel: "Séries",
-    restLabel: "Descanso",
-    safetyTitle: "Orientações de segurança",
-    tabHome: "Início",
-    tabWorkouts: "Treinos",
-    tabProgress: "Progresso",
-    tabSettings: "Ajustes",
-  },
-  de: {
-    greeting: "Hallo, Athlet",
-    heroTitle: "Aufbaue Disziplin. Sei unaufhaltsam.",
-    heroSub: "Strukturiertes Training, Fortschritt und Offline-Modus auf jedem Gerät.",
-    weeklyGoal: "WOCHENZIEL",
-    weeklyDesc: "Bleib konsequent für nachhaltigen Fortschritt.",
-    todayPlan: "Heutiger Plan",
-    popularTitle: "Beliebte Programme",
-    progressTitle: "Statistiken & Fortschritt",
-    workoutsPageTitle: "Training • 10 Programme",
-    searchPlaceholder: "Programm oder Übung suchen...",
-    allOption: "Alle",
-    durationLabel: "Dauer",
-    levelLabel: "Niveau",
-    equipmentLabel: "Ausrüstung",
-    zoneLabel: "Körperzone",
-    jumpFilterLabel: "Sprünge",
-    withJump: "Mit Sprung",
-    withoutJump: "Ohne Sprung",
-    seeProgram: "Programm ansehen",
-    startBtn: "Starten",
-    backToList: "Zurück zu Programmen",
-    exercisesCount: "Übungen",
-    setsLabel: "Sätze",
-    restLabel: "Pause",
-    safetyTitle: "Sicherheitshinweise",
-    tabHome: "Start",
-    tabWorkouts: "Training",
-    tabProgress: "Fortschritt",
-    tabSettings: "Einstellungen",
-  },
-  it: {
-    greeting: "Ciao, Atleta",
-    heroTitle: "Crea disciplina. Sii inarrestabile.",
-    heroSub: "Allenamenti completi, monitoraggio e modalità offline su ogni schermo.",
-    weeklyGoal: "OBIETTIVO SETTIMANALE",
-    weeklyDesc: "Mantieni la costanza per crescere ogni settimana.",
-    todayPlan: "Piano di oggi",
-    popularTitle: "Allenamenti popolari",
-    progressTitle: "Statistiche e progressi",
-    workoutsPageTitle: "Allenamenti • 10 Programmi",
-    searchPlaceholder: "Cerca programma o esercizio...",
-    allOption: "Tutti",
-    durationLabel: "Durata",
-    levelLabel: "Livello",
-    equipmentLabel: "Attrezzatura",
-    zoneLabel: "Zona del corpo",
-    jumpFilterLabel: "Salti",
-    withJump: "Con salto",
-    withoutJump: "Senza salto",
-    seeProgram: "Vedi programma",
-    startBtn: "Inizia",
-    backToList: "Torna ai programmi",
-    exercisesCount: "esercizi",
-    setsLabel: "Serie",
-    restLabel: "Recupero",
-    safetyTitle: "Norme di sicurezza",
-    tabHome: "Home",
-    tabWorkouts: "Allenamenti",
-    tabProgress: "Progressi",
-    tabSettings: "Impostazioni",
-  },
-  wo: {
-    greeting: "Salaamaalekum, Taawkat",
-    heroTitle: "Dëgëral sag jikko. Bul taxaw.",
-    heroSub: "Tàggat yu mat, topato bu wóor ak jëfandikoo te amul internet ci bépp ekran.",
-    weeklyGoal: "MBEGGALUM AYU-BES",
-    weeklyDesc: "Wéyal tàggat bi ngir gëna jëm kanam.",
-    todayPlan: "Porogaramu tay",
-    popularTitle: "Porogaram yu siiw",
-    progressTitle: "Lim ak jëm kanam",
-    workoutsPageTitle: "Tàggat • 10 Porogaram",
-    searchPlaceholder: "Seet porogaram walla tàggat...",
-    allOption: "Yépp",
-    durationLabel: "Waxtu",
-    levelLabel: "Tolluwaay",
-    equipmentLabel: "Jumtukaay",
-    zoneLabel: "Wàllu yaram",
-    jumpFilterLabel: "Tàbb",
-    withJump: "Am na tàbb",
-    withoutJump: "Amul tàbb",
-    seeProgram: "Xool porogaram bi",
-    startBtn: "Tàmbali",
-    backToList: "Dellu ci porogaram yi",
-    exercisesCount: "tàggat",
-    setsLabel: "Wàll",
-    restLabel: "Noflaay",
-    safetyTitle: "Aarukaayu wér gi yaram",
-    tabHome: "Kër",
-    tabWorkouts: "Tàggat",
-    tabProgress: "Jëm kanam",
-    tabSettings: "Jubbanti",
-  },
 };
 
-function buildTenPrograms(lang: LangCode): WorkoutSpec[] {
-  const tr = (fr: string, en: string, ar: string, wo: string, es?: string, pt?: string, de?: string, it?: string) => {
-    if (lang === "fr") return fr;
-    if (lang === "en") return en;
-    if (lang === "ar") return ar;
-    if (lang === "wo") return wo;
-    if (lang === "es") return es ?? en;
-    if (lang === "pt") return pt ?? en;
-    if (lang === "de") return de ?? en;
-    if (lang === "it") return it ?? en;
-    return en;
-  };
+type Workout = {
+  id: number;
+  title: string;
+  subtitle: string;
+  duration: number;
+  level: string;
+  equipment: string;
+  caloriesMin: number;
+  caloriesMax: number;
+  muscle: string;
+  hasJump: boolean;
+  image: string;
+  exercises: Exercise[];
+};
 
-  return [
-    {
-      id: "wk-01",
-      title: tr("Full Body débutant", "Beginner Full Body", "الجسم كامل للمبتدئين", "Yaram wépp bu njàlbéen", "Cuerpo completo principiante", "Corpo inteiro iniciante", "Ganzkörper Anfänger", "Total body principianti"),
-      description: tr(
-        "Routine douce et complète à la maison pour bâtir l'endurance et la coordination sans matériel.",
-        "Gentle, complete home routine to build endurance and coordination with zero equipment.",
-        "حصة منزلية متكاملة وسهلة لبناء التحمل والتناسق بدون معدات.",
-        "Tàggat bu neex ci biir kër ngir yokk kàttan ak àndandoo yaram te soxlaul dara."
-      ),
-      photoUrl: "https://images.pexels.com/photos/4162449/pexels-photo-4162449.jpeg?auto=compress&cs=tinysrgb&w=900",
-      photoFallback: "https://images.pexels.com/photos/4498151/pexels-photo-4498151.jpeg?auto=compress&cs=tinysrgb&w=900",
-      durationMin: 18,
-      level: "Débutant",
-      equipment: "Aucun",
-      bodyZone: "Full Body",
-      caloriesEst: 145,
-      hasJump: false,
-      safetyNotes: [
-        tr("Garde les genoux alignés avec les pointes de pieds.", "Keep knees aligned with your toes.", "حافظ على استقامة الركبتين مع أطراف القدمين.", "Wàccal sa ñàkk te mu ànd ak sa baaraami tànk."),
-      ],
-      exercises: [
-        { id: "e-01-1", name: tr("Squat à la maison", "Home Bodyweight Squat", "قرفصاء في المنزل", "Squat ci biir kër"), muscle: "Quadriceps & Fessiers", motion: "squat", sets: 3, repsOrSec: "12 reps", durationSec: 35, restSec: 20, hasJump: false, instructions: tr("Descends les hanches vers l'arrière et pousse sur les talons.", "Push hips back and drive through heels to stand up.", "ادفع الوركين للخلف وانهض بالارتكاز على الكعبين.", "Wàccal sa létt ginnaaw te jël kàttan ci tànk yi.") },
-        { id: "e-01-2", name: tr("Pompes sur genoux", "Knee Push-Ups", "ضغط على الركبتين", "Pompe ci ñàkk"), muscle: "Pectoraux & Triceps", motion: "push", sets: 3, repsOrSec: "10 reps", durationSec: 30, restSec: 20, hasJump: false, instructions: tr("Garde le bassin gainé et abaisse la poitrine près du sol.", "Keep core braced and lower chest smoothly.", "حافظ على شد البطن وانزل بالصدر بهدوء.", "Dëgëral sa biir te wàccal sa dënk ci suuf.") },
-        { id: "e-01-3", name: tr("Marche sur place haute", "High March in Place", "مشي عالٍ في المكان", "Dox ci boppam bu kawe"), muscle: "Hanches & Cardio doux", motion: "jack", sets: 3, repsOrSec: "40s", durationSec: 40, restSec: 20, hasJump: false, instructions: tr("Monte alternativement les genoux et balance les bras.", "Lift knees alternately while swinging arms.", "ارفع الركبتين بالتناوب مع تحريك الذراعين.", "Yékkatil ñàkk yi te yëngal loxo yi.") },
-        { id: "e-01-4", name: tr("Crunch abdominal doux", "Gentle Abdominal Crunch", "تمرين كرانش خفيف", "Crunch bu woyof"), muscle: "Abdominaux", motion: "core", sets: 3, repsOrSec: "12 reps", durationSec: 30, restSec: 20, hasJump: false, instructions: tr("Décolle légèrement les omoplates en expirant.", "Lift shoulder blades slightly while exhaling.", "ارفع لوحي الكتف قليلاً مع الزفير.", "Yékkatil sa mbaam ci kaw te di génne ngelaw.") },
-        { id: "e-01-5", name: tr("Étirement dos et bras", "Back & Arm Stretch", "إطالة الظهر والذراعين", "Talal gannaaw ak loxo"), muscle: "Dos & Épaules", motion: "stretch", sets: 2, repsOrSec: "30s", durationSec: 30, restSec: 15, hasJump: false, instructions: tr("Allonge la colonne et étire doucement les épaules.", "Lengthen spine and stretch shoulders gently.", "اطل العمود الفقري ومدد الكتفين برفق.", "Talal sa gannaaw te yàggal sa mbaam ndànk.") },
-      ],
-    },
-    {
-      id: "wk-02",
-      title: tr("Full Body intermédiaire", "Intermediate Full Body", "الجسم كامل للمتوسطين", "Yaram wépp bu diggu", "Cuerpo completo intermedio", "Corpo inteiro intermediário", "Ganzkörper Fortgeschrittene", "Total body intermedio"),
-      description: tr(
-        "Séance dynamique combinant puissance musculaire, rythme cardio et gainage complet.",
-        "Dynamic workout combining muscular power, cardio pace, and full-body core stability.",
-        "حصة ديناميكية تجمع بين القوة العضلية والكارديو وثبات الجذع.",
-        "Tàggat bu woyof te am kàttan ngir yokk doole yaram ak wér gu yaram."
-      ),
-      photoUrl: "https://images.pexels.com/photos/4753986/pexels-photo-4753986.jpeg?auto=compress&cs=tinysrgb&w=900",
-      photoFallback: "https://images.pexels.com/photos/4162487/pexels-photo-4162487.jpeg?auto=compress&cs=tinysrgb&w=900",
-      durationMin: 25,
-      level: "Intermédiaire",
-      equipment: "Tapis",
-      bodyZone: "Full Body",
-      caloriesEst: 230,
-      hasJump: true,
-      safetyNotes: [
-        tr("Amortis chaque réception souplement sur l'avant du pied.", "Land softly on the balls of your feet.", "اهبط بخفة على مقدمة القدمين.", "Wàccal ndànk ci kanamu tànk yi."),
-      ],
-      exercises: [
-        { id: "e-02-1", name: tr("Burpee contrôlé", "Controlled Burpee", "بيربي متحكم به", "Burpee bu ànd ak sàkku"), muscle: "Full Body & Cardio", motion: "jack", sets: 4, repsOrSec: "10 reps", durationSec: 40, restSec: 25, hasJump: true, instructions: tr("Passe en planche, ramène les pieds et réalise une extension dynamique.", "Step or jump to plank, return feet, and extend cleanly.", "انتقل إلى البلانك ثم عد وانهض بثبات.", "Démb ci planche, delloo tànk yi te jóg bu baax.") },
-        { id: "e-02-2", name: tr("Squat sauté léger", "Light Jump Squat", "قرفصاء مع قفز خفيف", "Squat ak tàbb bu néew"), muscle: "Quadriceps & Fessiers", motion: "squat", sets: 4, repsOrSec: "12 reps", durationSec: 35, restSec: 25, hasJump: true, instructions: tr("Descends en squat puis pousse vers le haut sans à-coup brutal.", "Lower into squat then drive up smoothly.", "انزل في القرفصاء ثم ادفع للأعلى بسلاسة.", "Wàccal ci squat te yékkatu ndànk.") },
-        { id: "e-02-3", name: tr("Pompes complètes", "Standard Push-Ups", "تمارين الضغط الكاملة", "Pompe bu mat"), muscle: "Pectoraux, Bras & Core", motion: "push", sets: 4, repsOrSec: "12 reps", durationSec: 35, restSec: 20, hasJump: false, instructions: tr("Corps gainé de la tête aux talons, pousse fort sur les mains.", "Body in a straight plank line, press through palms.", "الجسم مستقيم من الرأس إلى القدمين مع الدفع باليدين.", "Yaram bi jub na ba ci tànk yi, jëfandikoo loxo yi.") },
-        { id: "e-02-4", name: tr("Gainage dynamique", "Dynamic Plank Tap", "بلانك حركي", "Planche bu yëngu"), muscle: "Sangle abdominale", motion: "core", sets: 3, repsOrSec: "40s", durationSec: 40, restSec: 20, hasJump: false, instructions: tr("Stabilise le bassin tout en touchant l'épaule opposée.", "Keep hips still while tapping opposite shoulder.", "ثبت الحوض مع لمس الكتف المقابل.", "Dëgëral létt bi te laal mbaam mi ci loxo bi.") },
-        { id: "e-02-5", name: tr("Good morning buste", "Hip Hinge Good Morning", "انحناء الجذع للأمام", "Wàccal wàll gi kanam"), muscle: "Ischios & Lombaires", motion: "hinge", sets: 3, repsOrSec: "14 reps", durationSec: 35, restSec: 20, hasJump: false, instructions: tr("Pousse les fessiers vers l'arrière avec le dos bien plat.", "Push glutes back with a flat back.", "ادفع المؤخرة للخلف مع الحفاظ على الظهر مسطحاً.", "Wàccal létt gi ginnaaw te gannaaw gi jub.") },
-      ],
-    },
-    {
-      id: "wk-03",
-      title: tr("Haut du corps", "Upper Body", "الجزء العلوي من الجسم", "Wàllu kawu yaram", "Tren superior", "Parte superior", "Oberkörper", "Parte superiore"),
-      description: tr(
-        "Renforce les pectoraux, le dos et les épaules pour une posture ferme et tonique.",
-        "Strengthens chest, upper back, and shoulders for a strong, upright posture.",
-        "يقوي الصدر وأعلى الظهر والكتفين لقوام مشدود.",
-        "Dëgëral dënk bi, gannaaw gi ak mbaam yi ngir yaram bi taxaw bu baax."
-      ),
-      photoUrl: "https://images.pexels.com/photos/3822906/pexels-photo-3822906.jpeg?auto=compress&cs=tinysrgb&w=900",
-      photoFallback: "https://images.pexels.com/photos/4162449/pexels-photo-4162449.jpeg?auto=compress&cs=tinysrgb&w=900",
-      durationMin: 20,
-      level: "Tous niveaux",
-      equipment: "Tapis",
-      bodyZone: "Haut du corps",
-      caloriesEst: 165,
-      hasJump: false,
-      safetyNotes: [
-        tr("Évite de hausser les épaules vers les oreilles.", "Avoid shrugging shoulders up toward your ears.", "تجنب رفع الكتفين نحو الأذنين.", "Bul yékkati mbaam yi ba ci nopp yi."),
-      ],
-      exercises: [
-        function buildMorePrograms(lang: LangCode): WorkoutSpec[] {
-  const tr = (fr: string, en: string, ar: string, wo: string, es?: string, pt?: string, de?: string, it?: string) => {
-    if (lang === "fr") return fr;
-    if (lang === "en") return en;
-    if (lang === "ar") return ar;
-    if (lang === "wo") return wo;
-    if (lang === "es") return es ?? en;
-    if (lang === "pt") return pt ?? en;
-    if (lang === "de") return de ?? en;
-    if (lang === "it") return it ?? en;
-    return en;
-  };
-    
-    if (lang === "wo") return wo;
-    if (lang === "es") return es ?? en;
-    if (lang === "pt") return pt ?? en;
-    if (lang === "de") return de ?? en;
-    if (lang === "it") return it ?? en;
-    return en;
-  };
-function buildMorePrograms(lang: LangCode): WorkoutSpec[] {
-  const tr = (fr: string, en: string, ar: string, wo: string, es?: string, pt?: string, de?: string, it?: string) => {
-    if (lang === "fr") return fr;
-    if (lang === "en") return en;
-    if (lang === "ar") return ar;
-    if (lang === "wo") return wo;
-    if (lang === "es") return es ?? en;
-    if (lang === "pt") return pt ?? en;
-    if (lang === "de") return de ?? en;
-    if (lang === "it") return it ?? en;
-    return en;
-  };
-  
+const photos = {
+  full: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1000",
+  cardio: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1000",
+  upper: "https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=1000",
+  legs: "https://images.unsplash.com/photo-1579758629938-03607ccdbaba?w=1000",
+  abs: "https://images.unsplash.com/photo-1546483875-ad9014c88eba?w=1000",
+  hiit: "https://images.unsplash.com/photo-1549060279-7e168fcee0c2?w=1000",
+  stretch: "https://images.unsplash.com/photo-1518611012118-696072aa579a?w=1000",
+  back: "https://images.unsplash.com/photo-1517838277536-f9a5a5f5b4d7?w=1000",
+  arms: "https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=1000",
+  home: "https://images.unsplash.com/photo-1599058917212-d750089bc07e?w=1000",
+};
 
-  return [
-    {
-      
-  return [
-    {
-      id: "wk-06",
-      title: tr("Cardio HIIT", "Cardio HIIT", "كارديو HIIT عالي الكثافة", "Cardio HIIT bu gaaw", "Cardio HIIT", "Cardio HIIT", "Cardio HIIT", "Cardio HIIT"),
-      description: tr(
-        "Intervalles dynamiques pour stimuler le cardio et brûler des calories.",
-        "Dynamic intervals to boost heart rate and burn calories.",
-        "فترات ديناميكية لتنشيط القلب وحرق السعرات.",
-        "Tàggat bu gaaw ngir yëngal xol bi te wàññi kalorii."
-      ),
-      photoUrl: "https://images.pexels.com/photos/4761792/pexels-photo-4761792.jpeg?auto=compress&cs=tinysrgb&w=900",
-      photoFallback: "https://images.pexels.com/photos/4753986/pexels-photo-4753986.jpeg?auto=compress&cs=tinysrgb&w=900",
-      durationMin: 15,
-      level: "Intermédiaire",
-      equipment: "Aucun",
-      bodyZone: "Cardio",
-      caloriesEst: 210,
-      hasJump: true,
-      safetyNotes: [
-        tr("Ajuste le rythme si l'essoufflement devient trop fort.", "Slow down if breathing becomes too heavy.", "خفف السرعة إذا أصبح التنفس ثقيلاً جداً.", "Wàññil dox bi su noyi bi gëna metti."),
-      ],
-      exercises: [
-        { id: "e-06-1", name: tr("Jumping jacks", "Jumping Jacks", "قفزات النجمة", "Jumping jacks"), muscle: "Cardio & Épaules", motion: "jack", sets: 4, repsOrSec: "40s", durationSec: 40, restSec: 20, hasJump: true, instructions: tr("Ouvre pieds et bras en rythme puis reviens au centre.", "Jump feet wide and raise arms overhead, then return.", "افتح القدمين والذراعين بإيقاع ثم عد للمنتصف.", "Ubbil tànk ak loxo yi ci dox bu wóor.") },
-        { id: "e-06-2", name: tr("Montées de genoux rapides", "Fast High Knees", "رفع الركبتين سريعاً", "Yékkati ñàkk bu gaaw"), muscle: "Cardio & Jambes", motion: "jack", sets: 4, repsOrSec: "35s", durationSec: 35, restSec: 20, hasJump: true, instructions: tr("Garde le buste droit et dynamise l'appui des pieds.", "Stay tall and keep foot contacts quick.", "حافظ على استقامة الجذع واجعل لمس القدم سريعاً.", "Taxawal bu jub te yékkati tànk yi bu gaaw.") },
-        { id: "e-06-3", name: tr("Squat impulsion", "Pulse Squat", "قرفصاء نبضية", "Squat bu yëngu"), muscle: "Cuisses & Fessiers", motion: "squat", sets: 3, repsOrSec: "30s", durationSec: 30, restSec: 20, hasJump: false, instructions: tr("Fais de petites impulsions dans la zone basse du squat.", "Pulse gently in the lower range of the squat.", "قم بنبضات صغيرة في الجزء السفلي للقرفصاء.", "Defal yëngu yu néew ci suufu squat bi.") },
-        { id: "e-06-4", name: tr("Pompe + planche rapide", "Push-Up to Plank Flow", "دمج الضغط والبلانك", "Pompe ak planche"), muscle: "Haut du corps & Core", motion: "push", sets: 3, repsOrSec: "10 reps", durationSec: 35, restSec: 20, hasJump: false, instructions: tr("Enchaîne proprement sans perdre l'alignement.", "Transition smoothly without losing alignment.", "انتقل بسلاسة دون فقدان الاستقامة.", "Démbal bu baax te bul wàccal jub gi.") },
-      ],
-    },
-    {
-      id: "wk-07",
-      title: tr("Mobilité", "Mobility", "المرونة والحركية", "Woyofal yaram", "Movilidad", "Mobilidade", "Mobilität", "Mobilità"),
-      description: tr(
-        "Améliore la souplesse articulaire et la fluidité des mouvements au quotidien.",
-        "Improves joint flexibility and everyday movement fluidity.",
-        "يحسن مرونة المفاصل وسلاسة الحركة اليومية.",
-        "Yokk woyofu yaram ak yaatuwaayu dundu bes bu nekk."
-      ),
-      photoUrl: "https://images.pexels.com/photos/4056723/pexels-photo-4056723.jpeg?auto=compress&cs=tinysrgb&w=900",
-      photoFallback: "https://images.pexels.com/photos/4056535/pexels-photo-4056535.jpeg?auto=compress&cs=tinysrgb&w=900",
-      durationMin: 15,
-      level: "Débutant",
-      equipment: "Tapis",
-      bodyZone: "Mobilité & Dos",
-      caloriesEst: 95,
-      hasJump: false,
-      safetyNotes: [
-        tr("Recherche un étirement confortable, jamais une douleur vive.", "Aim for a gentle stretch, never sharp pain.", "ابحث عن إطالة مريحة دون ألم حاد.", "Seetal talal bu neex te bul dugg ci metti."),
-      ],
-      exercises: [
-        { id: "e-07-1", name: tr("Étirement latéral du buste", "Side Bend Stretch", "إطالة جانبية للجذع", "Talal wàll ci wet"), muscle: "Flancs", motion: "stretch", sets: 3, repsOrSec: "30s", durationSec: 30, restSec: 15, hasJump: false, instructions: tr("Incline doucement le buste sur le côté.", "Bend torso gently sideways while keeping hips grounded.", "انحنِ بالجانب بلطف مع ثبات الحوض.", "Wàññil wàll gi ci wet ndànk.") },
-        { id: "e-07-2", name: tr("Squat mobilité hanches", "Hip Mobility Squat", "قرفصاء مرونة الورك", "Squat ngir woyofal létt"), muscle: "Hanches & Chevilles", motion: "squat", sets: 3, repsOrSec: "35s", durationSec: 35, restSec: 15, hasJump: false, instructions: tr("Descends lentement pour ouvrir les hanches en douceur.", "Lower slowly to open hips comfortably.", "انزل ببطء لفتح الوركين براحة.", "Wàccal ndànk ngir ubbi létt yi.") },
-        { id: "e-07-3", name: tr("Étirement chaîne arrière", "Posterior Stretch Flow", "إطالة السلسلة الخلفية", "Talal gannaaw"), muscle: "Dos & Jambes", motion: "stretch", sets: 3, repsOrSec: "35s", durationSec: 35, restSec: 15, hasJump: false, instructions: tr("Allonge les bras et pousse doucement les talons vers le sol.", "Reach long through arms and press heels gently down.", "مد الذراعين وادفع الكعبين بلطف نحو الأرض.", "Tàllalal loxo yi te wàccal tànk yi.") },
-        { id: "e-07-4", name: tr("Rotation thoracique", "Thoracic Reach", "حركة دوران الصدر", "Wëñal dënk"), muscle: "Thorax & Épaules", motion: "stretch", sets: 2, repsOrSec: "30s", durationSec: 30, restSec: 15, hasJump: false, instructions: tr("Tourne le buste sans forcer.", "Rotate upper back smoothly without forcing.", "أدر الجزء العلوي للظهر بلطف.", "Wëñalal wàllu kaw gi ndànk.") },
-      ],
-    },
-    {
-      id: "wk-08",
-      title: tr("Dos et posture", "Back & Posture", "الظهر والقوام", "Gannaaw ak taxawaay", "Espalda y postura", "Costas e postura", "Rücken & Haltung", "Schiena e postura"),
-      description: tr(
-        "Renforce le dos et améliore la posture face aux écrans et à la position assise.",
-        "Strengthens the back and improves posture for desk and daily life.",
-        "يقوي الظهر ويحسن القوام أثناء الجلوس اليومي.",
-        "Dëgëral gannaaw gi te taxawal yaram bi bu baax."
-      ),
-      photoUrl: "https://images.pexels.com/photos/4056535/pexels-photo-4056535.jpeg?auto=compress&cs=tinysrgb&w=900",
-      photoFallback: "https://images.pexels.com/photos/4056723/pexels-photo-4056723.jpeg?auto=compress&cs=tinysrgb&w=900",
-      durationMin: 18,
-      level: "Débutant",
-      equipment: "Tapis",
-      bodyZone: "Mobilité & Dos",
-      caloriesEst: 120,
-      hasJump: false,
-      safetyNotes: [
-        tr("Garde la nuque longue dans l'alignement de la colonne.", "Keep neck neutral in line with your spine.", "حافظ على استقامة الرقبة مع العمود الفقري.", "Wàccal waxambaane wi mu ànd ak gannaaw gi."),
-      ],
-      exercises: [
-        { id: "e-08-1", name: tr("Extension dorsale douce", "Gentle Back Extension", "تمديد الظهر بلطف", "Tàllal gannaaw bu neex"), muscle: "Muscles spinaux", motion: "hinge", sets: 3, repsOrSec: "12 reps", durationSec: 35, restSec: 20, hasJump: false, instructions: tr("Soulève légèrement la poitrine en serrant les omoplates.", "Lift chest slightly while drawing shoulder blades together.", "ارفع الصدر قليلاً مع ضم لوحي الكتف.", "Yékkatil dënk bi tuuti te boole mbaam yi.") },
-        { id: "e-08-2", name: tr("Pont fessier lombaire", "Glute Bridge", "جسر الحوض والظهر", "Pont ngir létt ak gannaaw"), muscle: "Fessiers & Lombaires", motion: "core", sets: 3, repsOrSec: "14 reps", durationSec: 35, restSec: 20, hasJump: false, instructions: tr("Monte le bassin jusqu'à aligner genoux, hanches et épaules.", "Lift hips until knees, hips, and shoulders align.", "ارفع الحوض حتى تستقيم الركبتان والوركان والكتفان.", "Yékkatil létt bi ba ñàkk, létt ak mbaam ànd.") },
-        { id: "e-08-3", name: tr("Étirement dorsal", "Back Release Stretch", "إطالة لإراحة الظهر", "Talal ngir woyofal gannaaw"), muscle: "Dos", motion: "stretch", sets: 3, repsOrSec: "30s", durationSec: 30, restSec: 15, hasJump: false, instructions: tr("Allonge le dos et relâche la respiration.", "Lengthen back and breathe calmly.", "مدد الظهر وتنفس بهدوء.", "Tàllalal gannaaw gi te noyi bu dal.") },
-        { id: "e-08-4", name: tr("Squat posture droite", "Upright Posture Squat", "قرفصاء باستقامة الظهر", "Squat bu gannaaw jub"), muscle: "Jambes & Posture", motion: "squat", sets: 3, repsOrSec: "12 reps", durationSec: 35, restSec: 20, hasJump: false, instructions: tr("Descends en gardant le buste droit et les épaules basses.", "Lower while keeping chest upright and shoulders down.", "انزل مع الحفاظ على استقامة الصدر وخفض الكتفين.", "Wàccal te dënk bi jub, mbaam yi wàcc.") },
-      ],
-    },
-    {
-      id: "wk-09",
-      title: tr("Bras et épaules", "Arms & Shoulders", "الذراعين والكتفين", "Loxo ak mbaam", "Brazos y hombros", "Braços e ombros", "Arme & Schultern", "Braccia e spalle"),
-      description: tr(
-        "Cible les dips, épaules et bras pour gagner en tonicité et en endurance.",
-        "Targets dips, shoulders, and arms to build muscular tone and endurance.",
-        "يستهدف الغطس والكتفين والذراعين لزيادة التناسق والتحمل.",
-        "Dëgëral loxo yi ak mbaam yi ngir yokk doole ak wér."
-      ),
-      photoUrl: "https://images.pexels.com/photos/4162491/pexels-photo-4162491.jpeg?auto=compress&cs=tinysrgb&w=900",
-      photoFallback: "https://images.pexels.com/photos/3822906/pexels-photo-3822906.jpeg?auto=compress&cs=tinysrgb&w=900",
-      durationMin: 19,
-      level: "Intermédiaire",
-      equipment: "Chaise / Mur",
-      bodyZone: "Haut du corps",
-      caloriesEst: 155,
-      hasJump: false,
-      safetyNotes: [
-        tr("Vérifie la stabilité de la chaise ou du mur avant de commencer.", "Make sure your chair or support is stable before starting.", "تأكد من ثبات الكرسي أو الدعامة قبل البدء.", "Wóorlu ne toogu bi walla biir bi taxaw na bu baax."),
-      ],
-      exercises: [
-        { id: "e-09-1", name: tr("Dips sur chaise stable", "Chair Dips", "غطس على كرسي ثابت", "Dips ci toogu bu wóor"), muscle: "Triceps & Épaules", motion: "push", sets: 4, repsOrSec: "10 reps", durationSec: 35, restSec: 20, hasJump: false, instructions: tr("Plie les coudes vers l'arrière près du bord puis pousse vers le haut.", "Bend elbows back close to edge and press up.", "اثنِ المرفقين للخلف قرب الحافة ثم ادفع للأعلى.", "Wàññil gëdd yi ginnaaw te yékkatu ci loxo yi.") },
-        { id: "e-09-2", name: tr("Pompes inclinées", "Incline Push-Ups", "ضغط مائل", "Pompe bu wàññiku"), muscle: "Pectoraux & Épaules", motion: "push", sets: 3, repsOrSec: "12 reps", durationSec: 35, restSec: 20, hasJump: false, instructions: tr("Mains sur support stable, corps aligné.", "Hands on stable surface, body in a straight line.", "اليدان على سطح ثابت والجسم مستقيم.", "Loxo yi ci biir bu wóor, yaram bi jub.") },
-        { id: "e-09-3", name: tr("Maintien et extension épaules", "Shoulder Hold & Reach", "ثبات ومد الكتفين", "Taxaw ak tàllal mbaam"), muscle: "Épaules", motion: "core", sets: 3, repsOrSec: "35s", durationSec: 35, restSec: 20, hasJump: false, instructions: tr("Maintiens la position avec contrôle.", "Hold position steadily with controlled breathing.", "حافظ على الوضعية بثبات مع تنفس منتظم.", "Taxawal bu baax te noyi bu wóor.") },
-        { id: "e-09-4", name: tr("Étirement bras et triceps", "Arm & Triceps Stretch", "إطالة الذراعين", "Talal loxo yi"), muscle: "Bras", motion: "stretch", sets: 2, repsOrSec: "30s", durationSec: 30, restSec: 15, hasJump: false, instructions: tr("Étire doucement l'arrière de chaque bras.", "Gently stretch the back of each arm.", "مدد الجزء الخلفي لكل ذراع برفق.", "Talalal ginnaawu loxo bu nekk ndànk.") },
-      ],
-    },
-    {
-      id: "wk-10",
-      title: tr("Sans saut", "Low Impact No-Jump", "بدون قفز", "Amul tàbb", "Sin salto", "Sem salto", "Ohne Sprung", "Senza salti"),
-      description: tr(
-        "Entraînement complet en appartement, silencieux et sans impact sur les articulations.",
-        "Quiet, apartment-friendly full workout with zero joint impact.",
-        "تمرين متكامل مناسب للشقق بدون قفز أو ضغط على المفاصل.",
-        "Tàggat bu mat ci biir kër te amul tàbb walla metti ci yaram."
-      ),
-      photoUrl: "https://images.pexels.com/photos/3757942/pexels-photo-3757942.jpeg?auto=compress&cs=tinysrgb&w=900",
-      photoFallback: "https://images.pexels.com/photos/4162449/pexels-photo-4162449.jpeg?auto=compress&cs=tinysrgb&w=900",
-      durationMin: 20,
-      level: "Tous niveaux",
-      equipment: "Aucun",
-      bodyZone: "Full Body",
-      caloriesEst: 160,
-      hasJump: false,
-      safetyNotes: [
-        tr("Mouvements fluides et contrôlés, zéro saut brusque.", "Smooth, controlled movements with zero jarring jumps.", "حركات سلسة ومنضبطة دون قفز مفاجئ.", "Dox yu woyof te ànd ak sàkku, amul tàbb bu metti."),
-      ],
-      exercises: [
-        { id: "e-10-1", name: tr("Squat + élévation douce", "Squat to Calf Raise", "قرفصاء مع رفع الكعبين", "Squat ak yékkati tànk"), muscle: "Jambes & Mollets", motion: "squat", sets: 3, repsOrSec: "14 reps", durationSec: 35, restSec: 20, hasJump: false, instructions: tr("Remonte du squat et monte sur demi-pointes sans sauter.", "Stand up from squat and rise onto toes without jumping.", "انهض من القرفصاء ثم قف على أطراف القدمين دون قفز.", "Jógal ci squat te yékkatu ci baaraami tànk te bul tàbb.") },
-        { id: "e-10-2", name: tr("Step-jack sans saut", "Step Jack No-Jump", "جامبينغ جاك بدون قفز", "Step jack amul tàbb"), muscle: "Cardio sans impact", motion: "jack", sets: 3, repsOrSec: "40s", durationSec: 40, restSec: 20, hasJump: false, instructions: tr("Écarte un pied après l'autre tout en levant les bras.", "Step one foot out at a time while raising arms.", "حرك قدماً تلو الأخرى جانباً مع رفع الذراعين.", "Yàggal tànk bi ci wet te yékkati loxo yi.") },
-        { id: "e-10-3", name: tr("Pompe inclinée calme", "Calm Incline Push-Up", "ضغط مائل هادئ", "Pompe bu woyof"), muscle: "Pectoraux & Épaules", motion: "push", sets: 3, repsOrSec: "12 reps", durationSec: 35, restSec: 20, hasJump: false, instructions: tr("Garde l'alignement et contrôle la descente.", "Maintain alignment and control the lowering phase.", "حافظ على الاستقامة وتحكم في النزول.", "Wàccal ndànk te jubalal yaram bi.") },
-        { id: "e-10-4", name: tr("Gainage + étirement final", "Core Hold & Stretch", "ثبات البطن وإطالة ختامية", "Dëgëral biir ak talal"), muscle: "Abdos & Détente", motion: "core", sets: 3, repsOrSec: "35s", durationSec: 35, restSec: 15, hasJump: false, instructions: tr("Termine en douceur par un gainage calme et un étirement.", "Finish smoothly with controlled core hold and stretch.", "اختم بهدوء بثبات للبطن وإطالة خفيفة.", "Jéexalal bu dal ak talal bu neex.") },
-      ],
-    },
-  ];
-}
+const makeExercise = (
+  id: string,
+  name: string,
+  sets: number,
+  reps: number,
+  rest: number,
+  level: string,
+  equipment: string,
+  muscle: string,
+  instructions: string,
+  duration?: number
+): Exercise => ({
+  id,
+  name,
+  sets,
+  reps,
+  rest,
+  level,
+  equipment,
+  muscle,
+  instructions,
+  duration,
+});
 
-function getAllTenPrograms(lang: LangCode): WorkoutSpec[] {
-  return [...buildTenPrograms(lang), ...buildMorePrograms(lang)];
-}
-
-function buildAllLangsPack(): Record<LangCode, WorkoutSpec[]> {
-  return LANGS.reduce((acc, l) => {
-    acc[l] = getAllTenPrograms(l);
-    return acc;
-  }, {} as Record<LangCode, WorkoutSpec[]>);
-}
-
-function playCompletionBeep() {
-  try {
-    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.25);
-  } catch {}
-}
-
-function AnimatedSilhouette2D({
-  motion,
-  isRunning,
-  isResting,
-  tick,
-  size = "md",
-}: {
-  motion: MotionKind;
-  isRunning: boolean;
-  isResting: boolean;
-  tick: number;
-  size?: "sm" | "md";
-}) {
-  const phase = isRunning && !isResting ? tick % 2 : 0;
-  let dy = 0;
-  let armAngle = -10;
-  let legAngle = 8;
-
-  if (motion === "squat") {
-    dy = phase === 1 ? 13 : 0;
-    armAngle = phase === 1 ? -40 : -10;
-    legAngle = phase === 1 ? 28 : 6;
-  } else if (motion === "push") {
-    dy = phase === 1 ? 11 : 0;
-    armAngle = phase === 1 ? 30 : -12;
-  } else if (motion === "jack") {
-    dy = phase === 1 ? -7 : 0;
-    armAngle = phase === 1 ? -58 : -12;
-    legAngle = phase === 1 ? 26 : 8;
-  } else if (motion === "core") {
-    dy = phase === 1 ? 7 : 0;
-    armAngle = phase === 1 ? -24 : -8;
-  } else if (motion === "hinge") {
-    dy = phase === 1 ? 9 : 0;
-    armAngle = phase === 1 ? 20 : -6;
-    legAngle = phase === 1 ? 14 : 4;
-  } else {
-    dy = phase === 1 ? -5 : 0;
-    armAngle = phase === 1 ? -46 : -14;
-    legAngle = phase === 1 ? 10 : 5;
+export const workouts: Workout[] = [
+  {
+    id: 1,
+    title: "Full Body Débutant",
+    subtitle: "Renforce tout le corps à ton rythme.",
+    duration: 18,
+    level: "Débutant",
+    equipment: "Aucun",
+    caloriesMin: 90,
+    caloriesMax: 150,
+    muscle: "Corps entier",
+    hasJump: false,
+    image: photos.full,
+    exercises: [
+      makeExercise("1-1", "Squat", 3, 12, 30, "Débutant", "Aucun", "Jambes", "Garde le dos droit, descends en poussant les hanches vers l'arrière."),
+      makeExercise("1-2", "Pompes sur les genoux", 3, 10, 30, "Débutant", "Tapis", "Pectoraux", "Garde le corps aligné et descends doucement."),
+      makeExercise("1-3", "Fente avant", 3, 10, 30, "Débutant", "Aucun", "Jambes", "Avance un pied et fléchis les deux genoux sans perdre l'équilibre."),
+      makeExercise("1-4", "Planche", 3, 30, 30, "Débutant", "Tapis", "Abdominaux", "Garde le corps aligné et contracte les abdominaux.", 30),
+      makeExercise("1-5", "Mountain Climbers lents", 3, 20, 30, "Débutant", "Tapis", "Core", "En position de planche, ramène alternativement les genoux vers la poitrine.", 20),
+    ],
+  },
+  {
+    id: 2,
+    title: "Full Body Intermédiaire",
+    subtitle: "Une séance complète pour progresser.",
+    duration: 25,
+    level: "Intermédiaire",
+    equipment: "Aucun",
+    caloriesMin: 150,
+    caloriesMax: 250,
+    muscle: "Corps entier",
+    hasJump: true,
+    image: photos.cardio,
+    exercises: [
+      makeExercise("2-1", "Burpees sans saut", 3, 10, 30, "Intermédiaire", "Aucun", "Corps entier", "Place les mains au sol, recule les pieds et reviens debout."),
+      makeExercise("2-2", "Pompes classiques", 3, 12, 30, "Intermédiaire", "Tapis", "Pectoraux", "Garde le corps droit et fléchis les coudes."),
+      makeExercise("2-3", "Squat sauté", 3, 10, 40, "Intermédiaire", "Aucun", "Jambes", "Descends en squat puis saute verticalement en contrôlant la réception."),
+      makeExercise("2-4", "Fente sautée", 3, 8, 40, "Intermédiaire", "Aucun", "Jambes", "Alterne les jambes avec une réception souple."),
+      makeExercise("2-5", "Gainage dynamique", 3, 40, 30, "Intermédiaire", "Tapis", "Core", "Passe des avant-bras aux mains sans bouger les hanches.", 40),
+    ],
+  },
+  {
+    id: 3,
+    title: "Haut du Corps",
+    subtitle: "Travaille les pectoraux, bras et épaules.",
+    duration: 22,
+    level: "Intermédiaire",
+    equipment: "Chaise",
+    caloriesMin: 120,
+    caloriesMax: 200,
+    muscle: "Haut du corps",
+    hasJump: false,
+    image: photos.upper,
+    exercises: [
+      makeExercise("3-1", "Pompes larges", 4, 12, 30, "Intermédiaire", "Aucun", "Pectoraux", "Place les mains plus larges que les épaules."),
+      makeExercise("3-2", "Pompes diamant", 3, 8, 30, "Intermédiaire", "Aucun", "Triceps", "Rapproche les mains sous la poitrine et descends avec contrôle."),
+      makeExercise("3-3", "Pike Push-Up", 3, 10, 30, "Intermédiaire", "Aucun", "Épaules", "Forme un V inversé et fléchis les coudes."),
+      makeExercise("3-4", "Dips sur chaise", 3, 12, 30, "Intermédiaire", "Chaise stable", "Triceps", "Descends doucement sans forcer les épaules."),
+      makeExercise("3-5", "Superman", 3, 12, 30, "Intermédiaire", "Tapis", "Dos", "Allongé sur le ventre, soulève doucement les bras et les jambes."),
+    ],
+  },
+  {
+    id: 4,
+    title: "Jambes & Fessiers",
+    subtitle: "Renforce les jambes et les fessiers.",
+    duration: 24,
+    level: "Tous niveaux",
+    equipment: "Aucun",
+    caloriesMin: 120,
+    caloriesMax: 210,
+    muscle: "Jambes",
+    hasJump: false,
+    image: photos.legs,
+    exercises: [
+      makeExercise("4-1", "Squat sumo", 4, 15, 30, "Tous niveaux", "Aucun", "Jambes", "Écarte les pieds et oriente légèrement les pointes vers l'extérieur."),
+      makeExercise("4-2", "Fente arrière", 3, 12, 30, "Tous niveaux", "Aucun", "Jambes", "Recule une jambe et descends verticalement."),
+      makeExercise("4-3", "Pont fessier", 4, 15, 30, "Tous niveaux", "Tapis", "Fessiers", "Pousse sur les pieds et soulève le bassin."),
+      makeExercise("4-4", "Donkey Kick", 3, 12, 30, "Tous niveaux", "Tapis", "Fessiers", "À quatre pattes, lève un pied vers le plafond sans cambrer le dos."),
+      makeExercise("4-5", "Wall Sit", 3, 40, 30, "Tous niveaux", "Mur", "Jambes", "Maintiens la position assise contre un mur.", 40),
+    ],
+  },
+  {
+    id: 5,
+    title: "Abdos & Core",
+    subtitle: "Travaille la stabilité du centre du corps.",
+    duration: 15,
+    level: "Débutant",
+    equipment: "Tapis",
+    caloriesMin: 60,
+    caloriesMax: 120,
+    muscle: "Abdominaux",
+    hasJump: false,
+    image: photos.abs,
+    exercises: [
+      makeExercise("5-1", "Crunch", 3, 15, 20, "Débutant", "Tapis", "Abdominaux", "Soulève légèrement les épaules sans tirer sur la nuque."),
+      makeExercise("5-2", "Leg Raises", 3, 12, 20, "Débutant", "Tapis", "Abdominaux", "Lève et abaisse les jambes en contrôlant le bas du dos."),
+      makeExercise("5-3", "Russian Twist", 3, 20, 20, "Débutant", "Tapis", "Abdominaux", "Tourne le buste alternativement de chaque côté."),
+      makeExercise("5-4", "Bicycle Crunch", 3, 20, 20, "Débutant", "Tapis", "Abdominaux", "Rapproche alternativement le coude du genou opposé."),
+      makeExercise("5-5", "Dead Bug", 3, 10, 20, "Débutant", "Tapis", "Core", "Allonge un bras et la jambe opposée en gardant le dos stable."),
+    ],
+  },
+];
+         
+workouts.push(
+  {
+    id: 6,
+    title: "Cardio Brûle-Graisse HIIT",
+    subtitle: "Améliore ton endurance avec des intervalles.",
+    duration: 20,
+    level: "Intermédiaire",
+    equipment: "Aucun",
+    caloriesMin: 130,
+    caloriesMax: 230,
+    muscle: "Corps entier",
+    hasJump: true,
+    image: photos.hiit,
+    exercises: [
+      makeExercise("6-1", "Jumping Jacks", 4, 30, 20, "Intermédiaire", "Aucun", "Cardio", "Écarte simultanément les bras et les jambes puis reviens.", 30),
+      makeExercise("6-2", "High Knees", 4, 30, 20, "Intermédiaire", "Aucun", "Cardio", "Cours sur place en montant alternativement les genoux.", 30),
+      makeExercise("6-3", "Skater", 3, 30, 20, "Intermédiaire", "Aucun", "Jambes", "Saute latéralement d'un pied à l'autre.", 30),
+      makeExercise("6-4", "Burpees", 3, 8, 30, "Intermédiaire", "Aucun", "Corps entier", "Enchaîne la position au sol et le retour debout."),
+      makeExercise("6-5", "Squat to Punch", 3, 30, 20, "Intermédiaire", "Aucun", "Cardio", "Descends en squat puis donne un coup de poing contrôlé.", 30),
+    ],
+  },
+  {
+    id: 7,
+    title: "Mobilité & Étirements",
+    subtitle: "Améliore ta mobilité et ta souplesse.",
+    duration: 12,
+    level: "Tous niveaux",
+    equipment: "Tapis",
+    caloriesMin: 25,
+    caloriesMax: 55,
+    muscle: "Corps entier",
+    hasJump: false,
+    image: photos.stretch,
+    exercises: [
+      makeExercise("7-1", "Chat-Vache", 2, 10, 10, "Tous niveaux", "Tapis", "Dos", "Alter­ne doucement le dos rond et le dos creux."),
+      makeExercise("7-2", "Étirement ischio-jambiers", 2, 30, 10, "Tous niveaux", "Tapis", "Jambes", "Étire doucement l'arrière de la cuisse.", 30),
+      makeExercise("7-3", "Ouverture de hanche", 2, 30, 10, "Tous niveaux", "Tapis", "Hanches", "Réalise une ouverture douce de la hanche.", 30),
+      makeExercise("7-4", "Étirement du dos", 2, 30, 10, "Tous niveaux", "Tapis", "Dos", "Étire le dos sans forcer.", 30),
+      makeExercise("7-5", "Rotation des épaules", 2, 10, 10, "Tous niveaux", "Aucun", "Épaules", "Effectue des rotations lentes des épaules."),
+    ],
+  },
+  {
+    id: 8,
+    title: "Dos & Posture",
+    subtitle: "Renforce les muscles du dos.",
+    duration: 18,
+    level: "Débutant",
+    equipment: "Aucun",
+    caloriesMin: 60,
+    caloriesMax: 110,
+    muscle: "Dos",
+    hasJump: false,
+    image: photos.back,
+    exercises: [
+      makeExercise("8-1", "Superman Pull", 3, 12, 30, "Débutant", "Tapis", "Dos", "Allongé sur le ventre, tire les coudes vers les côtes en contrôlant le mouvement."),
+      makeExercise("8-2", "Bird Dog", 3, 10, 20, "Débutant", "Tapis", "Dos", "À quatre pattes, tends le bras et la jambe opposés."),
+      makeExercise("8-3", "Reverse Snow Angel", 3, 12, 30, "Débutant", "Tapis", "Dos", "Allongé sur le ventre, déplace les bras en arc de cercle."),
+      makeExercise("8-4", "Good Morning", 3, 12, 30, "Débutant", "Aucun", "Dos", "Pousse les hanches vers l'arrière en gardant le dos neutre."),
+    ],
+  },
+  {
+    id: 9,
+    title: "Bras & Épaules",
+    subtitle: "Développe la force du haut du corps.",
+    duration: 16,
+    level: "Intermédiaire",
+    equipment: "Chaise",
+    caloriesMin: 70,
+    caloriesMax: 130,
+    muscle: "Bras",
+    hasJump: false,
+    image: photos.arms,
+    exercises: [
+      makeExercise("9-1", "Pompes épaules", 3, 10, 30, "Intermédiaire", "Aucun", "Épaules", "Place le bassin haut et fléchis les bras en direction du sol."),
+      makeExercise("9-2", "Cercles de bras", 3, 30, 20, "Intermédiaire", "Aucun", "Épaules", "Réalise des cercles contrôlés avec les bras.", 30),
+      makeExercise("9-3", "Dips", 3, 12, 30, "Intermédiaire", "Chaise stable", "Triceps", "Fléchis les coudes avec une amplitude confortable."),
+      makeExercise("9-4", "Planche latérale", 3, 30, 20, "Intermédiaire", "Tapis", "Core", "Maintiens le bassin aligné.", 30),
+    ],
+  },
+  {
+    id: 10,
+    title: "Sans Saut Appartement",
+    subtitle: "Bouge chez toi sans impact ni bruit de saut.",
+    duration: 20,
+    level: "Débutant",
+    equipment: "Aucun",
+    caloriesMin: 75,
+    caloriesMax: 140,
+    muscle: "Corps entier",
+    hasJump: false,
+    image: photos.home,
+    exercises: [
+      makeExercise("10-1", "Squat lent", 3, 12, 30, "Débutant", "Aucun", "Jambes", "Descends lentement puis remonte en contrôlant."),
+      makeExercise("10-2", "Fente statique", 3, 10, 30, "Débutant", "Aucun", "Jambes", "Fléchis les genoux sans déplacer les pieds."),
+      makeExercise("10-3", "Marche planche", 3, 10, 30, "Débutant", "Tapis", "Core", "Depuis la planche, avance les mains ou les pieds de façon contrôlée."),
+      makeExercise("10-4", "Pont fessier", 3, 15, 30, "Débutant", "Tapis", "Fessiers", "Soulève le bassin en contractant les fessiers."),
+      makeExercise("10-5", "Gainage", 3, 40, 30, "Débutant", "Tapis", "Abdominaux", "Maintiens le corps aligné et respire normalement.", 40),
+    ],
   }
+);
+             
+const Icon = ({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => (
+  <span
+    className={`inline-flex items-center justify-center ${className}`}
+    aria-hidden="true"
+  >
+    {children}
+  </span>
+);
 
-  const boxClass = size === "sm" ? "w-16 h-16 rounded-xl" : "w-24 h-24 rounded-2xl";
-  const svgClass = size === "sm" ? "w-14 h-14 text-[#0B1F3A]" : "w-20 h-20 text-[#0B1F3A]";
-
+function Photo({
+  src,
+  alt,
+  className = "",
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+}) {
   return (
-    <div className={`${boxClass} bg-white border border-slate-200 flex items-center justify-center shrink-0`}>
-      <svg viewBox="0 0 120 120" className={svgClass} fill="none">
-        <g transform={`translate(0, ${dy})`}>
-          <circle cx="60" cy="20" r="9" fill="currentColor" />
-          <path d="M52 33H68L71 62H49L52 33Z" fill="currentColor" />
-          <g transform={`translate(60, 38) rotate(${armAngle})`}>
-            <rect x="-3" y="0" width="6" height="24" rx="3" fill="currentColor" />
-          </g>
-          <g transform={`translate(60, 62) rotate(${legAngle})`}>
-            <rect x="-4" y="0" width="8" height="30" rx="4" fill="currentColor" />
-          </g>
-        </g>
-        <line x1="20" y1="102" x2="100" y2="102" stroke="#10B981" strokeWidth="3" strokeLinecap="round" />
-      </svg>
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      className={`h-full w-full object-cover ${className}`}
+    />
+  );
+}
+
+function SectionTitle({
+  title,
+  action,
+  onAction,
+}: {
+  title: string;
+  action?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="mb-4 flex items-center justify-between gap-3">
+      <h2 className="text-lg font-bold text-white sm:text-xl">{title}</h2>
+      {action && (
+        <button
+          onClick={onAction}
+          className="text-sm font-semibold text-yellow-400 hover:text-yellow-300"
+        >
+          {action}
+        </button>
+      )}
     </div>
   );
-      }
-                                                                                                                                                                                                                                              export default function FitProHome() {
-  const [lang, setLang] = useState<LangCode>("fr");
-  const [activeTab, setActiveTab] = useState<TabKey>("home");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [durationFilter, setDurationFilter] = useState<"all" | "short" | "medium">("all");
-  const [levelFilter, setLevelFilter] = useState<string>("all");
-  const [equipmentFilter, setEquipmentFilter] = useState<string>("all");
-  const [zoneFilter, setZoneFilter] = useState<string>("all");
-  const [jumpFilter, setJumpFilter] = useState<"all" | "no-jump" | "with-jump">("all");
+}
 
-  const [workouts, setWorkouts] = useState<WorkoutSpec[]>(() => getAllTenPrograms("fr"));
-  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSpec | null>(null);
-  const [activeIdx, setActiveIdx] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(30);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isResting, setIsResting] = useState(false);
-  const [autoChain, setAutoChain] = useState(true);
-  const [tick, setTick] = useState(0);
-  const [prefs, setPrefs] = useState<UserPreferenceData>({
-    id: 1,
-    langue: "fr",
-    bipActif: true,
-    vibrationActive: true,
-    garderEcranAllume: true,
-    avertissementSanteAccepte: true,
-  });
-  const [history, setHistory] = useState<SessionLog[]>([]);
-  const [offlineMode, setOfflineMode] = useState(false);
-  const wakeLockRef = useRef<{ release?: () => Promise<void> } | null>(null);
+function StatCard({
+  label,
+  value,
+  detail,
+  icon,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  icon: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-[#111111] p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-xs text-gray-400">{label}</span>
+        <span className="text-xl text-yellow-400">{icon}</span>
+      </div>
+      <div className="text-2xl font-black text-white">{value}</div>
+      <div className="mt-1 text-xs text-gray-500">{detail}</div>
+    </div>
+  );
+}
 
-  const ui = UI_TEXT[lang] ?? UI_TEXT.fr;
+function WorkoutCard({
+  workout,
+  onClick,
+  favorite,
+  onFavorite,
+}: {
+  workout: Workout;
+  onClick: () => void;
+  favorite: boolean;
+  onFavorite: () => void;
+}) {
+  return (
+    <article className="group overflow-hidden rounded-2xl border border-white/10 bg-[#111111] transition hover:border-yellow-400/50">
+      <button
+        onClick={onClick}
+        className="block w-full text-left"
+        aria-label={`Voir ${workout.title}`}
+      >
+        <div className="relative h-40 overflow-hidden sm:h-48">
+          <Photo
+            src={workout.image}
+            alt={`Photo de ${workout.title}`}
+            className="transition duration-500 group-hover:scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
+          <span className="absolute left-3 top-3 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-xs font-semibold text-yellow-300">
+            {workout.level}
+          </span>
+          <span className="absolute bottom-3 left-3 text-lg font-bold text-white">
+            {workout.title}
+          </span>
+        </div>
+      </button>
+
+      <div className="p-4">
+        <p className="mb-3 text-sm text-gray-400">{workout.subtitle}</p>
+        <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-300">
+          <span>◷ {workout.duration} min</span>
+          <span>♧ {workout.exercises.length} exercices</span>
+          <span>~{workout.caloriesMin}-{workout.caloriesMax} kcal</span>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <button
+            onClick={onClick}
+            className="rounded-xl bg-yellow-400 px-4 py-2.5 text-sm font-bold text-black transition hover:bg-yellow-300"
+          >
+            Voir le programme
+          </button>
+          <button
+            onClick={onFavorite}
+            aria-label={favorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+            className={`rounded-xl border px-3 py-2.5 text-lg ${
+              favorite
+                ? "border-yellow-400 bg-yellow-400/10 text-yellow-400"
+                : "border-white/10 text-gray-400"
+            }`}
+          >
+            {favorite ? "♥" : "♡"}
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function BottomNavigation({
+  active,
+  onChange,
+}: {
+  active: string;
+  onChange: (value: string) => void;
+}) {
+  const items = [
+    { id: "home", label: "Accueil", icon: "⌂" },
+    { id: "workouts", label: "Entraînement", icon: "⚒" },
+    { id: "nutrition", label: "Nutrition", icon: "◉" },
+    { id: "progress", label: "Progrès", icon: "▥" },
+    { id: "settings", label: "Paramètres", icon: "⚙" },
+  ];
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/95 px-2 pb-[max(env(safe-area-inset-bottom),8px)] pt-3 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-3xl items-center justify-around">
+        {items.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onChange(item.id)}
+            className={`flex min-w-0 flex-1 flex-col items-center gap-1 py-1 text-[10px] sm:text-xs ${
+              active === item.id ? "text-yellow-400" : "text-gray-500"
+            }`}
+          >
+            <span className="text-2xl leading-none">{item.icon}</span>
+            <span className="truncate">{item.label}</span>
+          </button>
+        ))}
+      </div>
+    </nav>
+  );
+  }
+  
+export default function FitProHome() {
+  const [activeTab, setActiveTab] = useState("home");
+  const [view, setView] = useState<"home" | "workouts" | "detail" | "reader">("home");
+  const [selectedWorkout, setSelectedWorkout] = useState<Workout>(workouts[0]);
+  const [exerciseIndex, setExerciseIndex] = useState(0);
+  const [search, setSearch] = useState("");
+  const [levelFilter, setLevelFilter] = useState("Tous");
+  const [jumpFilter, setJumpFilter] = useState("Tous");
+  const [favorites, setFavorites] = useState<number[]>([]);
+  const [paused, setPaused] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+  const [restMode, setRestMode] = useState(false);
+  const [restSeconds, setRestSeconds] = useState(0);
+  const [completed, setCompleted] = useState<string[]>([]);
+  const [showAll, setShowAll] = useState(false);
+
+  const currentExercise = selectedWorkout.exercises[exerciseIndex];
+
+  const filteredWorkouts = useMemo(() => {
+    return workouts.filter((workout) => {
+      const matchesSearch =
+        workout.title.toLowerCase().includes(search.toLowerCase()) ||
+        workout.muscle.toLowerCase().includes(search.toLowerCase()) ||
+        workout.subtitle.toLowerCase().includes(search.toLowerCase());
+
+      const matchesLevel =
+        levelFilter === "Tous" || workout.level === levelFilter;
+
+      const matchesJump =
+        jumpFilter === "Tous" ||
+        (jumpFilter === "Sans saut" && !workout.hasJump) ||
+        (jumpFilter === "Avec saut" && workout.hasJump);
+
+      return matchesSearch && matchesLevel && matchesJump;
+    });
+  }, [search, levelFilter, jumpFilter]);
+
+  const progress = selectedWorkout.exercises.length
+    ? Math.round(
+        (completed.filter((id) =>
+          selectedWorkout.exercises.some((ex) => ex.id === id)
+        ).length /
+          selectedWorkout.exercises.length) *
+          100
+      )
+    : 0;
 
   useEffect(() => {
-    try {
-      const rawHistory = localStorage.getItem("fpv_history");
-      if (rawHistory) setHistory(JSON.parse(rawHistory));
-      const rawPrefs = localStorage.getItem("fpv_prefs");
-      if (rawPrefs) setPrefs(JSON.parse(rawPrefs));
-      const rawPack = localStorage.getItem("fpv_all_langs_pack");
-      if (!rawPack) {
-        localStorage.setItem("fpv_all_langs_pack", JSON.stringify(buildAllLangsPack()));
-      }
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/sw.js").catch(() => {});
-      }
-    } catch {}
-  }, []);
+    if (view !== "reader" || paused || finished) return;
 
-  useEffect(() => {
-    const syncWakeLock = async () => {
-      try {
-        if (prefs.garderEcranAllume && isRunning && "wakeLock" in navigator) {
-          const wlApi = navigator as unknown as { wakeLock?: { request?: (t: string) => Promise<{ release?: () => Promise<void> }> } };
-          if (!wakeLockRef.current && wlApi.wakeLock?.request) {
-            wakeLockRef.current = await wlApi.wakeLock.request("screen");
+    const timer = window.setInterval(() => {
+      setElapsed((value) => value + 1);
+
+      if (restMode) {
+        setRestSeconds((value) => {
+          if (value <= 1) {
+            setRestMode(false);
+            return 0;
           }
-        } else if (wakeLockRef.current?.release) {
-          await wakeLockRef.current.release();
-          wakeLockRef.current = null;
-        }
-      } catch {}
-    };
-    syncWakeLock();
-  }, [prefs.garderEcranAllume, isRunning]);
-
-  const syncPendingData = useCallback(async () => {
-    if (typeof navigator !== "undefined" && !navigator.onLine) return;
-    try {
-      const rawPrefs = localStorage.getItem("fpv_pending_prefs");
-      if (rawPrefs) {
-        const patch = JSON.parse(rawPrefs);
-        const res = await fetch("/api/preferences", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(patch),
+          return value - 1;
         });
-        if (res.ok) localStorage.removeItem("fpv_pending_prefs");
+      } else if (seconds > 0) {
+        setSeconds((value) => Math.max(0, value - 1));
       }
-      const rawHist = localStorage.getItem("fpv_pending_history");
-      if (rawHist) {
-        const items = JSON.parse(rawHist);
-        if (Array.isArray(items) && items.length > 0) {
-          const res = await fetch("/api/history", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ logs: items }),
-          });
-          if (res.ok) localStorage.removeItem("fpv_pending_history");
-        }
-      }
-      setOfflineMode(false);
-    } catch {}
-  }, []);
-
-  const addHistory = useCallback(
-    async (workoutTitle: string, exerciseName: string, durationSec: number) => {
-      const entry: SessionLog = {
-        id: `${Date.now()}`,
-        workoutTitle,
-        exerciseName,
-        completedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        durationSec,
-      };
-      setHistory((prev) => {
-        const next = [entry, ...prev].slice(0, 20);
-        try { localStorage.setItem("fpv_history", JSON.stringify(next)); } catch {}
-        return next;
-      });
-      if (prefs.bipActif) playCompletionBeep();
-      if (prefs.vibrationActive && typeof navigator !== "undefined" && "vibrate" in navigator) {
-        try { navigator.vibrate([180, 80, 180]); } catch {}
-      }
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
-        setOfflineMode(true);
-        try {
-          const cur = JSON.parse(localStorage.getItem("fpv_pending_history") || "[]");
-          cur.push(entry);
-          localStorage.setItem("fpv_pending_history", JSON.stringify(cur));
-        } catch {}
-        return;
-      }
-      try {
-        await fetch("/api/history", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(entry),
-        });
-      } catch {
-        try {
-          const cur = JSON.parse(localStorage.getItem("fpv_pending_history") || "[]");
-          cur.push(entry);
-          localStorage.setItem("fpv_pending_history", JSON.stringify(cur));
-        } catch {}
-      }
-    },
-    [prefs.bipActif, prefs.vibrationActive]
-  );
-
-  const selectExerciseAt = useCallback((wk: WorkoutSpec | null, idx: number, shouldStart: boolean) => {
-    const list = wk?.exercises ?? [];
-    const safeIdx = Math.max(0, Math.min(idx, Math.max(0, list.length - 1)));
-    const targetEx = list[safeIdx];
-    setActiveIdx(safeIdx);
-    setIsResting(false);
-    setSecondsLeft(targetEx?.durationSec ?? 30);
-    setIsRunning(shouldStart && Boolean(targetEx));
-  }, []);
-
-  const openWorkout = useCallback(
-    (wk: WorkoutSpec, shouldStart: boolean) => {
-      setSelectedWorkout(wk);
-      setActiveTab("workouts");
-      selectExerciseAt(wk, 0, shouldStart);
-    },
-    [selectExerciseAt]
-  );
-
-  const loadData = useCallback(async (targetLang: LangCode) => {
-    const baseTen = getAllTenPrograms(targetLang);
-    const cacheKey = `fpv_ten_${targetLang}`;
-    const isBrowserOffline = typeof navigator !== "undefined" && !navigator.onLine;
-
-    const applyPrograms = (list: WorkoutSpec[], offline: boolean) => {
-      setWorkouts(list);
-      setOfflineMode(offline);
-      setSelectedWorkout((prev) => (prev ? list.find((w) => w.id === prev.id) ?? null : null));
-    };
-
-    if (isBrowserOffline) {
-      try {
-        const cached = localStorage.getItem(cacheKey);
-        const parsed = cached ? JSON.parse(cached) : baseTen;
-        applyPrograms(Array.isArray(parsed) && parsed.length >= 10 ? parsed : baseTen, true);
-      } catch {
-        applyPrograms(baseTen, true);
-      }
-      return;
-    }
-
-    try {
-      await fetch(`/api/workouts?lang=${targetLang}`, { cache: "no-store" });
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(baseTen));
-      } catch {}
-      applyPrograms(baseTen, false);
-    } catch {
-      applyPrograms(baseTen, true);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData(lang);
-  }, [lang, loadData]);
-
-  useEffect(() => {
-    const onOnline = () => {
-      setOfflineMode(false);
-      syncPendingData();
-      loadData(lang);
-    };
-    const onOffline = () => setOfflineMode(true);
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-    return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
-    };
-  }, [lang, loadData, syncPendingData]);
-
-  const completeCurrentStep = useCallback(() => {
-    const wk = selectedWorkout;
-    const list = wk?.exercises ?? [];
-    const ex = list[activeIdx];
-    const wkTitle = wk?.title ?? "Séance";
-
-    if (!isResting && ex) {
-      addHistory(wkTitle, ex.name, ex.durationSec);
-    }
-
-    if (!isResting && autoChain && activeIdx < list.length - 1) {
-      setIsResting(true);
-      setSecondsLeft(ex?.restSec ?? 15);
-      setIsRunning(true);
-      return;
-    }
-
-    if (isResting && activeIdx < list.length - 1) {
-      selectExerciseAt(wk, activeIdx + 1, autoChain);
-      return;
-    }
-
-    setIsRunning(false);
-    setIsResting(false);
-    setSecondsLeft(0);
-  }, [selectedWorkout, activeIdx, isResting, autoChain, addHistory, selectExerciseAt]);
-
-  useEffect(() => {
-    if (!isRunning) return;
-    const id = setInterval(() => {
-      setTick((t) => t + 1);
-      setSecondsLeft((s) => {
-        if (s <= 1) {
-          completeCurrentStep();
-          return 0;
-        }
-        return s - 1;
-      });
     }, 1000);
-    return () => clearInterval(id);
-  }, [isRunning, completeCurrentStep]);
 
-  const updatePref = async (key: "bipActif" | "vibrationActive" | "garderEcranAllume" | "avertissementSanteAccepte") => {
-    const next = { ...prefs, [key]: !prefs[key] };
-    setPrefs(next);
-    try { localStorage.setItem("fpv_prefs", JSON.stringify(next)); } catch {}
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      setOfflineMode(true);
-      try { localStorage.setItem("fpv_pending_prefs", JSON.stringify({ [key]: next[key] })); } catch {}
+    return () => window.clearInterval(timer);
+  }, [view, paused, finished, restMode, seconds]);
+
+  const formatTime = (value: number) => {
+    const minutes = Math.floor(value / 60);
+    const secs = value % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+
+  const toggleFavorite = (id: number) => {
+    setFavorites((old) =>
+      old.includes(id) ? old.filter((item) => item !== id) : [...old, id]
+    );
+  };
+
+  const openWorkout = (workout: Workout) => {
+    setSelectedWorkout(workout);
+    setExerciseIndex(0);
+    setCompleted([]);
+    setView("detail");
+    setActiveTab("workouts");
+    setFinished(false);
+  };
+
+  const startWorkout = () => {
+    setExerciseIndex(0);
+    setCompleted([]);
+    setElapsed(0);
+    setPaused(false);
+    setFinished(false);
+    setRestMode(false);
+    setSeconds(
+      selectedWorkout.exercises[0]?.duration || 30
+    );
+    setView("reader");
+  };
+
+  const nextExercise = () => {
+    if (!currentExercise) return;
+
+    setCompleted((old) =>
+      old.includes(currentExercise.id)
+        ? old
+        : [...old, currentExercise.id]
+    );
+
+    if (exerciseIndex >= selectedWorkout.exercises.length - 1) {
+      setFinished(true);
       return;
     }
-    try {
-      await fetch("/api/preferences", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [key]: next[key] }),
-      });
-    } catch {
-      setOfflineMode(true);
-      try { localStorage.setItem("fpv_pending_prefs", JSON.stringify({ [key]: next[key] })); } catch {}
+
+    setExerciseIndex((old) => old + 1);
+    setRestMode(true);
+    setRestSeconds(currentExercise.rest);
+    setSeconds(30);
+    setPaused(false);
+  };
+
+  const previousExercise = () => {
+    if (exerciseIndex > 0) {
+      setExerciseIndex((old) => old - 1);
+      setRestMode(false);
+      setSeconds(30);
     }
   };
 
-  const visibleWorkouts = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    return workouts.filter((wk) => {
-      if (q) {
-        const matchTitle = wk.title.toLowerCase().includes(q) || wk.description.toLowerCase().includes(q);
-        const matchEx = wk.exercises.some((e) => e.name.toLowerCase().includes(q) || e.muscle.toLowerCase().includes(q));
-        if (!matchTitle && !matchEx) return false;
-      }
-      if (durationFilter === "short" && wk.durationMin > 18) return false;
-      if (durationFilter === "medium" && wk.durationMin <= 18) return false;
-      if (levelFilter !== "all" && wk.level !== levelFilter) return false;
-      if (equipmentFilter !== "all" && wk.equipment !== equipmentFilter) return false;
-      if (zoneFilter !== "all" && wk.bodyZone !== zoneFilter) return false;
-      if (jumpFilter === "no-jump" && wk.hasJump) return false;
-      if (jumpFilter === "with-jump" && !wk.hasJump) return false;
-      return true;
-    });
-  }, [workouts, searchQuery, durationFilter, levelFilter, equipmentFilter, zoneFilter, jumpFilter]);
+  const startRest = (extra = 0) => {
+    setRestMode(true);
+    setRestSeconds((old) => Math.max(0, old + extra));
+  };
 
-  const exercises = selectedWorkout?.exercises ?? [];
-  const currentEx = exercises[activeIdx] ?? null;
-  const featuredWorkout = workouts[0] ?? null;
-  const totalCaloriesDone = history.reduce((acc, item) => acc + Math.max(8, Math.round(item.durationSec * 0.2)), 0);
-  const weeklyPct = Math.min(100, Math.round((history.length / 5) * 100));
-                                                                                                                                                                                                                                              export default function FitProHome() {
-  const [lang, setLang] = useState<LangCode>("fr");
-  const [activeTab, setActiveTab] = useState<TabKey>("home");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [durationFilter, setDurationFilter] = useState<"all" | "short" | "medium">("all");
-  const [levelFilter, setLevelFilter] = useState<string>("all");
-  const [equipmentFilter, setEquipmentFilter] = useState<string>("all");
-  const [zoneFilter, setZoneFilter] = useState<string>("all");
-  const [jumpFilter, setJumpFilter] = useState<"all" | "no-jump" | "with-jump">("all");
-
-  const [workouts, setWorkouts] = useState<WorkoutSpec[]>(() => getAllTenPrograms("fr"));
-  const [selectedWorkout, setSelectedWorkout] = useState<WorkoutSpec | null>(null);
-  const [activeIdx, setActiveIdx] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(30);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isResting, setIsResting] = useState(false);
-  const [autoChain, setAutoChain] = useState(true);
-  const [tick, setTick] = useState(0);
-  const [prefs, setPrefs] = useState<UserPreferenceData>({
-    id: 1,
-    langue: "fr",
-    bipActif: true,
-    vibrationActive: true,
-    garderEcranAllume: true,
-    avertissementSanteAccepte: true,
-  });
-  const [history, setHistory] = useState<SessionLog[]>([]);
-  const [offlineMode, setOfflineMode] = useState(false);
-  const wakeLockRef = useRef<{ release?: () => Promise<void> } | null>(null);
-
-  const ui = UI_TEXT[lang] ?? UI_TEXT.fr;
-
-  useEffect(() => {
-    try {
-      const rawHistory = localStorage.getItem("fpv_history");
-      if (rawHistory) setHistory(JSON.parse(rawHistory));
-      const rawPrefs = localStorage.getItem("fpv_prefs");
-      if (rawPrefs) setPrefs(JSON.parse(rawPrefs));
-      const rawPack = localStorage.getItem("fpv_all_langs_pack");
-      if (!rawPack) {
-        localStorage.setItem("fpv_all_langs_pack", JSON.stringify(buildAllLangsPack()));
-      }
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/sw.js").catch(() => {});
-      }
-    } catch {}
-  }, []);
-
-  useEffect(() => {
-    const syncWakeLock = async () => {
-      try {
-        if (prefs.garderEcranAllume && isRunning && "wakeLock" in navigator) {
-          const wlApi = navigator as unknown as { wakeLock?: { request?: (t: string) => Promise<{ release?: () => Promise<void> }> } };
-          if (!wakeLockRef.current && wlApi.wakeLock?.request) {
-            wakeLockRef.current = await wlApi.wakeLock.request("screen");
-          }
-        } else if (wakeLockRef.current?.release) {
-          await wakeLockRef.current.release();
-          wakeLockRef.current = null;
-        }
-      } catch {}
-    };
-    syncWakeLock();
-  }, [prefs.garderEcranAllume, isRunning]);
-
-  const syncPendingData = useCallback(async () => {
-    if (typeof navigator !== "undefined" && !navigator.onLine) return;
-    try {
-      const rawPrefs = localStorage.getItem("fpv_pending_prefs");
-      if (rawPrefs) {
-        const patch = JSON.parse(rawPrefs);
-        const res = await fetch("/api/preferences", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(patch),
-        });
-        if (res.ok) localStorage.removeItem("fpv_pending_prefs");
-      }
-      const rawHist = localStorage.getItem("fpv_pending_history");
-      if (rawHist) {
-        const items = JSON.parse(rawHist);
-        if (Array.isArray(items) && items.length > 0) {
-          const res = await fetch("/api/history", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ logs: items }),
-          });
-          if (res.ok) localStorage.removeItem("fpv_pending_history");
-        }
-      }
-      setOfflineMode(false);
-    } catch {}
-  }, []);
-
-  const addHistory = useCallback(
-    async (workoutTitle: string, exerciseName: string, durationSec: number) => {
-      const entry: SessionLog = {
-        id: `${Date.now()}`,
-        workoutTitle,
-        exerciseName,
-        completedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        durationSec,
-      };
-      setHistory((prev) => {
-        const next = [entry, ...prev].slice(0, 20);
-        try { localStorage.setItem("fpv_history", JSON.stringify(next)); } catch {}
-        return next;
-      });
-      if (prefs.bipActif) playCompletionBeep();
-      if (prefs.vibrationActive && typeof navigator !== "undefined" && "vibrate" in navigator) {
-        try { navigator.vibrate([180, 80, 180]); } catch {}
-      }
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
-        setOfflineMode(true);
-        try {
-          const cur = JSON.parse(localStorage.getItem("fpv_pending_history") || "[]");
-          cur.push(entry);
-          localStorage.setItem("fpv_pending_history", JSON.stringify(cur));
-        } catch {}
-        return;
-      }
-      try {
-        await fetch("/api/history", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(entry),
-        });
-      } catch {
-        try {
-          const cur = JSON.parse(localStorage.getItem("fpv_pending_history") || "[]");
-          cur.push(entry);
-          localStorage.setItem("fpv_pending_history", JSON.stringify(cur));
-        } catch {}
-      }
-    },
-    [prefs.bipActif, prefs.vibrationActive]
-  );
-
-  const selectExerciseAt = useCallback((wk: WorkoutSpec | null, idx: number, shouldStart: boolean) => {
-    const list = wk?.exercises ?? [];
-    const safeIdx = Math.max(0, Math.min(idx, Math.max(0, list.length - 1)));
-    const targetEx = list[safeIdx];
-    setActiveIdx(safeIdx);
-    setIsResting(false);
-    setSecondsLeft(targetEx?.durationSec ?? 30);
-    setIsRunning(shouldStart && Boolean(targetEx));
-  }, []);
-
-  const openWorkout = useCallback(
-    (wk: WorkoutSpec, shouldStart: boolean) => {
-      setSelectedWorkout(wk);
-      setActiveTab("workouts");
-      selectExerciseAt(wk, 0, shouldStart);
-    },
-    [selectExerciseAt]
-  );
-
-  const loadData = useCallback(async (targetLang: LangCode) => {
-    const baseTen = getAllTenPrograms(targetLang);
-    const cacheKey = `fpv_ten_${targetLang}`;
-    const isBrowserOffline = typeof navigator !== "undefined" && !navigator.onLine;
-
-    const applyPrograms = (list: WorkoutSpec[], offline: boolean) => {
-      setWorkouts(list);
-      setOfflineMode(offline);
-      setSelectedWorkout((prev) => (prev ? list.find((w) => w.id === prev.id) ?? null : null));
-    };
-
-    if (isBrowserOffline) {
-      try {
-        const cached = localStorage.getItem(cacheKey);
-        const parsed = cached ? JSON.parse(cached) : baseTen;
-        applyPrograms(Array.isArray(parsed) && parsed.length >= 10 ? parsed : baseTen, true);
-      } catch {
-        applyPrograms(baseTen, true);
-      }
-      return;
-    }
-
-    try {
-      await fetch(`/api/workouts?lang=${targetLang}`, { cache: "no-store" });
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify(baseTen));
-      } catch {}
-      applyPrograms(baseTen, false);
-    } catch {
-      applyPrograms(baseTen, true);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData(lang);
-  }, [lang, loadData]);
-
-  useEffect(() => {
-    const onOnline = () => {
-      setOfflineMode(false);
-      syncPendingData();
-      loadData(lang);
-    };
-    const onOffline = () => setOfflineMode(true);
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-    return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
-    };
-  }, [lang, loadData, syncPendingData]);
-
-  const completeCurrentStep = useCallback(() => {
-    const wk = selectedWorkout;
-    const list = wk?.exercises ?? [];
-    const ex = list[activeIdx];
-    const wkTitle = wk?.title ?? "Séance";
-
-    if (!isResting && ex) {
-      addHistory(wkTitle, ex.name, ex.durationSec);
-    }
-
-    if (!isResting && autoChain && activeIdx < list.length - 1) {
-      setIsResting(true);
-      setSecondsLeft(ex?.restSec ?? 15);
-      setIsRunning(true);
-      return;
-    }
-
-    if (isResting && activeIdx < list.length - 1) {
-      selectExerciseAt(wk, activeIdx + 1, autoChain);
-      return;
-    }
-
-    setIsRunning(false);
-    setIsResting(false);
-    setSecondsLeft(0);
-  }, [selectedWorkout, activeIdx, isResting, autoChain, addHistory, selectExerciseAt]);
-
-  useEffect(() => {
-    if (!isRunning) return;
-    const id = setInterval(() => {
-      setTick((t) => t + 1);
-      setSecondsLeft((s) => {
-        if (s <= 1) {
-          completeCurrentStep();
-          return 0;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(id);
-  }, [isRunning, completeCurrentStep]);
-
-  const updatePref = async (key: "bipActif" | "vibrationActive" | "garderEcranAllume" | "avertissementSanteAccepte") => {
-    const next = { ...prefs, [key]: !prefs[key] };
-    setPrefs(next);
-    try { localStorage.setItem("fpv_prefs", JSON.stringify(next)); } catch {}
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      setOfflineMode(true);
-      try { localStorage.setItem("fpv_pending_prefs", JSON.stringify({ [key]: next[key] })); } catch {}
-      return;
-    }
-    try {
-      await fetch("/api/preferences", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [key]: next[key] }),
-      });
-    } catch {
-      setOfflineMode(true);
-      try { localStorage.setItem("fpv_pending_prefs", JSON.stringify({ [key]: next[key] })); } catch {}
+  const stopWorkout = () => {
+    if (window.confirm("Veux-tu vraiment arrêter cet entraînement ?")) {
+      setView("detail");
+      setRestMode(false);
+      setPaused(false);
     }
   };
 
-  const visibleWorkouts = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    return workouts.filter((wk) => {
-      if (q) {
-        const matchTitle = wk.title.toLowerCase().includes(q) || wk.description.toLowerCase().includes(q);
-        const matchEx = wk.exercises.some((e) => e.name.toLowerCase().includes(q) || e.muscle.toLowerCase().includes(q));
-        if (!matchTitle && !matchEx) return false;
-      }
-      if (durationFilter === "short" && wk.durationMin > 18) return false;
-      if (durationFilter === "medium" && wk.durationMin <= 18) return false;
-      if (levelFilter !== "all" && wk.level !== levelFilter) return false;
-      if (equipmentFilter !== "all" && wk.equipment !== equipmentFilter) return false;
-      if (zoneFilter !== "all" && wk.bodyZone !== zoneFilter) return false;
-      if (jumpFilter === "no-jump" && wk.hasJump) return false;
-      if (jumpFilter === "with-jump" && !wk.hasJump) return false;
-      return true;
-    });
-  }, [workouts, searchQuery, durationFilter, levelFilter, equipmentFilter, zoneFilter, jumpFilter]);
+  const openWorkouts = () => {
+    setView("workouts");
+    setActiveTab("workouts");
+  };
 
-  const exercises = selectedWorkout?.exercises ?? [];
-  const currentEx = exercises[activeIdx] ?? null;
-  const featuredWorkout = workouts[0] ?? null;
-  const totalCaloriesDone = history.reduce((acc, item) => acc + Math.max(8, Math.round(item.durationSec * 0.2)), 0);
-  const weeklyPct = Math.min(100, Math.round((history.length / 5) * 100));
-                                                                                                                                                                                                                                                
+  const goHome = () => {
+    setView("home");
+    setActiveTab("home");
+  };
+    
+  return (
+    <div className="min-h-screen bg-[#050505] pb-28 text-white">
+      {/* HEADER */}
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-black/95 px-5 py-4 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
+          <button onClick={goHome} className="text-2xl font-black tracking-tight">
+            FIT<span className="text-yellow-400">PRO</span>
+          </button>
+
+          <div className="flex items-center gap-3">
+            <button
+              className="rounded-full border border-white/10 px-3 py-2 text-sm text-gray-300"
+              aria-label="Notifications"
+            >
+              ♧
+            </button>
+            <button
+              className="h-10 w-10 overflow-hidden rounded-full border-2 border-yellow-400"
+              aria-label="Profil"
+              onClick={() => {
+                setActiveTab("settings");
+                setView("home");
+              }}
+            >
+              <Photo src={photos.full} alt="Profil utilisateur" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
+        {/* ACCUEIL */}
+        {view === "home" && activeTab === "home" && (
+          <div className="space-y-8">
+            <section>
+              <p className="text-sm text-gray-400">
+                Bonjour, <span className="text-yellow-400">Champion 👋</span>
+              </p>
+              <h1 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">
+                Construis ta discipline.
+                <br />
+                Sois <span className="text-yellow-400">inarrêtable.</span>
+              </h1>
+            </section>
+
+            {/* BANNIÈRE */}
+            <section className="relative min-h-[270px] overflow-hidden rounded-3xl border border-yellow-400/20">
+              <Photo
+                src={photos.full}
+                alt="Sportif en entraînement"
+                className="absolute inset-0"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-black via-black/85 to-black/10" />
+              <div className="relative z-10 flex min-h-[270px] flex-col justify-between p-6 sm:max-w-lg">
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-widest text-yellow-400">
+                    Objectif hebdomadaire
+                  </span>
+                  <h2 className="mt-3 text-2xl font-bold">
+                    Reste régulier.
+                  </h2>
+                  <p className="mt-2 max-w-xs text-sm text-gray-300">
+                    Chaque séance te rapproche de tes objectifs.
+                  </p>
+                </div>
+                <div>
+                  <div className="mb-2 flex justify-between text-sm">
+                    <span><b className="text-yellow-400">3/5</b> séances</span>
+                    <span className="text-gray-300">60%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-white/20">
+                    <div className="h-full w-[60%] rounded-full bg-yellow-400" />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* RACCOURCIS */}
+            <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                ["⚒", "Entraînements", "workouts"],
+                ["▤", "Programmes", "workouts"],
+                ["◉", "Nutrition", "nutrition"],
+                ["▥", "Progrès", "progress"],
+              ].map(([icon, label, tab]) => (
+                <button
+                  key={tab + label}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    if (tab === "workouts") setView("workouts");
+                    else setView("home");
+                  }}
+                  className="rounded-2xl border border-white/10 bg-[#111111] p-5 text-center transition hover:border-yellow-400/60"
+                >
+                  <span className="block text-3xl text-yellow-400">{icon}</span>
+                  <span className="mt-2 block text-sm font-semibold">
+                    {label}
+                  </span>
+                </button>
+              ))}
+            </section>
+
+            {/* PLAN DU JOUR */}
+            <section>
+              <SectionTitle
+                title="Programme du jour"
+                action="Tout voir"
+                onAction={openWorkouts}
+              />
+              <div className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#111111] p-3 sm:flex-row sm:items-center">
+                <div className="h-40 overflow-hidden rounded-xl sm:h-28 sm:w-40">
+                  <Photo src={photos.upper} alt="Exercice de musculation" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-lg font-bold">Haut du corps</h3>
+                  <p className="mt-1 text-sm text-gray-400">
+                    Pectoraux • Épaules • Triceps
+                  </p>
+                  <p className="mt-3 text-xs text-gray-400">
+                    ♧ 5 exercices &nbsp; ◷ 22 min
+                  </p>
+                </div>
+                <button
+                  onClick={() => openWorkout(workouts[2])}
+                  className="rounded-xl bg-yellow-400 px-6 py-3 font-bold text-black hover:bg-yellow-300"
+                >
+                  Commencer ▶
+                </button>
+              </div>
+            </section>
+
+            {/* STATISTIQUES */}
+            <section>
+              <SectionTitle title="Ta progression" />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <StatCard
+                  label="Entraînements"
+                  value="12"
+                  detail="Ce mois"
+                  icon="⚒"
+                />
+                <StatCard
+                  label="Calories"
+                  value="~2 450"
+                  detail="Estimation du mois"
+                  icon="◉"
+                />
+                <StatCard
+                  label="Séances"
+                  value="3/5"
+                  detail="Objectif hebdomadaire"
+                  icon="▥"
+                />
+              </div>
+            </section>
+
+            {/* PROGRAMMES POPULAIRES */}
+            <section>
+              <SectionTitle
+                title="Programmes populaires"
+                action="Tout voir"
+                onAction={openWorkouts}
+              />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {workouts.slice(0, showAll ? 10 : 4).map((workout) => (
+                  <button
+                    key={workout.id}
+                    onClick={() => openWorkout(workout)}
+                    className="group relative h-48 overflow-hidden rounded-2xl border border-white/10 text-left"
+                  >
+                    <Photo
+                      src={workout.image}
+                      alt={workout.title}
+                      className="transition duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+                    <div className="absolute bottom-0 p-3">
+                      <p className="font-bold">{workout.title}</p>
+                      <p className="mt-1 text-xs text-gray-300">
+                        {workout.exercises.length} exercices
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#111111] p-4">
+              <div>
+                <p className="font-bold">La discipline aujourd'hui.</p>
+                <p className="text-sm text-gray-400">La force demain.</p>
+              </div>
+              <button
+                onClick={openWorkouts}
+                className="shrink-0 rounded-xl bg-yellow-400 px-4 py-3 text-sm font-bold text-black"
+              >
+                S'entraîner ▶
+              </button>
+            </section>
+          </div>
+        )}
+
+        {/* LISTE DES ENTRAÎNEMENTS */}
+        {view === "workouts" && (
+          <div className="space-y-6">
+            <section>
+              <p className="text-sm font-semibold uppercase tracking-widest text-yellow-400">
+                FIT PRO
+              </p>
+              <h1 className="mt-2 text-3xl font-black">
+                Entraînements
+              </h1>
+              <p className="mt-2 text-sm text-gray-400">
+                Choisis une séance adaptée à tes objectifs.
+              </p>
+            </section>
+
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Rechercher un entraînement..."
+              className="w-full rounded-2xl border border-white/10 bg-[#111111] px-4 py-4 text-white outline-none placeholder:text-gray-500 focus:border-yellow-400"
+            />
+
+            <div className="grid grid-cols-2 gap-3">
+              <select
+                value={levelFilter}
+                onChange={(e) => setLevelFilter(e.target.value)}
+                className="rounded-xl border border-white/10 bg-[#111111] p-3 text-sm text-white"
+              >
+                <option value="Tous">Tous les niveaux</option>
+                <option value="Débutant">Débutant</option>
+                <option value="Intermédiaire">Intermédiaire</option>
+                <option value="Tous niveaux">Tous niveaux</option>
+              </select>
+
+              <select
+                value={jumpFilter}
+                onChange={(e) => setJumpFilter(e.target.value)}
+                className="rounded-xl border border-white/10 bg-[#111111] p-3 text-sm text-white"
+              >
+                <option value="Tous">Avec ou sans saut</option>
+                <option value="Sans saut">Sans saut</option>
+                <option value="Avec saut">Avec saut</option>
+              </select>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-400">
+                {filteredWorkouts.length} programme(s) trouvé(s)
+              </p>
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setLevelFilter("Tous");
+                  setJumpFilter("Tous");
+                }}
+                className="text-xs font-semibold text-yellow-400"
+              >
+                Réinitialiser
+              </button>
+            </div>
+
+            {filteredWorkouts.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredWorkouts.map((workout) => (
+                  <WorkoutCard
+                    key={workout.id}
+                    workout={workout}
+                    onClick={() => openWorkout(workout)}
+                    favorite={favorites.includes(workout.id)}
+                    onFavorite={() => toggleFavorite(workout.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-[#111111] p-10 text-center">
+                <p className="text-2xl">⌕</p>
+                <p className="mt-3 font-bold">Aucun entraînement trouvé</p>
+                <p className="mt-2 text-sm text-gray-400">
+                  Essaie un autre mot ou un autre filtre.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+           
+        {/* DÉTAIL DU PROGRAMME */}
+        {view === "detail" && (
+          <div className="space-y-6">
+            <button
+              onClick={openWorkouts}
+              className="text-sm font-semibold text-yellow-400"
+            >
+              ← Retour aux entraînements
+            </button>
+
+            <div className="relative h-64 overflow-hidden rounded-3xl">
+              <Photo
+                src={selectedWorkout.image}
+                alt={selectedWorkout.title}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+              <div className="absolute bottom-5 left-5 right-5">
+                <span className="rounded-full bg-yellow-400 px-3 py-1 text-xs font-bold text-black">
+                  {selectedWorkout.level}
+                </span>
+                <h1 className="mt-3 text-3xl font-black">
+                  {selectedWorkout.title}
+                </h1>
+                <p className="mt-2 text-sm text-gray-300">
+                  {selectedWorkout.subtitle}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatCard
+                label="Durée"
+                value={`${selectedWorkout.duration} min`}
+                detail="Indicative"
+                icon="◷"
+              />
+              <StatCard
+                label="Exercices"
+                value={`${selectedWorkout.exercises.length}`}
+                detail="Au programme"
+                icon="⚒"
+              />
+              <StatCard
+                label="Calories"
+                value={`~${selectedWorkout.caloriesMin}-${selectedWorkout.caloriesMax}`}
+                detail="kcal estimées"
+                icon="◉"
+              />
+              <StatCard
+                label="Matériel"
+                value={selectedWorkout.equipment}
+                detail="Nécessaire"
+                icon="▣"
+              />
+            </div>
+
+            <section>
+              <SectionTitle title="Les exercices de la séance" />
+              <div className="space-y-3">
+                {selectedWorkout.exercises.map((exercise, index) => (
+                  <div
+                    key={exercise.id}
+                    className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#111111] p-3"
+                  >
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-white text-2xl text-[#101a35]">
+                      {index + 1}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-bold">{exercise.name}</h3>
+                      <p className="mt-1 text-xs text-gray-400">
+                        {exercise.sets} séries ×{" "}
+                        {exercise.duration
+                          ? `${exercise.duration} secondes`
+                          : `${exercise.reps} répétitions`}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Repos : {exercise.rest}s
+                      </p>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {exercise.muscle}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/5 p-4">
+              <h3 className="font-bold text-yellow-300">
+                Conseils de sécurité
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-300">
+                Cette séance doit être adaptée à tes capacités. Respecte les
+                consignes de chaque mouvement. Arrête-toi en cas de douleur,
+                vertige ou essoufflement inhabituel. En cas de problème de
+                santé ou de blessure, demande conseil à un professionnel.
+              </p>
+            </div>
+
+            <button
+              onClick={startWorkout}
+              className="w-full rounded-2xl bg-yellow-400 py-4 text-lg font-black text-black transition hover:bg-yellow-300"
+            >
+              COMMENCER L'ENTRAÎNEMENT ▶
+            </button>
+          </div>
+        )}
+
+        {/* LECTEUR D'EXERCICE */}
+        {view === "reader" && !finished && currentExercise && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={stopWorkout}
+                className="text-sm font-semibold text-gray-400"
+              >
+                ✕ Arrêter
+              </button>
+              <span className="text-sm font-bold text-yellow-400">
+                {exerciseIndex + 1}/{selectedWorkout.exercises.length}
+              </span>
+            </div>
+
+            <div>
+              <div className="mb-2 flex justify-between text-xs text-gray-400">
+                <span>Progression de la séance</span>
+                <span>{progress}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-yellow-400 transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+
+            <section className="text-center">
+              <p className="text-xs font-bold uppercase tracking-widest text-yellow-400">
+                Exercice {exerciseIndex + 1}
+              </p>
+              <h1 className="mt-2 text-3xl font-black">
+                {currentExercise.name}
+              </h1>
+              <p className="mt-2 text-sm text-gray-400">
+                {currentExercise.muscle}
+              </p>
+            </section>
+
+            {/* ZONE D'ANIMATION 2D */}
+            <div className="relative flex min-h-[280px] items-center justify-center overflow-hidden rounded-3xl border border-white/10 bg-white p-5">
+              {currentExercise.animationUrl ? (
+                <video
+                  key={currentExercise.animationUrl}
+                  src={currentExercise.animationUrl}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="max-h-[320px] w-full object-contain"
+                />
+              ) : (
+                <div className="text-center text-[#101a35]">
+                  <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[#101a35] text-3xl text-white">
+                    2D
+                  </div>
+                  <p className="font-bold">
+                    Animation 2D à intégrer
+                  </p>
+                  <p className="mt-2 text-sm text-gray-600">
+                    {currentExercise.name}
+                  </p>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Ajoute ici l'URL de l'animation correcte de cet exercice.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* COMPTEUR */}
+            <div className="rounded-3xl border border-white/10 bg-[#111111] p-6 text-center">
+              {restMode ? (
+                <>
+                  <p className="text-sm font-semibold text-yellow-400">
+                    TEMPS DE REPOS
+                  </p>
+                  <div className="my-4 text-6xl font-black tabular-nums">
+                    {formatTime(restSeconds)}
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    Prépare-toi pour le prochain exercice.
+                  </p>
+                  <button
+                    onClick={() => startRest(10)}
+                    className="mt-5 rounded-xl border border-white/20 px-5 py-3 font-semibold"
+                  >
+                    +10 secondes
+                  </button>
+                  <button
+                    onClick={() => {
+                      setRestMode(false);
+                      setRestSeconds(0);
+                    }}
+                    className="ml-2 rounded-xl bg-yellow-400 px-5 py-3 font-bold text-black"
+                  >
+                    Passer le repos
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-400">
+                    {currentExercise.duration
+                      ? "MINUTEUR"
+                      : "RÉPÉTITIONS CIBLES"}
+                  </p>
+                  <div className="my-4 text-6xl font-black tabular-nums">
+                    {currentExercise.duration
+                      ? formatTime(seconds)
+                      : `${currentExercise.reps}`}
+                  </div>
+                  <p className="text-sm text-gray-400">
+                    {currentExercise.sets} séries · Repos{" "}
+                    {currentExercise.rest}s
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* CONSIGNES */}
+            <div className="rounded-2xl border border-white/10 bg-[#111111] p-4">
+              <h3 className="font-bold text-yellow-400">
+                Consigne de mouvement
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-gray-300">
+                {currentExercise.instructions}
+              </p>
+            </div>
+
+            {/* COMMANDES */}
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={previousExercise}
+                disabled={exerciseIndex === 0}
+                className="rounded-xl border border-white/10 py-4 text-sm font-semibold disabled:opacity-30"
+              >
+                ← Précédent
+              </button>
+              <button
+                onClick={() => setPaused(!paused)}
+                className="rounded-xl bg-yellow-400 py-4 text-sm font-bold text-black"
+              >
+                {paused ? "▶ Reprendre" : "Ⅱ Pause"}
+              </button>
+              <button
+                onClick={nextExercise}
+                className="rounded-xl border border-white/10 py-4 text-sm font-semibold"
+              >
+                Suivant →
+              </button>
+            </div>
+
+            <button
+              onClick={nextExercise}
+              className="w-full rounded-xl border border-white/10 py-3 text-sm text-gray-300"
+            >
+              Terminer / Passer cet exercice
+            </button>
+
+            <p className="text-center text-xs text-gray-500">
+              Temps total effectué : {formatTime(elapsed)}
+            </p>
+          </div>
+        )}
+
+        {/* FIN DE SÉANCE */}
+        {view === "reader" && finished && (
+          <div className="flex min-h-[65vh] flex-col items-center justify-center text-center">
+            <div className="text-6xl">🏆</div>
+            <h1 className="mt-5 text-4xl font-black">
+              Bravo !
+            </h1>
+            <p className="mt-3 text-gray-400">
+              Tu as terminé cette séance.
+            </p>
+            <div className="my-8 grid w-full grid-cols-2 gap-3">
+              <StatCard
+                label="Temps effectué"
+                value={formatTime(elapsed)}
+                detail="Durée réelle"
+                icon="◷"
+              />
+              <StatCard
+                label="Exercices"
+                value={`${selectedWorkout.exercises.length}/${selectedWorkout.exercises.length}`}
+                detail="Terminés"
+                icon="✓"
+              />
+            </div>
+            <p className="mb-6 text-sm text-gray-400">
+              Calories estimées : ~{selectedWorkout.caloriesMin} à{" "}
+              {selectedWorkout.caloriesMax} kcal.
+              <br />
+              Cette estimation varie selon ton corps et ton intensité.
+            </p>
+            <button
+              onClick={() => setView("detail")}
+              className="w-full rounded-xl bg-yellow-400 py-4 font-bold text-black"
+            >
+              Terminer
+            </button>
+            <button
+              onClick={startWorkout}
+              className="mt-3 w-full rounded-xl border border-white/20 py-4 font-semibold"
+            >
+              Refaire la séance
+            </button>
+          </div>
+        )}
+
+        {/* AUTRES RUBRIQUES */}
+        {activeTab === "nutrition" && (
+          <section className="space-y-4">
+            <h1 className="text-3xl font-black">Nutrition</h1>
+            <p className="text-gray-400">
+              Conseils alimentaires et suivi nutritionnel.
+            </p>
+            <div className="rounded-2xl border border-white/10 bg-[#111111] p-5">
+              <p className="text-lg font-bold">Bien manger, mieux progresser.</p>
+              <p className="mt-2 text-sm text-gray-400">
+                Cette rubrique est prête à recevoir tes programmes nutritionnels.
+              </p>
+            </div>
+          </section>
+        )}
+
+        {activeTab === "progress" && (
+          <section className="space-y-4">
+            <h1 className="text-3xl font-black">Mes progrès</h1>
+            <div className="grid grid-cols-2 gap-3">
+              <StatCard label="Favoris" value={`${favorites.length}`} detail="Programmes sauvegardés" icon="♥" />
+              <StatCard label="Séances" value={`${completed.length}`} detail="Exercices terminés en mémoire" icon="✓" />
+            </div>
+            <p className="text-sm text-gray-400">
+              Les statistiques complètes nécessitent une sauvegarde persistante des séances.
+            </p>
+          </section>
+        )}
+
+        {activeTab === "settings" && (
+          <section className="space-y-4">
+            <h1 className="text-3xl font-black">Paramètres</h1>
+            <div className="space-y-3 rounded-2xl border border-white/10 bg-[#111111] p-5">
+              <p className="font-bold">Préférences FIT PRO</p>
+              <p className="text-sm text-gray-400">Langue : Français</p>
+              <p className="text-sm text-gray-400">Thème : Sombre</p>
+              <p className="text-sm text-gray-400">Unités : kg / cm</p>
+              <p className="text-xs text-gray-500">
+                Les réglages complets seront connectés aux préférences utilisateur.
+              </p>
+            </div>
+          </section>
+        )}
+      </main>
+
+      {/* NAVIGATION */}
+      {view !== "reader" && (
+        <BottomNavigation
+          active={activeTab}
+          onChange={(tab) => {
+            setActiveTab(tab);
+            if (tab === "workouts") setView("workouts");
+            else setView("home");
+          }}
+        />
+      )}
+    </div>
+  );
+                  }
+              
