@@ -2,7 +2,48 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+"use client";
 
+import React, { useEffect, useMemo, useState } from "react";
+
+function ExerciseVideo({
+  animationUrl,
+  exerciseName,
+}: {
+  animationUrl?: string;
+  exerciseName: string;
+}) {
+  const [videoMissing, setVideoMissing] = useState(false);
+
+  if (!animationUrl || videoMissing) {
+    return (
+      <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl bg-slate-100 p-6 text-center">
+        <p className="text-lg font-semibold text-slate-800">
+          Animation 2D indisponible
+        </p>
+        <p className="mt-2 text-sm text-slate-500">
+          La vidéo de {exerciseName} n'a pas encore été ajoutée.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <video
+      key={animationUrl}
+      src={animationUrl}
+      autoPlay
+      loop
+      muted
+      playsInline
+      controls
+      onError={() => setVideoMissing(true)}
+      className="w-full rounded-2xl bg-white object-contain"
+    />
+  );
+}
+
+type Exercise = {
 type Exercise = {
   id: string;
   name: string;
